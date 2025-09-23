@@ -119,9 +119,6 @@ export const RelatoriosPage = () => {
       <div className="flex flex-col gap-4">
         <div>
           <h2 className="text-2xl font-bold">Relatórios</h2>
-          <p className="text-muted-foreground">
-            Gere relatórios analíticos sobre preços, pesquisas e performance
-          </p>
         </div>
       </div>
 

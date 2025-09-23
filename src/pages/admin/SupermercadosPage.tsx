@@ -167,7 +167,6 @@ export const SupermercadosPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Supermercados</h2>
-          <p className="text-muted-foreground">Gerencie os supermercados cadastrados no sistema</p>
         </div>
         
         <Dialog open={showForm} onOpenChange={setShowForm}>

@@ -121,7 +121,6 @@ export const PesquisasPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Pesquisas</h2>
-          <p className="text-muted-foreground">Gerencie as pesquisas de preços realizadas</p>
         </div>
         
         <Dialog open={showForm} onOpenChange={setShowForm}>
