@@ -161,21 +161,30 @@ export const ProdutosPage = () => {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Novo Grupo</DialogTitle>
+                <DialogTitle>{editingGrupo ? 'Editar' : 'Novo'} Grupo</DialogTitle>
               </DialogHeader>
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (!grupoForm.nome) return;
                 
-                setGrupos(prev => [...prev, {
-                  id: Date.now().toString(),
+                const grupo = {
+                  id: editingGrupo?.id || Date.now().toString(),
                   codigo: grupoForm.codigo || generateCode('grupo'),
                   nome: grupoForm.nome
-                }]);
+                };
+                
+                if (editingGrupo) {
+                  setGrupos(prev => prev.map(g => g.id === editingGrupo.id ? grupo : g));
+                } else {
+                  setGrupos(prev => [...prev, grupo]);
+                }
                 
                 setShowGrupoForm(false);
+                setEditingGrupo(null);
                 setGrupoForm({ codigo: '', nome: '' });
-                toast({ title: "Grupo cadastrado!" });
+                toast({ 
+                  title: editingGrupo ? "Grupo atualizado!" : "Grupo cadastrado!" 
+                });
               }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Código</Label>
@@ -193,10 +202,15 @@ export const ProdutosPage = () => {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setShowGrupoForm(false)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowGrupoForm(false);
+                    setEditingGrupo(null);
+                  }}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Cadastrar</Button>
+                  <Button type="submit">
+                    {editingGrupo ? 'Atualizar' : 'Cadastrar'}
+                  </Button>
                 </div>
               </form>
             </DialogContent>
@@ -211,22 +225,31 @@ export const ProdutosPage = () => {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Novo Subgrupo</DialogTitle>
+                <DialogTitle>{editingSubgrupo ? 'Editar' : 'Novo'} Subgrupo</DialogTitle>
               </DialogHeader>
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (!subgrupoForm.nome || !subgrupoForm.grupoId) return;
                 
-                setSubgrupos(prev => [...prev, {
-                  id: Date.now().toString(),
+                const subgrupo = {
+                  id: editingSubgrupo?.id || Date.now().toString(),
                   codigo: subgrupoForm.codigo || generateCode('subgrupo'),
                   nome: subgrupoForm.nome,
                   grupoId: subgrupoForm.grupoId
-                }]);
+                };
+                
+                if (editingSubgrupo) {
+                  setSubgrupos(prev => prev.map(sg => sg.id === editingSubgrupo.id ? subgrupo : sg));
+                } else {
+                  setSubgrupos(prev => [...prev, subgrupo]);
+                }
                 
                 setShowSubgrupoForm(false);
+                setEditingSubgrupo(null);
                 setSubgrupoForm({ codigo: '', nome: '', grupoId: '' });
-                toast({ title: "Subgrupo cadastrado!" });
+                toast({ 
+                  title: editingSubgrupo ? "Subgrupo atualizado!" : "Subgrupo cadastrado!" 
+                });
               }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Código</Label>
@@ -257,10 +280,15 @@ export const ProdutosPage = () => {
                   </Select>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setShowSubgrupoForm(false)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowSubgrupoForm(false);
+                    setEditingSubgrupo(null);
+                  }}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Cadastrar</Button>
+                  <Button type="submit">
+                    {editingSubgrupo ? 'Atualizar' : 'Cadastrar'}
+                  </Button>
                 </div>
               </form>
             </DialogContent>
@@ -403,6 +431,14 @@ export const ProdutosPage = () => {
                     : 'hover:bg-muted'
                 }`}
                 onClick={() => handleGrupoClick(grupo.id)}
+                onDoubleClick={() => {
+                  setEditingGrupo(grupo);
+                  setGrupoForm({
+                    codigo: grupo.codigo,
+                    nome: grupo.nome
+                  });
+                  setShowGrupoForm(true);
+                }}
               >
                 <div className="font-medium">{grupo.nome}</div>
                 <div className="text-sm opacity-75">{grupo.codigo}</div>
@@ -443,6 +479,15 @@ export const ProdutosPage = () => {
                     : 'hover:bg-muted'
                 }`}
                 onClick={() => handleSubgrupoClick(subgrupo.id)}
+                onDoubleClick={() => {
+                  setEditingSubgrupo(subgrupo);
+                  setSubgrupoForm({
+                    codigo: subgrupo.codigo,
+                    nome: subgrupo.nome,
+                    grupoId: subgrupo.grupoId
+                  });
+                  setShowSubgrupoForm(true);
+                }}
               >
                 <div className="font-medium">{subgrupo.nome}</div>
                 <div className="text-sm opacity-75">{subgrupo.codigo}</div>
