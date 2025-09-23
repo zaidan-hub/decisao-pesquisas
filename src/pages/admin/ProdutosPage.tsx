@@ -42,6 +42,11 @@ export const ProdutosPage = () => {
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
   const [editingSubgrupo, setEditingSubgrupo] = useState<Subgrupo | null>(null);
   
+  // Confirmation dialogs
+  const [showConfirmEditGrupo, setShowConfirmEditGrupo] = useState<Grupo | null>(null);
+  const [showConfirmEditSubgrupo, setShowConfirmEditSubgrupo] = useState<Subgrupo | null>(null);
+  const [showConfirmEditProduto, setShowConfirmEditProduto] = useState<Produto | null>(null);
+  
   // Form data
   const [produtoForm, setProdutoForm] = useState({
     codigo: '',
@@ -432,12 +437,7 @@ export const ProdutosPage = () => {
                 }`}
                 onClick={() => handleGrupoClick(grupo.id)}
                 onDoubleClick={() => {
-                  setEditingGrupo(grupo);
-                  setGrupoForm({
-                    codigo: grupo.codigo,
-                    nome: grupo.nome
-                  });
-                  setShowGrupoForm(true);
+                  setShowConfirmEditGrupo(grupo);
                 }}
               >
                 <div className="font-medium">{grupo.nome}</div>
@@ -480,13 +480,7 @@ export const ProdutosPage = () => {
                 }`}
                 onClick={() => handleSubgrupoClick(subgrupo.id)}
                 onDoubleClick={() => {
-                  setEditingSubgrupo(subgrupo);
-                  setSubgrupoForm({
-                    codigo: subgrupo.codigo,
-                    nome: subgrupo.nome,
-                    grupoId: subgrupo.grupoId
-                  });
-                  setShowSubgrupoForm(true);
+                  setShowConfirmEditSubgrupo(subgrupo);
                 }}
               >
                 <div className="font-medium">{subgrupo.nome}</div>
@@ -529,15 +523,7 @@ export const ProdutosPage = () => {
                 key={produto.id}
                 className="p-3 rounded-md hover:bg-muted transition-colors cursor-pointer"
                 onDoubleClick={() => {
-                  setEditingProduto(produto);
-                  setProdutoForm({
-                    codigo: produto.codigo,
-                    nome: produto.nome,
-                    grupoId: produto.grupoId,
-                    subgrupoId: produto.subgrupoId,
-                    unidadeMedida: produto.unidadeMedida
-                  });
-                  setShowProdutoForm(true);
+                  setShowConfirmEditProduto(produto);
                 }}
               >
                 <div className="font-medium">{produto.nome}</div>
@@ -554,6 +540,92 @@ export const ProdutosPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={!!showConfirmEditGrupo} onOpenChange={() => setShowConfirmEditGrupo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar Grupo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja editar o grupo "{showConfirmEditGrupo?.nome}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (showConfirmEditGrupo) {
+                setEditingGrupo(showConfirmEditGrupo);
+                setGrupoForm({
+                  codigo: showConfirmEditGrupo.codigo,
+                  nome: showConfirmEditGrupo.nome
+                });
+                setShowGrupoForm(true);
+                setShowConfirmEditGrupo(null);
+              }
+            }}>
+              Editar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!showConfirmEditSubgrupo} onOpenChange={() => setShowConfirmEditSubgrupo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar Subgrupo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja editar o subgrupo "{showConfirmEditSubgrupo?.nome}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (showConfirmEditSubgrupo) {
+                setEditingSubgrupo(showConfirmEditSubgrupo);
+                setSubgrupoForm({
+                  codigo: showConfirmEditSubgrupo.codigo,
+                  nome: showConfirmEditSubgrupo.nome,
+                  grupoId: showConfirmEditSubgrupo.grupoId
+                });
+                setShowSubgrupoForm(true);
+                setShowConfirmEditSubgrupo(null);
+              }
+            }}>
+              Editar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!showConfirmEditProduto} onOpenChange={() => setShowConfirmEditProduto(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar Produto</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja editar o produto "{showConfirmEditProduto?.nome}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (showConfirmEditProduto) {
+                setEditingProduto(showConfirmEditProduto);
+                setProdutoForm({
+                  codigo: showConfirmEditProduto.codigo,
+                  nome: showConfirmEditProduto.nome,
+                  grupoId: showConfirmEditProduto.grupoId,
+                  subgrupoId: showConfirmEditProduto.subgrupoId,
+                  unidadeMedida: showConfirmEditProduto.unidadeMedida
+                });
+                setShowProdutoForm(true);
+                setShowConfirmEditProduto(null);
+              }
+            }}>
+              Editar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
