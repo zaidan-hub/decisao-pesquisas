@@ -40,6 +40,14 @@
     --warning: 45 90% 55%;
     --warning-foreground: 0 0% 100%;
 
+    --grupo: 215 85% 70%;
+    --grupo-foreground: 0 0% 100%;
+    --grupo-hover: 215 85% 65%;
+
+    --subgrupo: 215 75% 75%;
+    --subgrupo-foreground: 0 0% 100%;
+    --subgrupo-hover: 215 75% 70%;
+
     --border: 210 20% 88%;
     --input: 210 20% 95%;
     --ring: 210 82% 45%;

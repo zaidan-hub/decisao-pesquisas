@@ -153,13 +153,12 @@ export const ProdutosPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Produtos</h2>
-          <p className="text-muted-foreground">Gerencie grupos, subgrupos e produtos</p>
         </div>
         
         <div className="flex gap-2">
           <Dialog open={showGrupoForm} onOpenChange={setShowGrupoForm}>
             <DialogTrigger asChild>
-              <Button variant="outline" onClick={() => setGrupoForm({ codigo: generateCode('grupo'), nome: '' })}>
+              <Button variant="grupo" onClick={() => setGrupoForm({ codigo: generateCode('grupo'), nome: '' })}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Grupo
               </Button>
@@ -223,7 +222,7 @@ export const ProdutosPage = () => {
 
           <Dialog open={showSubgrupoForm} onOpenChange={setShowSubgrupoForm}>
             <DialogTrigger asChild>
-              <Button variant="outline" onClick={() => setSubgrupoForm({ codigo: generateCode('subgrupo'), nome: '', grupoId: '' })}>
+              <Button variant="subgrupo" onClick={() => setSubgrupoForm({ codigo: generateCode('subgrupo'), nome: '', grupoId: '' })}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Subgrupo
               </Button>
@@ -379,38 +378,10 @@ export const ProdutosPage = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        <Button
-          variant={activeTab === 'grupos' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setActiveTab('grupos')}
-        >
-          <Layers className="w-4 h-4 mr-2" />
-          Grupos
-        </Button>
-        <Button
-          variant={activeTab === 'subgrupos' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setActiveTab('subgrupos')}
-        >
-          <FolderOpen className="w-4 h-4 mr-2" />
-          Subgrupos
-        </Button>
-        <Button
-          variant={activeTab === 'produtos' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setActiveTab('produtos')}
-        >
-          <Package className="w-4 h-4 mr-2" />
-          Produtos
-        </Button>
-      </div>
-
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Grupos */}
-        <Card className={activeTab === 'grupos' ? 'ring-2 ring-primary' : ''}>
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Layers className="w-5 h-5" />
@@ -448,7 +419,7 @@ export const ProdutosPage = () => {
         </Card>
 
         {/* Subgrupos */}
-        <Card className={activeTab === 'subgrupos' ? 'ring-2 ring-primary' : ''}>
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FolderOpen className="w-5 h-5" />
@@ -496,7 +467,7 @@ export const ProdutosPage = () => {
         </Card>
 
         {/* Produtos */}
-        <Card className={activeTab === 'produtos' ? 'ring-2 ring-primary' : ''}>
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />

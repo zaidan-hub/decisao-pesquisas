@@ -51,6 +51,16 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        grupo: {
+          DEFAULT: "hsl(var(--grupo))",
+          foreground: "hsl(var(--grupo-foreground))",
+          hover: "hsl(var(--grupo-hover))",
+        },
+        subgrupo: {
+          DEFAULT: "hsl(var(--subgrupo))",
+          foreground: "hsl(var(--subgrupo-foreground))",
+          hover: "hsl(var(--subgrupo-hover))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
