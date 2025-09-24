@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Pesquisa, Supermercado, Pesquisador } from '@/types';
-import { Plus, Search, Calendar, Store, User, FileText } from 'lucide-react';
+import { Coleta, Supermercado, Pesquisador } from '@/types';
+import { Plus, Search, Calendar, Store, User, FileText, Package } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export const PesquisasPage = () => {
   // Mock data
-  const [pesquisas, setPesquisas] = useState<Pesquisa[]>([
+  const [coletas, setColetas] = useState<Coleta[]>([
     {
       id: '1',
       data: '2024-01-20',
@@ -19,7 +19,9 @@ export const PesquisasPage = () => {
       pesquisadorId: '1',
       numero: '001',
       grupo: 'A',
-      ano: '2024'
+      ano: '2024',
+      status: 'finalizada',
+      produtos: ['1', '2', '3']
     },
     {
       id: '2',
@@ -28,14 +30,16 @@ export const PesquisasPage = () => {
       pesquisadorId: '2',
       numero: '002',
       grupo: 'A',
-      ano: '2024'
+      ano: '2024',
+      status: 'iniciada',
+      produtos: ['1', '4', '5']
     }
   ]);
 
   const mockSupermercados: Supermercado[] = [
-    { id: '1', codigo: 'SUP001', nome: 'Extra Hiper', sigla: 'EXT', situacao: 'Cliente', contatos: [] },
-    { id: '2', codigo: 'SUP002', nome: 'Pão de Açúcar', sigla: 'PDA', situacao: 'Cliente', contatos: [] },
-    { id: '3', codigo: 'SUP003', nome: 'Carrefour', sigla: 'CAR', situacao: 'Não Cliente', contatos: [] }
+    { id: '1', codigo: 'SUP001', nome: 'Extra Hiper', sigla: 'EXT', situacao: 'Cliente', contatos: [], produtosPadrao: ['1', '2', '3'] },
+    { id: '2', codigo: 'SUP002', nome: 'Pão de Açúcar', sigla: 'PDA', situacao: 'Cliente', contatos: [], produtosPadrao: ['1', '4', '5'] },
+    { id: '3', codigo: 'SUP003', nome: 'Carrefour', sigla: 'CAR', situacao: 'Não Cliente', contatos: [], produtosPadrao: ['2', '3', '4'] }
   ];
 
   const mockPesquisadores: Pesquisador[] = [
@@ -66,21 +70,27 @@ export const PesquisasPage = () => {
       return;
     }
 
-    const novaPesquisa: Pesquisa = {
+    // Buscar produtos padrão do supermercado selecionado
+    const supermercado = mockSupermercados.find(s => s.id === formData.supermercadoId);
+    const produtosPadrao = supermercado?.produtosPadrao || [];
+
+    const novaColeta: Coleta = {
       id: Date.now().toString(),
       data: formData.data,
       supermercadoId: formData.supermercadoId,
       pesquisadorId: formData.pesquisadorId,
       numero: formData.numero,
       grupo: formData.grupo,
-      ano: formData.ano
+      ano: formData.ano,
+      status: 'não iniciada',
+      produtos: produtosPadrao
     };
 
-    setPesquisas(prev => [novaPesquisa, ...prev]);
+    setColetas(prev => [novaColeta, ...prev]);
     
     toast({
       title: "Sucesso",
-      description: "Pesquisa cadastrada com sucesso!"
+      description: "Coleta cadastrada com sucesso!"
     });
 
     setShowForm(false);
@@ -110,31 +120,44 @@ export const PesquisasPage = () => {
     return mockPesquisadores.find(p => p.id === id)?.nome || 'N/A';
   };
 
-  // Ordenar pesquisas por data (mais recente primeiro)
-  const pesquisasOrdenadas = [...pesquisas].sort((a, b) => 
+  // Ordenar coletas por data (mais recente primeiro)
+  const coletasOrdenadas = [...coletas].sort((a, b) => 
     new Date(b.data).getTime() - new Date(a.data).getTime()
   );
+
+  const getStatusColor = (status: Coleta['status']) => {
+    switch (status) {
+      case 'não iniciada':
+        return 'bg-destructive text-destructive-foreground';
+      case 'iniciada':
+        return 'bg-yellow-500 text-white';
+      case 'finalizada':
+        return 'bg-success text-success-foreground';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Pesquisas</h2>
+          <h2 className="text-2xl font-bold">Coletas</h2>
         </div>
         
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" />
-              Nova Pesquisa
+              Nova Coleta
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Nova Pesquisa</DialogTitle>
+              <DialogTitle>Nova Coleta</DialogTitle>
               <DialogDescription>
-                Cadastre uma nova pesquisa de preços
+                Cadastre uma nova coleta de preços
               </DialogDescription>
             </DialogHeader>
             
@@ -246,7 +269,7 @@ export const PesquisasPage = () => {
                   Cancelar
                 </Button>
                 <Button type="submit">
-                  Cadastrar Pesquisa
+                  Cadastrar Coleta
                 </Button>
               </div>
             </form>
@@ -254,13 +277,13 @@ export const PesquisasPage = () => {
         </Dialog>
       </div>
 
-      {/* Lista de Pesquisas */}
+      {/* Lista de Coletas */}
       <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Pesquisas Realizadas
+              Coletas Realizadas
             </CardTitle>
             <CardDescription>
               Ordenadas cronologicamente (mais recentes primeiro)
@@ -268,48 +291,56 @@ export const PesquisasPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {pesquisasOrdenadas.map((pesquisa) => (
+              {coletasOrdenadas.map((coleta) => (
                 <div 
-                  key={pesquisa.id}
+                  key={coleta.id}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium">{formatDate(pesquisa.data)}</span>
+                        <span className="font-medium">{formatDate(coleta.data)}</span>
                       </div>
                       
-                      {pesquisa.numero && (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(coleta.status)}`}>
+                        {coleta.status.charAt(0).toUpperCase() + coleta.status.slice(1)}
+                      </span>
+                      
+                      {coleta.numero && (
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-muted-foreground">Nº:</span>
-                          <span className="text-sm font-medium">{pesquisa.numero}</span>
+                          <span className="text-sm font-medium">{coleta.numero}</span>
                         </div>
                       )}
                       
-                      {pesquisa.grupo && (
+                      {coleta.grupo && (
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-muted-foreground">Grupo:</span>
-                          <span className="text-sm font-medium">{pesquisa.grupo}</span>
+                          <span className="text-sm font-medium">{coleta.grupo}</span>
                         </div>
                       )}
                       
-                      {pesquisa.ano && (
+                      {coleta.ano && (
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-muted-foreground">Ano:</span>
-                          <span className="text-sm font-medium">{pesquisa.ano}</span>
+                          <span className="text-sm font-medium">{coleta.ano}</span>
                         </div>
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Store className="w-4 h-4" />
-                        <span><strong>Supermercado:</strong> {getSupermercadoNome(pesquisa.supermercadoId)}</span>
+                        <span><strong>Supermercado:</strong> {getSupermercadoNome(coleta.supermercadoId)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4" />
-                        <span><strong>Pesquisador:</strong> {getPesquisadorNome(pesquisa.pesquisadorId)}</span>
+                        <span><strong>Pesquisador:</strong> {getPesquisadorNome(coleta.pesquisadorId)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        <span><strong>Produtos:</strong> {coleta.produtos.length} itens</span>
                       </div>
                     </div>
                   </div>
@@ -323,12 +354,12 @@ export const PesquisasPage = () => {
                 </div>
               ))}
               
-              {pesquisasOrdenadas.length === 0 && (
+              {coletasOrdenadas.length === 0 && (
                 <div className="text-center py-8">
                   <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Nenhuma pesquisa encontrada</h3>
+                  <h3 className="text-lg font-medium mb-2">Nenhuma coleta encontrada</h3>
                   <p className="text-muted-foreground">
-                    Cadastre a primeira pesquisa clicando no botão "Nova Pesquisa"
+                    Cadastre a primeira coleta clicando no botão "Nova Coleta"
                   </p>
                 </div>
               )}

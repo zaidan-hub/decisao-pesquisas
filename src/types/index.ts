@@ -13,6 +13,7 @@ export interface Supermercado {
   situacao: 'Cliente' | 'Não Cliente';
   contatos: Contato[];
   dataInicioContrato?: string;
+  produtosPadrao: string[]; // Array de IDs dos produtos
 }
 
 export interface Contato {
@@ -53,7 +54,7 @@ export interface Pesquisador {
   ativo: boolean;
 }
 
-export interface Pesquisa {
+export interface Coleta {
   id: string;
   data: string;
   supermercadoId: string;
@@ -61,4 +62,9 @@ export interface Pesquisa {
   numero?: string;
   grupo?: string;
   ano?: string;
+  status: 'não iniciada' | 'iniciada' | 'finalizada';
+  produtos: string[]; // Array de IDs dos produtos da coleta
 }
+
+// Mantém Pesquisa como alias para compatibilidade
+export interface Pesquisa extends Coleta {}

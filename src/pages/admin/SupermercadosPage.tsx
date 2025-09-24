@@ -6,11 +6,20 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Supermercado, Contato } from '@/types';
+import { Supermercado, Contato, Produto } from '@/types';
 import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export const SupermercadosPage = () => {
+  // Mock produtos para seleção
+  const mockProdutos: Produto[] = [
+    { id: '1', codigo: 'PRD001', nome: 'Carne Bovina (Alcatra)', grupoId: '1', subgrupoId: '1', unidadeMedida: 'kg' },
+    { id: '2', codigo: 'PRD002', nome: 'Leite Integral 1L', grupoId: '1', subgrupoId: '2', unidadeMedida: 'unidade' },
+    { id: '3', codigo: 'PRD003', nome: 'Arroz Branco 5kg', grupoId: '1', subgrupoId: '3', unidadeMedida: 'unidade' },
+    { id: '4', codigo: 'PRD004', nome: 'Feijão Preto 1kg', grupoId: '1', subgrupoId: '3', unidadeMedida: 'unidade' },
+    { id: '5', codigo: 'PRD005', nome: 'Detergente Líquido', grupoId: '2', subgrupoId: '4', unidadeMedida: 'unidade' }
+  ];
+
   const [supermercados, setSupermercados] = useState<Supermercado[]>([
     {
       id: '1',
@@ -21,7 +30,8 @@ export const SupermercadosPage = () => {
       contatos: [
         { id: '1', nome: 'João Silva', telefone: '(11) 99999-9999', email: 'joao@extra.com' }
       ],
-      dataInicioContrato: '2024-01-15'
+      dataInicioContrato: '2024-01-15',
+      produtosPadrao: ['1', '2', '3']
     },
     {
       id: '2',
@@ -30,7 +40,8 @@ export const SupermercadosPage = () => {
       sigla: 'PDA',
       situacao: 'Não Cliente',
       contatos: [],
-      dataInicioContrato: undefined
+      dataInicioContrato: undefined,
+      produtosPadrao: ['1', '4', '5']
     }
   ]);
 
@@ -46,7 +57,8 @@ export const SupermercadosPage = () => {
     sigla: '',
     situacao: '' as 'Cliente' | 'Não Cliente' | '',
     dataInicioContrato: '',
-    contatos: [] as Contato[]
+    contatos: [] as Contato[],
+    produtosPadrao: [] as string[]
   });
 
   const generateCode = () => {
@@ -61,7 +73,8 @@ export const SupermercadosPage = () => {
       sigla: '',
       situacao: '',
       dataInicioContrato: '',
-      contatos: []
+      contatos: [],
+      produtosPadrao: []
     });
   };
 
@@ -84,7 +97,8 @@ export const SupermercadosPage = () => {
       sigla: formData.sigla,
       situacao: formData.situacao,
       contatos: formData.contatos,
-      dataInicioContrato: formData.dataInicioContrato || undefined
+      dataInicioContrato: formData.dataInicioContrato || undefined,
+      produtosPadrao: formData.produtosPadrao
     };
 
     if (editingSupermercado) {
@@ -114,7 +128,8 @@ export const SupermercadosPage = () => {
       sigla: supermercado.sigla,
       situacao: supermercado.situacao,
       dataInicioContrato: supermercado.dataInicioContrato || '',
-      contatos: [...supermercado.contatos]
+      contatos: [...supermercado.contatos],
+      produtosPadrao: [...supermercado.produtosPadrao]
     });
     setShowForm(true);
   };
@@ -246,6 +261,36 @@ export const SupermercadosPage = () => {
                 </div>
               </div>
 
+              {/* Produtos Padrão */}
+              <div className="space-y-4">
+                <Label>Produtos Padrão da Lista</Label>
+                <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                  {mockProdutos.map((produto) => (
+                    <label key={produto.id} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.produtosPadrao.includes(produto.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              produtosPadrao: [...prev.produtosPadrao, produto.id]
+                            }));
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              produtosPadrao: prev.produtosPadrao.filter(id => id !== produto.id)
+                            }));
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{produto.nome}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Contatos */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -362,6 +407,9 @@ export const SupermercadosPage = () => {
                     )}
                     <div>
                       <strong>Contatos:</strong> {supermercado.contatos.length}
+                    </div>
+                    <div>
+                      <strong>Produtos:</strong> {supermercado.produtosPadrao.length}
                     </div>
                   </div>
 
