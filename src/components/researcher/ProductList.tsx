@@ -5,14 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Search, MessageSquare, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Search, MessageSquare, CheckCircle, Camera } from 'lucide-react';
 import { Coleta, Produto, Grupo, Subgrupo } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
 interface ProductListProps {
   coleta: Coleta;
   onBack: () => void;
-  onUpdatePrecos: (precos: { [produtoId: string]: number }, observacoes: { [produtoId: string]: string }) => void;
+  onUpdatePrecos: (precos: { [produtoId: string]: number }, observacoes: { [produtoId: string]: string }, fotos?: { [produtoId: string]: string[] }) => void;
   onFinalizarColeta: () => void;
 }
 
@@ -20,6 +20,7 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
   const [searchTerm, setSearchTerm] = useState('');
   const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(coleta.precos || {});
   const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
+  const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>({});
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [tempObservacao, setTempObservacao] = useState('');
@@ -81,7 +82,7 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
     const precoNumerico = parseFloat(valor) || 0;
     const novosPrecos = { ...precos, [produtoId]: precoNumerico };
     setPrecos(novosPrecos);
-    onUpdatePrecos(novosPrecos, observacoes);
+    onUpdatePrecos(novosPrecos, observacoes, fotos);
   };
 
   const handleSaveObservation = () => {
@@ -96,7 +97,7 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
     }
     
     setObservacoes(novasObservacoes);
-    onUpdatePrecos(precos, novasObservacoes);
+    onUpdatePrecos(precos, novasObservacoes, fotos);
     
     setShowObservationDialog(false);
     setSelectedProductId('');
@@ -105,6 +106,55 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
     toast({
       title: "Observação salva",
       description: "A observação do produto foi atualizada."
+    });
+  };
+
+  const handleFotoCapture = (produtoId: string) => {
+    // Criar input file temporário
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Para usar câmera traseira em dispositivos móveis
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageDataUrl = event.target?.result as string;
+          const novasFotos = {
+            ...fotos,
+            [produtoId]: [...(fotos[produtoId] || []), imageDataUrl]
+          };
+          setFotos(novasFotos);
+          onUpdatePrecos(precos, observacoes, novasFotos);
+          
+          toast({
+            title: "Foto adicionada",
+            description: "A foto foi anexada ao produto."
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    
+    input.click();
+  };
+
+  const handleRemoverFoto = (produtoId: string, fotoIndex: number) => {
+    const novasFotos = { ...fotos };
+    novasFotos[produtoId] = novasFotos[produtoId].filter((_, index) => index !== fotoIndex);
+    
+    if (novasFotos[produtoId].length === 0) {
+      delete novasFotos[produtoId];
+    }
+    
+    setFotos(novasFotos);
+    onUpdatePrecos(precos, observacoes, novasFotos);
+    
+    toast({
+      title: "Foto removida",
+      description: "A foto foi removida do produto."
     });
   };
 
@@ -217,15 +267,59 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
                             />
                           </div>
                           
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openObservationDialog(produto.id)}
-                            className={observacoes[produto.id] ? 'bg-yellow-50 border-yellow-200' : ''}
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleFotoCapture(produto.id)}
+                              className={fotos[produto.id] && fotos[produto.id].length > 0 ? 'bg-blue-50 border-blue-200' : ''}
+                            >
+                              <Camera className="w-4 h-4" />
+                            </Button>
+                            
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openObservationDialog(produto.id)}
+                              className={observacoes[produto.id] ? 'bg-yellow-50 border-yellow-200' : ''}
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
+                        
+                        {/* Exibir fotos anexadas */}
+                        {fotos[produto.id] && fotos[produto.id].length > 0 && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <p className="text-xs font-medium mb-2">Fotos anexadas:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {fotos[produto.id].map((foto, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={foto}
+                                    alt={`Foto ${index + 1} do produto`}
+                                    className="w-16 h-16 object-cover rounded border cursor-pointer"
+                                    onClick={() => {
+                                      // Abrir foto em nova aba para visualização completa
+                                      const newWindow = window.open();
+                                      if (newWindow) {
+                                        newWindow.document.body.innerHTML = `<img src="${foto}" style="max-width:100%; max-height:100vh;" />`;
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute -top-1 -right-1 w-5 h-5 p-0 rounded-full text-xs"
+                                    onClick={() => handleRemoverFoto(produto.id, index)}
+                                  >
+                                    ×
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         
                         {observacoes[produto.id] && (
                           <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
