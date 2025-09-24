@@ -43,9 +43,9 @@ export const PesquisasPage = () => {
   ];
 
   const mockPesquisadores: Pesquisador[] = [
-    { id: '1', codigo: 'PES001', nome: 'Maria Silva', email: 'maria@sistema.com', telefone: '(11) 99999-1111', ativo: true },
-    { id: '2', codigo: 'PES002', nome: 'João Santos', email: 'joao@sistema.com', telefone: '(11) 99999-2222', ativo: true },
-    { id: '3', codigo: 'PES003', nome: 'Ana Costa', email: 'ana@sistema.com', telefone: '(11) 99999-3333', ativo: false }
+    { id: '1', codigo: 'PES001', nome: 'Maria Silva', email: 'maria@sistema.com', telefone: '(11) 99999-1111', ativo: true, login: 'maria.silva', senha: '123456' },
+    { id: '2', codigo: 'PES002', nome: 'João Santos', email: 'joao@sistema.com', telefone: '(11) 99999-2222', ativo: true, login: 'joao.santos', senha: '123456' },
+    { id: '3', codigo: 'PES003', nome: 'Ana Costa', email: 'ana@sistema.com', telefone: '(11) 99999-3333', ativo: false, login: 'ana.costa', senha: '123456' }
   ];
 
   const [showForm, setShowForm] = useState(false);

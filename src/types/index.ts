@@ -52,6 +52,8 @@ export interface Pesquisador {
   email: string;
   telefone: string;
   ativo: boolean;
+  login: string;
+  senha: string;
 }
 
 export interface Coleta {

@@ -7,8 +7,20 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Pesquisador } from '@/types';
-import { Plus, Search, Edit, Trash2, User, Phone, Mail, UserCheck, UserX } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, User, Phone, Mail, UserCheck, UserX, Eye, EyeOff, Key } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { z } from 'zod';
+
+// Schema de validação com zod
+const pesquisadorSchema = z.object({
+  codigo: z.string().trim().max(10, { message: "Código deve ter no máximo 10 caracteres" }),
+  nome: z.string().trim().nonempty({ message: "Nome é obrigatório" }).max(100, { message: "Nome deve ter no máximo 100 caracteres" }),
+  email: z.string().trim().email({ message: "Email inválido" }).max(255, { message: "Email deve ter no máximo 255 caracteres" }),
+  telefone: z.string().trim().max(20, { message: "Telefone deve ter no máximo 20 caracteres" }),
+  login: z.string().trim().nonempty({ message: "Login é obrigatório" }).min(3, { message: "Login deve ter pelo menos 3 caracteres" }).max(50, { message: "Login deve ter no máximo 50 caracteres" }).regex(/^[a-zA-Z0-9._]+$/, { message: "Login deve conter apenas letras, números, pontos e underscores" }),
+  senha: z.string().nonempty({ message: "Senha é obrigatória" }).min(6, { message: "Senha deve ter pelo menos 6 caracteres" }).max(100, { message: "Senha deve ter no máximo 100 caracteres" }),
+  ativo: z.boolean()
+});
 
 export const PesquisadoresPage = () => {
   const [pesquisadores, setPesquisadores] = useState<Pesquisador[]>([
@@ -18,7 +30,9 @@ export const PesquisadoresPage = () => {
       nome: 'Maria Silva',
       email: 'maria.silva@sistema.com',
       telefone: '(11) 99999-1111',
-      ativo: true
+      ativo: true,
+      login: 'maria.silva',
+      senha: '123456'
     },
     {
       id: '2',
@@ -26,7 +40,9 @@ export const PesquisadoresPage = () => {
       nome: 'João Santos',
       email: 'joao.santos@sistema.com',
       telefone: '(11) 99999-2222',
-      ativo: true
+      ativo: true,
+      login: 'joao.santos',
+      senha: '123456'
     },
     {
       id: '3',
@@ -34,7 +50,9 @@ export const PesquisadoresPage = () => {
       nome: 'Ana Costa',
       email: 'ana.costa@sistema.com',
       telefone: '(11) 99999-3333',
-      ativo: false
+      ativo: false,
+      login: 'ana.costa',
+      senha: '123456'
     }
   ]);
 
@@ -42,6 +60,7 @@ export const PesquisadoresPage = () => {
   const [editingPesquisador, setEditingPesquisador] = useState<Pesquisador | null>(null);
   const [deletePesquisador, setDeletePesquisador] = useState<Pesquisador | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -49,6 +68,8 @@ export const PesquisadoresPage = () => {
     nome: '',
     email: '',
     telefone: '',
+    login: '',
+    senha: '',
     ativo: true
   });
 
@@ -63,20 +84,29 @@ export const PesquisadoresPage = () => {
       nome: '',
       email: '',
       telefone: '',
+      login: '',
+      senha: '',
       ativo: true
     });
+    setShowPassword(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome || !formData.email) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Nome e email são obrigatórios.",
-        variant: "destructive"
-      });
-      return;
+    try {
+      // Validar dados com zod
+      pesquisadorSchema.parse(formData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstError = error.issues[0];
+        toast({
+          title: "Erro de validação",
+          description: firstError.message,
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     // Validar email único
@@ -94,12 +124,29 @@ export const PesquisadoresPage = () => {
       return;
     }
 
+    // Validar login único
+    const loginExists = pesquisadores.some(p => 
+      p.login.toLowerCase() === formData.login.toLowerCase() && 
+      p.id !== editingPesquisador?.id
+    );
+
+    if (loginExists) {
+      toast({
+        title: "Login já existe",
+        description: "Este login já está cadastrado para outro pesquisador.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const pesquisador: Pesquisador = {
       id: editingPesquisador?.id || Date.now().toString(),
       codigo: formData.codigo || generateCode(),
       nome: formData.nome,
       email: formData.email,
       telefone: formData.telefone,
+      login: formData.login,
+      senha: formData.senha,
       ativo: formData.ativo
     };
 
@@ -129,8 +176,11 @@ export const PesquisadoresPage = () => {
       nome: pesquisador.nome,
       email: pesquisador.email,
       telefone: pesquisador.telefone,
+      login: pesquisador.login,
+      senha: pesquisador.senha,
       ativo: pesquisador.ativo
     });
+    setShowPassword(false);
     setShowForm(true);
   };
 
@@ -157,7 +207,8 @@ export const PesquisadoresPage = () => {
     .filter(p => 
       p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+      p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.login.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
@@ -230,6 +281,46 @@ export const PesquisadoresPage = () => {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="login">Login *</Label>
+                <Input
+                  id="login"
+                  value={formData.login}
+                  onChange={(e) => setFormData(prev => ({ ...prev, login: e.target.value }))}
+                  placeholder="usuario.nome"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Apenas letras, números, pontos e underscores
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="senha">Senha *</Label>
+                <div className="relative">
+                  <Input
+                    id="senha"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.senha}
+                    onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
+                    placeholder="Digite a senha"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Mínimo de 6 caracteres
+                </p>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="ativo"
@@ -264,7 +355,7 @@ export const PesquisadoresPage = () => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar pesquisadores por nome, email ou código..."
+          placeholder="Buscar pesquisadores por nome, email, código ou login..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -333,7 +424,7 @@ export const PesquisadoresPage = () => {
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <User className="w-4 h-4" />
                       <span><strong>Código:</strong> {pesquisador.codigo}</span>
@@ -342,6 +433,11 @@ export const PesquisadoresPage = () => {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Mail className="w-4 h-4" />
                       <span>{pesquisador.email}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Key className="w-4 h-4" />
+                      <span><strong>Login:</strong> {pesquisador.login}</span>
                     </div>
                     
                     {pesquisador.telefone && (

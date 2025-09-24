@@ -20,7 +20,7 @@ const mockUsers: User[] = [
   },
   {
     id: '2',
-    email: 'anotadora@sistema.com',
+    email: 'maria.silva@sistema.com',
     name: 'Maria Silva',
     role: 'anotadora'
   },
@@ -32,6 +32,13 @@ const mockUsers: User[] = [
   }
 ];
 
+// Mock pesquisadores para autenticação
+const mockPesquisadores = [
+  { id: '2', login: 'maria.silva', senha: '123456', nome: 'Maria Silva', email: 'maria.silva@sistema.com' },
+  { id: '4', login: 'joao.santos', senha: '123456', nome: 'João Santos', email: 'joao.santos@sistema.com' },
+  { id: '5', login: 'ana.costa', senha: '123456', nome: 'Ana Costa', email: 'ana.costa@sistema.com' }
+];
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
@@ -39,11 +46,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const foundUser = mockUsers.find(u => u.email === email && u.role === role);
+    // Admin login com email
+    if (role === 'admin') {
+      const foundUser = mockUsers.find(u => u.email === email && u.role === role);
+      if (foundUser && password === '123456') {
+        setUser(foundUser);
+        return true;
+      }
+    }
     
-    if (foundUser && password === '123456') {
-      setUser(foundUser);
-      return true;
+    // Pesquisador login com login ou email
+    if (role === 'anotadora') {
+      const foundPesquisador = mockPesquisadores.find(p => 
+        (p.login === email || p.email === email) && p.senha === password
+      );
+      
+      if (foundPesquisador) {
+        const user: User = {
+          id: foundPesquisador.id,
+          email: foundPesquisador.email,
+          name: foundPesquisador.nome,
+          role: 'anotadora'
+        };
+        setUser(user);
+        return true;
+      }
+    }
+    
+    // Cliente login com email
+    if (role === 'cliente') {
+      const foundUser = mockUsers.find(u => u.email === email && u.role === role);
+      if (foundUser && password === '123456') {
+        setUser(foundUser);
+        return true;
+      }
     }
     
     return false;
