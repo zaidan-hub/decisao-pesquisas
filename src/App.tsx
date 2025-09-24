@@ -6,16 +6,21 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LoginForm } from "@/components/LoginForm";
 import { AdminDashboard } from "@/components/AdminDashboard";
+import { ResearcherDashboard } from "@/components/ResearcherDashboard";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   
   if (!isAuthenticated) {
     return <LoginForm />;
+  }
+  
+  if (user?.role === 'anotadora') {
+    return <ResearcherDashboard />;
   }
   
   return <AdminDashboard />;

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Coleta, Supermercado, Pesquisador } from '@/types';
-import { Plus, Search, Calendar, Store, User, FileText, Package } from 'lucide-react';
+import { Plus, Search, Calendar, Store, User, FileText, Package, Bell } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export const PesquisasPage = () => {
@@ -33,6 +33,25 @@ export const PesquisasPage = () => {
       ano: '2024',
       status: 'iniciada',
       produtos: ['1', '4', '5']
+    },
+    {
+      id: '3',
+      data: '2024-01-15',
+      supermercadoId: '1',
+      pesquisadorId: '2',
+      numero: '003',
+      grupo: 'A',
+      ano: '2024',
+      status: 'finalizada',
+      produtos: ['1', '2', '3'],
+      observacoesFinais: [
+        {
+          id: '1',
+          texto: 'Produto 1 estava em promoção',
+          dataHora: '2024-01-15T10:30:00-03:00'
+        }
+      ],
+      adminVisualizouObservacoes: false
     }
   ]);
 
@@ -350,6 +369,17 @@ export const PesquisasPage = () => {
                       <Search className="w-4 h-4 mr-1" />
                       Visualizar
                     </Button>
+                    {/* Notification Bell for Post-completion Observations */}
+                    {coleta.observacoesFinais && 
+                     coleta.observacoesFinais.length > 0 && 
+                     !coleta.adminVisualizouObservacoes && (
+                      <div className="relative">
+                        <Bell className="w-4 h-4 text-yellow-500" />
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                          {coleta.observacoesFinais.length}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -66,6 +66,16 @@ export interface Coleta {
   ano?: string;
   status: 'não iniciada' | 'iniciada' | 'finalizada';
   produtos: string[]; // Array de IDs dos produtos da coleta
+  precos?: { [produtoId: string]: number }; // Preços coletados por produto
+  observacoesProdutos?: { [produtoId: string]: string }; // Observações por produto
+  observacoesFinais?: ObservacaoFinal[]; // Observações adicionadas após finalização
+  adminVisualizouObservacoes?: boolean; // Se admin já visualizou as observações
+}
+
+export interface ObservacaoFinal {
+  id: string;
+  texto: string;
+  dataHora: string; // ISO string com timezone GMT-3
 }
 
 // Mantém Pesquisa como alias para compatibilidade
