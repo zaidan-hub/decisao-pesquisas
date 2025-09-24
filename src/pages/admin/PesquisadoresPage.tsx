@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Pesquisador } from '@/types';
-import { Plus, Search, Edit, Trash2, User, Phone, Mail, UserCheck, UserX, Eye, EyeOff, Key } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, User, Phone, Mail, UserCheck, UserX, Key } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 
@@ -60,7 +60,6 @@ export const PesquisadoresPage = () => {
   const [editingPesquisador, setEditingPesquisador] = useState<Pesquisador | null>(null);
   const [deletePesquisador, setDeletePesquisador] = useState<Pesquisador | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -88,7 +87,6 @@ export const PesquisadoresPage = () => {
       senha: '',
       ativo: true
     });
-    setShowPassword(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -180,7 +178,6 @@ export const PesquisadoresPage = () => {
       senha: pesquisador.senha,
       ativo: pesquisador.ativo
     });
-    setShowPassword(false);
     setShowForm(true);
   };
 
@@ -297,25 +294,14 @@ export const PesquisadoresPage = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="senha">Senha *</Label>
-                <div className="relative">
-                  <Input
-                    id="senha"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.senha}
-                    onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
-                    placeholder="Digite a senha"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
+                <Input
+                  id="senha"
+                  type="text"
+                  value={formData.senha}
+                  onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
+                  placeholder="Digite a senha"
+                  required
+                />
                 <p className="text-xs text-muted-foreground">
                   Mínimo de 6 caracteres
                 </p>
