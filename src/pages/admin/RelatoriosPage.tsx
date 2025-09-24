@@ -199,7 +199,6 @@ export const RelatoriosPage = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os supermercados</SelectItem>
                   {mockSupermercados.map((supermercado) => (
                     <SelectItem key={supermercado.id} value={supermercado.id}>
                       {supermercado.nome}
@@ -217,7 +216,6 @@ export const RelatoriosPage = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os produtos</SelectItem>
                   {mockProdutos.map((produto) => (
                     <SelectItem key={produto.id} value={produto.id}>
                       {produto.nome}
@@ -235,7 +233,6 @@ export const RelatoriosPage = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os pesquisadores</SelectItem>
                   {mockPesquisadores.map((pesquisador) => (
                     <SelectItem key={pesquisador.id} value={pesquisador.id}>
                       {pesquisador.nome}
