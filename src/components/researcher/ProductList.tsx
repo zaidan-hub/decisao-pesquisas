@@ -202,9 +202,6 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
                         <div className="flex items-center gap-3">
                           <div className="flex-1">
                             <h5 className="font-medium text-sm">{produto.nome}</h5>
-                            <p className="text-xs text-muted-foreground">
-                              {produto.unidadeMedida}
-                            </p>
                           </div>
                           
                           <div className="w-24">
