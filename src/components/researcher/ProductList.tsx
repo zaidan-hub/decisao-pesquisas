@@ -199,13 +199,27 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
                   <div className="space-y-3">
                     {produtos.map((produto) => (
                       <div key={produto.id} className="border rounded-lg p-3">
-                        <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
                           <div className="flex-1">
                             <h5 className="font-medium text-sm">{produto.nome}</h5>
                             <p className="text-xs text-muted-foreground">
-                              {produto.codigo} • {produto.unidadeMedida}
+                              {produto.unidadeMedida}
                             </p>
                           </div>
+                          
+                          <div className="w-24">
+                            <Input
+                              id={`preco-${produto.id}`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="0,00"
+                              value={precos[produto.id] || ''}
+                              onChange={(e) => handlePrecoChange(produto.id, e.target.value)}
+                              className="text-center"
+                            />
+                          </div>
+                          
                           <Button
                             variant="outline"
                             size="sm"
@@ -214,21 +228,6 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
                           >
                             <MessageSquare className="w-4 h-4" />
                           </Button>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor={`preco-${produto.id}`} className="text-sm">
-                            Preço (R$)
-                          </Label>
-                          <Input
-                            id={`preco-${produto.id}`}
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0,00"
-                            value={precos[produto.id] || ''}
-                            onChange={(e) => handlePrecoChange(produto.id, e.target.value)}
-                          />
                         </div>
                         
                         {observacoes[produto.id] && (
