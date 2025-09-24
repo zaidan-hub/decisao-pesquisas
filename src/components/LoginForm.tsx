@@ -90,8 +90,7 @@ export const LoginForm = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="anotadora">Anotadora</SelectItem>
-                    <SelectItem value="cliente">Cliente</SelectItem>
+                    <SelectItem value="pesquisador">Pesquisador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -148,7 +147,8 @@ export const LoginForm = () => {
 
               <div className="text-xs text-muted-foreground text-center mt-4 p-3 bg-muted rounded-md">
                 <strong>Dados para teste:</strong><br />
-                Email: admin@sistema.com | Senha: 123456 | Tipo: Administrador
+                Admin: admin@sistema.com | Senha: 123456<br />
+                Pesquisador: maria.silva@sistema.com | Senha: 123456
               </div>
             </form>
           ) : (

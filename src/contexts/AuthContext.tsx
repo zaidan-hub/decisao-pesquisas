@@ -22,13 +22,7 @@ const mockUsers: User[] = [
     id: '2',
     email: 'maria.silva@sistema.com',
     name: 'Maria Silva',
-    role: 'anotadora'
-  },
-  {
-    id: '3',
-    email: 'cliente@sistema.com',
-    name: 'João Santos',
-    role: 'cliente'
+    role: 'pesquisador'
   }
 ];
 
@@ -56,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     // Pesquisador login com login ou email
-    if (role === 'anotadora') {
+    if (role === 'pesquisador') {
       const foundPesquisador = mockPesquisadores.find(p => 
         (p.login === email || p.email === email) && p.senha === password
       );
@@ -66,18 +60,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: foundPesquisador.id,
           email: foundPesquisador.email,
           name: foundPesquisador.nome,
-          role: 'anotadora'
+          role: 'pesquisador'
         };
         setUser(user);
-        return true;
-      }
-    }
-    
-    // Cliente login com email
-    if (role === 'cliente') {
-      const foundUser = mockUsers.find(u => u.email === email && u.role === role);
-      if (foundUser && password === '123456') {
-        setUser(foundUser);
         return true;
       }
     }

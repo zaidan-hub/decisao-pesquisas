@@ -18,7 +18,7 @@ const AppContent = () => {
     return <LoginForm />;
   }
   
-  if (user?.role === 'anotadora') {
+  if (user?.role === 'pesquisador') {
     return <ResearcherDashboard />;
   }
   
