@@ -64,41 +64,13 @@ export const CadastrosPage = () => {
             </div>
           </div>
           
-          {/* Menu de navegação lateral */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Seções</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1 p-3">
-                  {cadastroItems.map((item) => {
-                    const IconComponent = item.icon;
-                    return (
-                      <Button
-                        key={item.id}
-                        variant={activeSection === item.id ? 'default' : 'ghost'}
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => setActiveSection(item.id as CadastroOption)}
-                      >
-                        <IconComponent className="w-4 h-4 mr-3" />
-                        {item.label}
-                      </Button>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Conteúdo da seção */}
-            <div className="lg:col-span-4">
-              {activeSection === 'clientes' && <ClientesPage />}
-              {activeSection === 'supermercados' && <SupermercadosPage />}
-              {activeSection === 'pesquisadores' && <PesquisadoresPage />}
-              {activeSection === 'produtos' && <ProdutosPage />}
-              {activeSection === 'listas' && <ListasPage />}
-            </div>
+          {/* Conteúdo da seção */}
+          <div>
+            {activeSection === 'clientes' && <ClientesPage />}
+            {activeSection === 'supermercados' && <SupermercadosPage />}
+            {activeSection === 'pesquisadores' && <PesquisadoresPage />}
+            {activeSection === 'produtos' && <ProdutosPage />}
+            {activeSection === 'listas' && <ListasPage />}
           </div>
         </div>
       );
