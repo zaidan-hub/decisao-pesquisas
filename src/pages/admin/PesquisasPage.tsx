@@ -72,8 +72,6 @@ export const PesquisasPage = () => {
     data: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
     supermercadoId: '',
     pesquisadorId: '',
-    numero: '',
-    grupo: '',
     ano: new Date().getFullYear().toString()
   });
 
@@ -92,13 +90,15 @@ export const PesquisasPage = () => {
     // Produtos padrão fixos para demonstração
     const produtosPadrao = ['1', '2', '3'];
 
+    // Gerar número automaticamente baseado no total de coletas + 1
+    const proximoNumero = String(coletas.length + 1).padStart(3, '0');
+
     const novaColeta: Coleta = {
       id: Date.now().toString(),
       data: formData.data,
       supermercadoId: formData.supermercadoId,
       pesquisadorId: formData.pesquisadorId,
-      numero: formData.numero,
-      grupo: formData.grupo,
+      numero: proximoNumero,
       ano: formData.ano,
       status: 'não iniciada',
       produtos: produtosPadrao
@@ -120,8 +120,6 @@ export const PesquisasPage = () => {
       data: new Date().toISOString().split('T')[0],
       supermercadoId: '',
       pesquisadorId: '',
-      numero: '',
-      grupo: '',
       ano: new Date().getFullYear().toString()
     });
   };
@@ -240,27 +238,6 @@ export const PesquisasPage = () => {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="numero">Número</Label>
-                  <Input
-                    id="numero"
-                    value={formData.numero}
-                    onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))}
-                    placeholder="001"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="grupo">Grupo</Label>
-                  <Input
-                    id="grupo"
-                    value={formData.grupo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, grupo: e.target.value }))}
-                    placeholder="A"
-                  />
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="ano">Ano</Label>
@@ -323,13 +300,6 @@ export const PesquisasPage = () => {
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-muted-foreground">Nº:</span>
                           <span className="text-sm font-medium">{coleta.numero}</span>
-                        </div>
-                      )}
-                      
-                      {coleta.grupo && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Grupo:</span>
-                          <span className="text-sm font-medium">{coleta.grupo}</span>
                         </div>
                       )}
                       
