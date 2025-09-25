@@ -39,8 +39,8 @@ export const ColetasTab = () => {
   ];
 
   const mockSupermercados: Supermercado[] = [
-    { id: '1', codigo: 'SUP001', nome: 'Extra Hiper', sigla: 'EXT', situacao: 'Cliente', contatos: [], produtosPadrao: ['1', '2', '3'] },
-    { id: '2', codigo: 'SUP002', nome: 'Pão de Açúcar', sigla: 'PDA', situacao: 'Cliente', contatos: [], produtosPadrao: ['1', '4', '5'] },
+    { id: '1', nome: 'Extra Hiper', endereco: 'Av. Paulista, 1000 - São Paulo, SP' },
+    { id: '2', nome: 'Pão de Açúcar', endereco: 'Rua Augusta, 2500 - São Paulo, SP' }
   ];
 
   useEffect(() => {

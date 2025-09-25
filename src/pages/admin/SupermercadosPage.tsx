@@ -242,7 +242,7 @@ export const SupermercadosPage = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => deleteSupermercado && handleDelete(deleteSupermercado)}
+              onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive-hover"
             >
               Excluir
