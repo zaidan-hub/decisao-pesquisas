@@ -12,7 +12,7 @@ import {
   Menu,
   X,
   Settings,
-  Store
+  Building2
 } from 'lucide-react';
 
 type MenuOption = 'coletas' | 'relatorios' | 'cadastros';
@@ -61,7 +61,7 @@ export const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                  <Store className="w-5 h-5 text-primary-foreground" />
+                  <Building2 className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
                   <h1 className="font-bold text-lg">Sistema Preços</h1>
