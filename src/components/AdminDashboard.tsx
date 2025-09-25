@@ -28,7 +28,7 @@ export const AdminDashboard = () => {
   const menuItems = [
     { id: 'supermercados', label: 'Supermercados', icon: Store },
     { id: 'produtos', label: 'Produtos', icon: Package },
-    { id: 'pesquisas', label: 'Pesquisas', icon: Search },
+    { id: 'pesquisas', label: 'Coletas', icon: Search },
     { id: 'pesquisadores', label: 'Pesquisadores', icon: Users },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
   ];
