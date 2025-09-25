@@ -93,6 +93,7 @@ export interface Coleta {
   status: 'não iniciada' | 'iniciada' | 'finalizada';
   produtos: string[]; // Array de IDs dos produtos da coleta
   precos?: { [produtoId: string]: number }; // Preços coletados por produto
+  precosEditadosAdmin?: { [produtoId: string]: number }; // Preços editados pelo admin
   observacoesProdutos?: { [produtoId: string]: string }; // Observações por produto
   observacoesFinais?: ObservacaoFinal[]; // Observações adicionadas após finalização
   adminVisualizouObservacoes?: boolean; // Se admin já visualizou as observações

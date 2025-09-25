@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Coleta, Supermercado, Pesquisador } from '@/types';
 import { Plus, Search, Calendar, Store, User, FileText, Package, Bell } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { AdminColetaView } from '@/components/admin/AdminColetaView';
 
 export const PesquisasPage = () => {
   // Mock data
@@ -68,6 +69,7 @@ export const PesquisasPage = () => {
   ];
 
   const [showForm, setShowForm] = useState(false);
+  const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
   const [formData, setFormData] = useState({
     data: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
     supermercadoId: '',
@@ -101,7 +103,8 @@ export const PesquisasPage = () => {
       numero: proximoNumero,
       ano: formData.ano,
       status: 'não iniciada',
-      produtos: produtosPadrao
+      produtos: produtosPadrao,
+      precos: { '1': 15.50, '2': 8.90, '3': 4.20 } // Preços mock para demonstração
     };
 
     setColetas(prev => [novaColeta, ...prev]);
@@ -124,6 +127,16 @@ export const PesquisasPage = () => {
     });
   };
 
+  const handleUpdateColeta = (coletaId: string, updatedData: Partial<Coleta>) => {
+    setColetas(prev => prev.map(c => 
+      c.id === coletaId ? { ...c, ...updatedData } : c
+    ));
+  };
+
+  const handleViewColeta = (coleta: Coleta) => {
+    setSelectedColeta(coleta);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
@@ -140,6 +153,18 @@ export const PesquisasPage = () => {
   const coletasOrdenadas = [...coletas].sort((a, b) => 
     new Date(b.data).getTime() - new Date(a.data).getTime()
   );
+
+  // Se uma coleta está selecionada, mostrar a visualização admin
+  if (selectedColeta) {
+    return (
+      <AdminColetaView
+        coleta={selectedColeta}
+        onBack={() => setSelectedColeta(null)}
+        onUpdateColeta={handleUpdateColeta}
+        supermercados={mockSupermercados}
+      />
+    );
+  }
 
   const getStatusColor = (status: Coleta['status']) => {
     switch (status) {
@@ -328,7 +353,11 @@ export const PesquisasPage = () => {
                   </div>
 
                   <div className="flex gap-2 mt-3 sm:mt-0">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewColeta(coleta)}
+                    >
                       <Search className="w-4 h-4 mr-1" />
                       Visualizar
                     </Button>
