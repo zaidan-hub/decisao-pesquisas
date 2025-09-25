@@ -3,45 +3,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Supermercado, Contato, Produto } from '@/types';
-import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
+import { Supermercado } from '@/types';
+import { Plus, Search, Edit, Trash2, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export const SupermercadosPage = () => {
-  // Mock produtos para seleção
-  const mockProdutos: Produto[] = [
-    { id: '1', codigo: 'PRD001', nome: 'Carne Bovina (Alcatra)', grupoId: '1', subgrupoId: '1', unidadeMedida: 'kg' },
-    { id: '2', codigo: 'PRD002', nome: 'Leite Integral 1L', grupoId: '1', subgrupoId: '2', unidadeMedida: 'unidade' },
-    { id: '3', codigo: 'PRD003', nome: 'Arroz Branco 5kg', grupoId: '1', subgrupoId: '3', unidadeMedida: 'unidade' },
-    { id: '4', codigo: 'PRD004', nome: 'Feijão Preto 1kg', grupoId: '1', subgrupoId: '3', unidadeMedida: 'unidade' },
-    { id: '5', codigo: 'PRD005', nome: 'Detergente Líquido', grupoId: '2', subgrupoId: '4', unidadeMedida: 'unidade' }
-  ];
-
   const [supermercados, setSupermercados] = useState<Supermercado[]>([
     {
       id: '1',
-      codigo: 'SUP001',
       nome: 'Extra Hiper',
-      sigla: 'EXT',
-      situacao: 'Cliente',
-      contatos: [
-        { id: '1', nome: 'João Silva', telefone: '(11) 99999-9999', email: 'joao@extra.com' }
-      ],
-      dataInicioContrato: '2024-01-15',
-      produtosPadrao: ['1', '2', '3']
+      endereco: 'Av. Paulista, 1000 - São Paulo, SP'
     },
     {
       id: '2',
-      codigo: 'SUP002',
       nome: 'Pão de Açúcar',
-      sigla: 'PDA',
-      situacao: 'Não Cliente',
-      contatos: [],
-      dataInicioContrato: undefined,
-      produtosPadrao: ['1', '4', '5']
+      endereco: 'Rua Augusta, 2500 - São Paulo, SP'
     }
   ]);
 
@@ -52,39 +30,24 @@ export const SupermercadosPage = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    codigo: '',
     nome: '',
-    sigla: '',
-    situacao: '' as 'Cliente' | 'Não Cliente' | '',
-    dataInicioContrato: '',
-    contatos: [] as Contato[],
-    produtosPadrao: [] as string[]
+    endereco: ''
   });
-
-  const generateCode = () => {
-    const nextNum = supermercados.length + 1;
-    return `SUP${nextNum.toString().padStart(3, '0')}`;
-  };
 
   const resetForm = () => {
     setFormData({
-      codigo: generateCode(),
       nome: '',
-      sigla: '',
-      situacao: '',
-      dataInicioContrato: '',
-      contatos: [],
-      produtosPadrao: []
+      endereco: ''
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome || !formData.situacao) {
+    if (!formData.nome || !formData.endereco) {
       toast({
         title: "Campos obrigatórios",
-        description: "Nome e situação são obrigatórios.",
+        description: "Nome e endereço são obrigatórios.",
         variant: "destructive"
       });
       return;
@@ -92,13 +55,8 @@ export const SupermercadosPage = () => {
 
     const supermercado: Supermercado = {
       id: editingSupermercado?.id || Date.now().toString(),
-      codigo: formData.codigo || generateCode(),
       nome: formData.nome,
-      sigla: formData.sigla,
-      situacao: formData.situacao,
-      contatos: formData.contatos,
-      dataInicioContrato: formData.dataInicioContrato || undefined,
-      produtosPadrao: formData.produtosPadrao
+      endereco: formData.endereco
     };
 
     if (editingSupermercado) {
@@ -123,53 +81,21 @@ export const SupermercadosPage = () => {
   const handleEdit = (supermercado: Supermercado) => {
     setEditingSupermercado(supermercado);
     setFormData({
-      codigo: supermercado.codigo,
       nome: supermercado.nome,
-      sigla: supermercado.sigla,
-      situacao: supermercado.situacao,
-      dataInicioContrato: supermercado.dataInicioContrato || '',
-      contatos: [...supermercado.contatos],
-      produtosPadrao: [...supermercado.produtosPadrao]
+      endereco: supermercado.endereco
     });
     setShowForm(true);
   };
 
-  const handleDelete = (supermercado: Supermercado) => {
-    setSupermercados(prev => prev.filter(s => s.id !== supermercado.id));
-    setDeleteSupermercado(null);
-    toast({
-      title: "Supermercado excluído",
-      description: "O supermercado foi removido do sistema."
-    });
-  };
-
-  const addContato = () => {
-    const newContato: Contato = {
-      id: Date.now().toString(),
-      nome: '',
-      telefone: '',
-      email: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      contatos: [...prev.contatos, newContato]
-    }));
-  };
-
-  const updateContato = (index: number, field: keyof Contato, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      contatos: prev.contatos.map((contato, i) => 
-        i === index ? { ...contato, [field]: value } : contato
-      )
-    }));
-  };
-
-  const removeContato = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      contatos: prev.contatos.filter((_, i) => i !== index)
-    }));
+  const handleDelete = () => {
+    if (deleteSupermercado) {
+      setSupermercados(prev => prev.filter(s => s.id !== deleteSupermercado.id));
+      setDeleteSupermercado(null);
+      toast({
+        title: "Supermercado excluído",
+        description: "O supermercado foi removido do sistema."
+      });
+    }
   };
 
   const filteredSupermercados = supermercados
@@ -191,7 +117,7 @@ export const SupermercadosPage = () => {
               Novo Supermercado
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
                 {editingSupermercado ? 'Editar' : 'Novo'} Supermercado
@@ -202,143 +128,26 @@ export const SupermercadosPage = () => {
             </DialogHeader>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="codigo">Código *</Label>
-                  <Input
-                    id="codigo"
-                    value={formData.codigo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))}
-                    placeholder="SUP001"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="sigla">Sigla</Label>
-                  <Input
-                    id="sigla"
-                    value={formData.sigla}
-                    onChange={(e) => setFormData(prev => ({ ...prev, sigla: e.target.value }))}
-                    placeholder="EXT"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome do Supermercado *</Label>
                 <Input
                   id="nome"
                   value={formData.nome}
                   onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                  placeholder="Nome completo do supermercado"
+                  placeholder="Nome do supermercado"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="situacao">Situação *</Label>
-                  <Select value={formData.situacao} onValueChange={(value: 'Cliente' | 'Não Cliente') => setFormData(prev => ({ ...prev, situacao: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a situação" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cliente">Cliente</SelectItem>
-                      <SelectItem value="Não Cliente">Não Cliente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dataContrato">Data de Início do Contrato</Label>
-                  <Input
-                    id="dataContrato"
-                    type="date"
-                    value={formData.dataInicioContrato}
-                    onChange={(e) => setFormData(prev => ({ ...prev, dataInicioContrato: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {/* Produtos Padrão */}
-              <div className="space-y-4">
-                <Label>Produtos Padrão da Lista</Label>
-                <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                  {mockProdutos.map((produto) => (
-                    <label key={produto.id} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.produtosPadrao.includes(produto.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData(prev => ({
-                              ...prev,
-                              produtosPadrao: [...prev.produtosPadrao, produto.id]
-                            }));
-                          } else {
-                            setFormData(prev => ({
-                              ...prev,
-                              produtosPadrao: prev.produtosPadrao.filter(id => id !== produto.id)
-                            }));
-                          }
-                        }}
-                        className="rounded"
-                      />
-                      <span className="text-sm">{produto.nome}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Contatos */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Contatos</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addContato}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Contato
-                  </Button>
-                </div>
-
-                {formData.contatos.map((contato, index) => (
-                  <Card key={contato.id}>
-                    <CardContent className="pt-4">
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-medium">Contato {index + 1}</h4>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => removeContato(index)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <Input
-                            placeholder="Nome"
-                            value={contato.nome}
-                            onChange={(e) => updateContato(index, 'nome', e.target.value)}
-                          />
-                          <Input
-                            placeholder="Telefone"
-                            value={contato.telefone}
-                            onChange={(e) => updateContato(index, 'telefone', e.target.value)}
-                          />
-                          <Input
-                            placeholder="Email"
-                            type="email"
-                            value={contato.email}
-                            onChange={(e) => updateContato(index, 'email', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="space-y-2">
+                <Label htmlFor="endereco">Endereço *</Label>
+                <Input
+                  id="endereco"
+                  value={formData.endereco}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endereco: e.target.value }))}
+                  placeholder="Endereço completo"
+                  required
+                />
               </div>
 
               <div className="flex justify-end space-x-2 pt-4">
@@ -378,65 +187,16 @@ export const SupermercadosPage = () => {
         {filteredSupermercados.map((supermercado) => (
           <Card key={supermercado.id} className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="font-semibold text-lg">{supermercado.nome}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      supermercado.situacao === 'Cliente' 
-                        ? 'bg-success/10 text-success' 
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {supermercado.situacao}
-                    </span>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                    <div>
-                      <strong>Código:</strong> {supermercado.codigo}
-                    </div>
-                    {supermercado.sigla && (
-                      <div>
-                        <strong>Sigla:</strong> {supermercado.sigla}
-                      </div>
-                    )}
-                    {supermercado.dataInicioContrato && (
-                      <div>
-                        <strong>Contrato:</strong> {new Date(supermercado.dataInicioContrato).toLocaleDateString('pt-BR')}
-                      </div>
-                    )}
-                    <div>
-                      <strong>Contatos:</strong> {supermercado.contatos.length}
-                    </div>
-                    <div>
-                      <strong>Produtos:</strong> {supermercado.produtosPadrao.length}
-                    </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    <span>{supermercado.endereco}</span>
                   </div>
-
-                  {supermercado.contatos.length > 0 && (
-                    <div className="mt-3 space-y-1">
-                      {supermercado.contatos.map((contato) => (
-                        <div key={contato.id} className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {contato.nome}
-                          </div>
-                          {contato.telefone && (
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {contato.telefone}
-                            </div>
-                          )}
-                          {contato.email && (
-                            <div className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              {contato.email}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex gap-2">

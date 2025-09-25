@@ -56,9 +56,9 @@ export const PesquisasPage = () => {
   ]);
 
   const mockSupermercados: Supermercado[] = [
-    { id: '1', codigo: 'SUP001', nome: 'Extra Hiper', sigla: 'EXT', situacao: 'Cliente', contatos: [], produtosPadrao: ['1', '2', '3'] },
-    { id: '2', codigo: 'SUP002', nome: 'Pão de Açúcar', sigla: 'PDA', situacao: 'Cliente', contatos: [], produtosPadrao: ['1', '4', '5'] },
-    { id: '3', codigo: 'SUP003', nome: 'Carrefour', sigla: 'CAR', situacao: 'Não Cliente', contatos: [], produtosPadrao: ['2', '3', '4'] }
+    { id: '1', nome: 'Extra Hiper', endereco: 'Av. Paulista, 1000 - São Paulo, SP' },
+    { id: '2', nome: 'Pão de Açúcar', endereco: 'Rua Augusta, 2500 - São Paulo, SP' },
+    { id: '3', nome: 'Carrefour', endereco: 'Rua da Consolação, 3000 - São Paulo, SP' }
   ];
 
   const mockPesquisadores: Pesquisador[] = [
@@ -89,9 +89,8 @@ export const PesquisasPage = () => {
       return;
     }
 
-    // Buscar produtos padrão do supermercado selecionado
-    const supermercado = mockSupermercados.find(s => s.id === formData.supermercadoId);
-    const produtosPadrao = supermercado?.produtosPadrao || [];
+    // Produtos padrão fixos para demonstração
+    const produtosPadrao = ['1', '2', '3'];
 
     const novaColeta: Coleta = {
       id: Date.now().toString(),
@@ -211,9 +210,6 @@ export const PesquisasPage = () => {
                         <div className="flex items-center gap-2">
                           <Store className="w-4 h-4" />
                           {supermercado.nome}
-                          <span className="text-xs text-muted-foreground">
-                            ({supermercado.codigo})
-                          </span>
                         </div>
                       </SelectItem>
                     ))}
@@ -237,9 +233,6 @@ export const PesquisasPage = () => {
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4" />
                           {pesquisador.nome}
-                          <span className="text-xs text-muted-foreground">
-                            ({pesquisador.codigo})
-                          </span>
                         </div>
                       </SelectItem>
                     ))}

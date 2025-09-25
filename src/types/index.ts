@@ -5,15 +5,18 @@ export interface User {
   role: 'admin' | 'pesquisador';
 }
 
+export interface Cliente {
+  id: string;
+  nome: string;
+  situacao: 'Ativo' | 'Inativo';
+  dataInicioContrato?: string;
+  contatos: Contato[];
+}
+
 export interface Supermercado {
   id: string;
-  codigo: string;
   nome: string;
-  sigla: string;
-  situacao: 'Cliente' | 'Não Cliente';
-  contatos: Contato[];
-  dataInicioContrato?: string;
-  produtosPadrao: string[]; // Array de IDs dos produtos
+  endereco: string;
 }
 
 export interface Contato {
@@ -56,11 +59,34 @@ export interface Pesquisador {
   senha: string;
 }
 
+export interface Lista {
+  id: string;
+  nome: string;
+  produtos: string[]; // Array de IDs dos produtos
+}
+
+export interface RelatorioPadrao {
+  id: string;
+  nome: string;
+  produtos: string[]; // Array de IDs dos produtos
+}
+
+export interface Relatorio {
+  id: string;
+  nome: string;
+  clienteNome: string;
+  data: string;
+  produtos: string[]; // Array de IDs dos produtos
+  coletaIds: string[]; // Array de IDs das coletas consideradas
+  createdAt: string;
+}
+
 export interface Coleta {
   id: string;
   data: string;
   supermercadoId: string;
   pesquisadorId: string;
+  listaId?: string; // Nova referência à lista
   numero?: string;
   grupo?: string;
   ano?: string;
@@ -70,6 +96,7 @@ export interface Coleta {
   observacoesProdutos?: { [produtoId: string]: string }; // Observações por produto
   observacoesFinais?: ObservacaoFinal[]; // Observações adicionadas após finalização
   adminVisualizouObservacoes?: boolean; // Se admin já visualizou as observações
+  fotos?: { [produtoId: string]: string[] }; // Fotos por produto
 }
 
 export interface ObservacaoFinal {
