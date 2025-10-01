@@ -7,6 +7,11 @@ import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export const ProdutosPage = () => {
   // Buscar dados do banco
@@ -23,6 +28,11 @@ export const ProdutosPage = () => {
     subgrupos: '',
     produtos: ''
   });
+
+  // Estados para edição
+  const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
+  const [editingSubgrupo, setEditingSubgrupo] = useState<Subgrupo | null>(null);
+  const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
 
   // Filtered data
   const filteredGrupos = grupos.filter(g => 
@@ -58,6 +68,71 @@ export const ProdutosPage = () => {
     } else {
       setSelectedSubgrupo(subgrupoId);
       setActiveTab('produtos');
+    }
+  };
+
+  // Handlers de edição
+  const handleUpdateGrupo = async () => {
+    if (!editingGrupo) return;
+    
+    try {
+      const { error } = await supabase
+        .from('grupos')
+        .update({ nome: editingGrupo.nome, codigo: editingGrupo.codigo })
+        .eq('id', editingGrupo.id);
+
+      if (error) throw error;
+      
+      toast.success('Grupo atualizado com sucesso');
+      setEditingGrupo(null);
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao atualizar grupo:', error);
+      toast.error('Erro ao atualizar grupo');
+    }
+  };
+
+  const handleUpdateSubgrupo = async () => {
+    if (!editingSubgrupo) return;
+    
+    try {
+      const { error } = await supabase
+        .from('subgrupos')
+        .update({ nome: editingSubgrupo.nome, codigo: editingSubgrupo.codigo })
+        .eq('id', editingSubgrupo.id);
+
+      if (error) throw error;
+      
+      toast.success('Subgrupo atualizado com sucesso');
+      setEditingSubgrupo(null);
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao atualizar subgrupo:', error);
+      toast.error('Erro ao atualizar subgrupo');
+    }
+  };
+
+  const handleUpdateProduto = async () => {
+    if (!editingProduto) return;
+    
+    try {
+      const { error } = await supabase
+        .from('produtos')
+        .update({ 
+          nome: editingProduto.nome, 
+          codigo: editingProduto.codigo,
+          unidade_medida: editingProduto.unidadeMedida
+        })
+        .eq('id', editingProduto.id);
+
+      if (error) throw error;
+      
+      toast.success('Produto atualizado com sucesso');
+      setEditingProduto(null);
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao atualizar produto:', error);
+      toast.error('Erro ao atualizar produto');
     }
   };
 
@@ -104,6 +179,7 @@ export const ProdutosPage = () => {
                 <div
                   key={grupo.id}
                   onClick={() => handleGrupoClick(grupo.id)}
+                  onDoubleClick={() => setEditingGrupo(grupo)}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                     selectedGrupo === grupo.id 
                       ? 'bg-primary text-primary-foreground border-primary' 
@@ -161,6 +237,7 @@ export const ProdutosPage = () => {
                 <div
                   key={subgrupo.id}
                   onClick={() => handleSubgrupoClick(subgrupo.id)}
+                  onDoubleClick={() => setEditingSubgrupo(subgrupo)}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                     selectedSubgrupo === subgrupo.id 
                       ? 'bg-primary text-primary-foreground border-primary' 
@@ -222,7 +299,8 @@ export const ProdutosPage = () => {
               filteredProdutos.map(produto => (
                 <div
                   key={produto.id}
-                  className="p-3 rounded-lg border hover:bg-accent transition-colors"
+                  onDoubleClick={() => setEditingProduto(produto)}
+                  className="p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -248,6 +326,107 @@ export const ProdutosPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de Edição de Grupo */}
+      <Dialog open={!!editingGrupo} onOpenChange={() => setEditingGrupo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Grupo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="grupo-codigo">Código</Label>
+              <Input
+                id="grupo-codigo"
+                value={editingGrupo?.codigo || ''}
+                onChange={(e) => setEditingGrupo(editingGrupo ? {...editingGrupo, codigo: e.target.value} : null)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="grupo-nome">Nome</Label>
+              <Input
+                id="grupo-nome"
+                value={editingGrupo?.nome || ''}
+                onChange={(e) => setEditingGrupo(editingGrupo ? {...editingGrupo, nome: e.target.value} : null)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingGrupo(null)}>Cancelar</Button>
+              <Button onClick={handleUpdateGrupo}>Salvar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Edição de Subgrupo */}
+      <Dialog open={!!editingSubgrupo} onOpenChange={() => setEditingSubgrupo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Subgrupo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="subgrupo-codigo">Código</Label>
+              <Input
+                id="subgrupo-codigo"
+                value={editingSubgrupo?.codigo || ''}
+                onChange={(e) => setEditingSubgrupo(editingSubgrupo ? {...editingSubgrupo, codigo: e.target.value} : null)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="subgrupo-nome">Nome</Label>
+              <Input
+                id="subgrupo-nome"
+                value={editingSubgrupo?.nome || ''}
+                onChange={(e) => setEditingSubgrupo(editingSubgrupo ? {...editingSubgrupo, nome: e.target.value} : null)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingSubgrupo(null)}>Cancelar</Button>
+              <Button onClick={handleUpdateSubgrupo}>Salvar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Edição de Produto */}
+      <Dialog open={!!editingProduto} onOpenChange={() => setEditingProduto(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Produto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="produto-codigo">Código</Label>
+              <Input
+                id="produto-codigo"
+                value={editingProduto?.codigo || ''}
+                onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, codigo: e.target.value} : null)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="produto-nome">Nome</Label>
+              <Input
+                id="produto-nome"
+                value={editingProduto?.nome || ''}
+                onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, nome: e.target.value} : null)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="produto-unidade">Unidade de Medida</Label>
+              <Input
+                id="produto-unidade"
+                value={editingProduto?.unidadeMedida || ''}
+                onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, unidadeMedida: e.target.value} : null)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingProduto(null)}>Cancelar</Button>
+              <Button onClick={handleUpdateProduto}>Salvar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
