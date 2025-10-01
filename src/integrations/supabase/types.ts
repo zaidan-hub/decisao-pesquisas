@@ -41,6 +41,71 @@ export type Database = {
         }
         Relationships: []
       }
+      coletas: {
+        Row: {
+          admin_visualizou_observacoes: boolean | null
+          ano: string | null
+          created_at: string
+          data: string
+          fotos: Json | null
+          id: string
+          numero: string | null
+          observacoes_finais: Json | null
+          observacoes_produtos: Json | null
+          pesquisador_id: string
+          precos: Json | null
+          precos_editados_admin: Json | null
+          produtos: string[]
+          status: string
+          supermercado_id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_visualizou_observacoes?: boolean | null
+          ano?: string | null
+          created_at?: string
+          data: string
+          fotos?: Json | null
+          id?: string
+          numero?: string | null
+          observacoes_finais?: Json | null
+          observacoes_produtos?: Json | null
+          pesquisador_id: string
+          precos?: Json | null
+          precos_editados_admin?: Json | null
+          produtos?: string[]
+          status?: string
+          supermercado_id: string
+          updated_at?: string
+        }
+        Update: {
+          admin_visualizou_observacoes?: boolean | null
+          ano?: string | null
+          created_at?: string
+          data?: string
+          fotos?: Json | null
+          id?: string
+          numero?: string | null
+          observacoes_finais?: Json | null
+          observacoes_produtos?: Json | null
+          pesquisador_id?: string
+          precos?: Json | null
+          precos_editados_admin?: Json | null
+          produtos?: string[]
+          status?: string
+          supermercado_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coletas_supermercado_id_fkey"
+            columns: ["supermercado_id"]
+            isOneToOne: false
+            referencedRelation: "supermercados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grupos: {
         Row: {
           codigo: string

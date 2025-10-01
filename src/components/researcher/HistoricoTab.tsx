@@ -7,51 +7,27 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Coleta, Supermercado, ObservacaoFinal } from '@/types';
 import { Calendar, Store, Package, MessageSquare, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useColetas } from '@/hooks/useColetas';
+import { useSupermercados } from '@/hooks/useSupermercados';
+import { usePesquisadores } from '@/hooks/usePesquisadores';
 
 export const HistoricoTab = () => {
   const { user } = useAuth();
-  const [coletasFinalizadas, setColetasFinalizadas] = useState<Coleta[]>([]);
+  const { coletas, updateColeta } = useColetas();
+  const { supermercados } = useSupermercados();
+  const { pesquisadores } = usePesquisadores();
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
   const [novaObservacao, setNovaObservacao] = useState('');
 
-  // Mock data - coletas finalizadas
-  const mockColetasFinalizadas: Coleta[] = [
-    {
-      id: '3',
-      data: '2024-01-15',
-      supermercadoId: '1',
-      pesquisadorId: user?.id || '2',
-      numero: '003',
-      grupo: 'A',
-      ano: '2024',
-      status: 'finalizada',
-      produtos: ['1', '2', '3'],
-      precos: { '1': 5.99, '2': 12.50, '3': 8.75 },
-      observacoesFinais: [
-        {
-          id: '1',
-          texto: 'Produto 1 estava em promoção',
-          dataHora: '2024-01-15T10:30:00-03:00'
-        }
-      ]
-    }
-  ];
-
-  const mockSupermercados: Supermercado[] = [
-    { id: '1', nome: 'Extra Hiper', endereco: 'Av. Paulista, 1000 - São Paulo, SP' },
-    { id: '2', nome: 'Pão de Açúcar', endereco: 'Rua Augusta, 2500 - São Paulo, SP' }
-  ];
-
-  useEffect(() => {
-    const coletasPesquisador = mockColetasFinalizadas.filter(c => 
-      c.pesquisadorId === user?.id && c.status === 'finalizada'
-    );
-    setColetasFinalizadas(coletasPesquisador);
-  }, [user?.id]);
+  // Filtrar coletas finalizadas do pesquisador logado
+  const coletasFinalizadas = coletas.filter(c => {
+    const pesquisador = pesquisadores.find(p => p.email === user?.email);
+    return pesquisador && c.pesquisadorId === pesquisador.id && c.status === 'finalizada';
+  });
 
   const getSupermercadoNome = (id: string) => {
-    return mockSupermercados.find(s => s.id === id)?.nome || 'N/A';
+    return supermercados.find(s => s.id === id)?.nome || 'N/A';
   };
 
   const formatDate = (dateString: string) => {
@@ -64,7 +40,7 @@ export const HistoricoTab = () => {
     });
   };
 
-  const handleAddObservation = () => {
+  const handleAddObservation = async () => {
     if (!selectedColeta || !novaObservacao.trim()) {
       toast({
         title: "Erro",
@@ -80,15 +56,21 @@ export const HistoricoTab = () => {
       dataHora: new Date().toISOString().replace('Z', '-03:00') // GMT-3
     };
 
-    setColetasFinalizadas(prev => prev.map(c => 
-      c.id === selectedColeta.id
-        ? {
-            ...c,
-            observacoesFinais: [...(c.observacoesFinais || []), novaObservacaoObj],
-            adminVisualizouObservacoes: false // Reset admin view flag
-          }
-        : c
-    ));
+    const novasObservacoes = [...(selectedColeta.observacoesFinais || []), novaObservacaoObj];
+    
+    const { error } = await updateColeta(selectedColeta.id, {
+      observacoesFinais: novasObservacoes,
+      adminVisualizouObservacoes: false
+    });
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: error,
+        variant: "destructive"
+      });
+      return;
+    }
 
     toast({
       title: "Sucesso",

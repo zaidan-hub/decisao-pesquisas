@@ -134,15 +134,38 @@ export const PesquisadoresPage = () => {
           description: "Pesquisador atualizado com sucesso!"
         });
       } else {
+        // Criar usuário no auth do Supabase
+        const authEmail = `${formData.login}@sistema.local`;
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: authEmail,
+          password: formData.senha,
+          options: {
+            data: {
+              name: formData.nome,
+              role: 'pesquisador',
+              email: formData.email // Email real do pesquisador
+            }
+          }
+        });
+
+        if (authError) throw authError;
+
+        // Inserir dados do pesquisador na tabela
         const { error } = await supabase
           .from('pesquisadores' as any)
           .insert([pesquisadorData]) as any;
 
-        if (error) throw error;
+        if (error) {
+          // Se falhar ao inserir na tabela, tentar deletar o usuário criado
+          if (authData.user) {
+            await supabase.auth.admin.deleteUser(authData.user.id);
+          }
+          throw error;
+        }
         
         toast({
           title: "Sucesso",
-          description: "Pesquisador cadastrado com sucesso!"
+          description: "Pesquisador cadastrado com sucesso! Ele já pode fazer login no sistema."
         });
       }
 

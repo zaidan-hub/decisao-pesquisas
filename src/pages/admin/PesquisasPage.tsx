@@ -11,22 +11,26 @@ import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { usePesquisadores } from '@/hooks/usePesquisadores';
+import { useColetas } from '@/hooks/useColetas';
+import { useListas } from '@/hooks/useListas';
 
 export const PesquisasPage = () => {
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
+  const { coletas, createColeta, updateColeta } = useColetas();
+  const { listas } = useListas();
 
   const [showForm, setShowForm] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
-  const [coletas, setColetas] = useState<Coleta[]>([]);
   const [formData, setFormData] = useState({
-    data: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
+    data: new Date().toISOString().split('T')[0],
     supermercadoId: '',
     pesquisadorId: '',
+    listaId: '',
     ano: new Date().getFullYear().toString()
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.supermercadoId || !formData.pesquisadorId) {
@@ -38,33 +42,46 @@ export const PesquisasPage = () => {
       return;
     }
 
-    // Produtos padrão fixos para demonstração
-    const produtosPadrao = ['1', '2', '3'];
+    // Buscar produtos da lista selecionada
+    let produtosColeta: string[] = [];
+    if (formData.listaId) {
+      const lista = listas.find(l => l.id === formData.listaId);
+      produtosColeta = lista?.produtos || [];
+    }
 
     // Gerar número automaticamente baseado no total de coletas + 1
     const proximoNumero = String(coletas.length + 1).padStart(3, '0');
 
-    const novaColeta: Coleta = {
-      id: Date.now().toString(),
+    const novaColeta: Omit<Coleta, 'id'> = {
       data: formData.data,
       supermercadoId: formData.supermercadoId,
       pesquisadorId: formData.pesquisadorId,
       numero: proximoNumero,
       ano: formData.ano,
       status: 'não iniciada',
-      produtos: produtosPadrao,
-      precos: { '1': 15.50, '2': 8.90, '3': 4.20 } // Preços mock para demonstração
+      produtos: produtosColeta,
+      precos: {},
+      observacoesProdutos: {},
+      observacoesFinais: [],
+      fotos: {}
     };
 
-    setColetas(prev => [novaColeta, ...prev]);
+    const { error } = await createColeta(novaColeta);
     
-    toast({
-      title: "Sucesso",
-      description: "Coleta cadastrada com sucesso!"
-    });
-
-    setShowForm(false);
-    resetForm();
+    if (error) {
+      toast({
+        title: "Erro",
+        description: error,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Sucesso",
+        description: "Coleta cadastrada com sucesso!"
+      });
+      setShowForm(false);
+      resetForm();
+    }
   };
 
   const resetForm = () => {
@@ -72,14 +89,13 @@ export const PesquisasPage = () => {
       data: new Date().toISOString().split('T')[0],
       supermercadoId: '',
       pesquisadorId: '',
+      listaId: '',
       ano: new Date().getFullYear().toString()
     });
   };
 
-  const handleUpdateColeta = (coletaId: string, updatedData: Partial<Coleta>) => {
-    setColetas(prev => prev.map(c => 
-      c.id === coletaId ? { ...c, ...updatedData } : c
-    ));
+  const handleUpdateColeta = async (coletaId: string, updatedData: Partial<Coleta>) => {
+    await updateColeta(coletaId, updatedData);
   };
 
   const handleViewColeta = (coleta: Coleta) => {
@@ -224,6 +240,25 @@ export const PesquisasPage = () => {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="lista">Lista de Produtos (opcional)</Label>
+                <Select 
+                  value={formData.listaId} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, listaId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma lista" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma lista</SelectItem>
+                    {listas.map((lista) => (
+                      <SelectItem key={lista.id} value={lista.id}>
+                        {lista.nome} ({lista.produtos.length} produtos)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="ano">Ano</Label>

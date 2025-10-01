@@ -5,27 +5,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ColetaDetail } from './ColetaDetail';
 import { Coleta, Supermercado } from '@/types';
 import { Calendar, Store, User, Package, ArrowRight, FileText } from 'lucide-react';
+import { useColetas } from '@/hooks/useColetas';
+import { useSupermercados } from '@/hooks/useSupermercados';
+import { usePesquisadores } from '@/hooks/usePesquisadores';
 
 export const ColetasTab = () => {
   const { user } = useAuth();
+  const { coletas, updateColeta } = useColetas();
+  const { supermercados } = useSupermercados();
+  const { pesquisadores } = usePesquisadores();
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
-  const [coletas, setColetas] = useState<Coleta[]>([]);
 
-  // Dados limpos - serão preenchidos quando houver integração real
-  const mockColetas: Coleta[] = [];
-
-  const mockSupermercados: Supermercado[] = [];
-
-  useEffect(() => {
-    // Filtrar coletas para o pesquisador logado que não estão finalizadas
-    const coletasPesquisador = mockColetas.filter(c => 
-      c.pesquisadorId === user?.id && c.status !== 'finalizada'
-    );
-    setColetas(coletasPesquisador);
-  }, [user?.id]);
+  // Filtrar coletas do pesquisador logado (não finalizadas)
+  const coletasPesquisador = coletas.filter(c => {
+    // Buscar o ID do pesquisador pelo email do usuário logado
+    const pesquisador = pesquisadores.find(p => p.email === user?.email);
+    return pesquisador && c.pesquisadorId === pesquisador.id && c.status !== 'finalizada';
+  });
 
   const getSupermercadoNome = (id: string) => {
-    return mockSupermercados.find(s => s.id === id)?.nome || 'N/A';
+    return supermercados.find(s => s.id === id)?.nome || 'N/A';
   };
 
   const formatDate = (dateString: string) => {
@@ -45,12 +44,8 @@ export const ColetasTab = () => {
     }
   };
 
-  const updateColetaStatus = (coletaId: string, newStatus: Coleta['status'], updatedData?: Partial<Coleta>) => {
-    setColetas(prev => prev.map(c => 
-      c.id === coletaId 
-        ? { ...c, status: newStatus, ...updatedData }
-        : c
-    ));
+  const updateColetaStatus = async (coletaId: string, newStatus: Coleta['status'], updatedData?: Partial<Coleta>) => {
+    await updateColeta(coletaId, { status: newStatus, ...updatedData });
   };
 
   if (selectedColeta) {
@@ -59,7 +54,7 @@ export const ColetasTab = () => {
         coleta={selectedColeta}
         onBack={() => setSelectedColeta(null)}
         onUpdateColeta={updateColetaStatus}
-        supermercados={mockSupermercados}
+        supermercados={supermercados}
       />
     );
   }
@@ -73,7 +68,7 @@ export const ColetasTab = () => {
         </p>
       </div>
 
-      {coletas.length === 0 ? (
+      {coletasPesquisador.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -85,7 +80,7 @@ export const ColetasTab = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {coletas.map((coleta) => (
+          {coletasPesquisador.map((coleta) => (
             <Card 
               key={coleta.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
