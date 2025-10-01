@@ -18,8 +18,10 @@ export const ColetasTab = () => {
 
   // Filtrar coletas do pesquisador logado (não finalizadas)
   const coletasPesquisador = coletas.filter(c => {
-    // Buscar o ID do pesquisador pelo email do usuário logado
-    const pesquisador = pesquisadores.find(p => p.email === user?.email);
+    // Extrair login do email (ex: henriette@sistema.local -> henriette)
+    const loginFromEmail = user?.email?.split('@')[0];
+    // Buscar o ID do pesquisador pelo login
+    const pesquisador = pesquisadores.find(p => p.login === loginFromEmail);
     return pesquisador && c.pesquisadorId === pesquisador.id && c.status !== 'finalizada';
   });
 

@@ -22,7 +22,10 @@ export const HistoricoTab = () => {
 
   // Filtrar coletas finalizadas do pesquisador logado
   const coletasFinalizadas = coletas.filter(c => {
-    const pesquisador = pesquisadores.find(p => p.email === user?.email);
+    // Extrair login do email (ex: henriette@sistema.local -> henriette)
+    const loginFromEmail = user?.email?.split('@')[0];
+    // Buscar o ID do pesquisador pelo login
+    const pesquisador = pesquisadores.find(p => p.login === loginFromEmail);
     return pesquisador && c.pesquisadorId === pesquisador.id && c.status === 'finalizada';
   });
 
