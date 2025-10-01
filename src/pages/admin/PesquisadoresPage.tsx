@@ -134,12 +134,22 @@ export const PesquisadoresPage = () => {
           description: "Pesquisador atualizado com sucesso!"
         });
       } else {
-        // Criar usuário no auth do Supabase
+        // Primeiro inserir na tabela de pesquisadores
+        const { data: pesquisadorInserido, error: errorPesquisador } = await supabase
+          .from('pesquisadores' as any)
+          .insert([pesquisadorData])
+          .select()
+          .single() as any;
+
+        if (errorPesquisador) throw errorPesquisador;
+
+        // Depois criar usuário no auth do Supabase
         const authEmail = `${formData.login}@sistema.local`;
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        const { error: authError } = await supabase.auth.signUp({
           email: authEmail,
           password: formData.senha,
           options: {
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
               name: formData.nome,
               role: 'pesquisador',
@@ -148,24 +158,19 @@ export const PesquisadoresPage = () => {
           }
         });
 
-        if (authError) throw authError;
-
-        // Inserir dados do pesquisador na tabela
-        const { error } = await supabase
-          .from('pesquisadores' as any)
-          .insert([pesquisadorData]) as any;
-
-        if (error) {
-          // Se falhar ao inserir na tabela, tentar deletar o usuário criado
-          if (authData.user) {
-            await supabase.auth.admin.deleteUser(authData.user.id);
-          }
-          throw error;
+        if (authError) {
+          // Se falhar ao criar auth, deletar o pesquisador da tabela
+          await supabase
+            .from('pesquisadores' as any)
+            .delete()
+            .eq('id', pesquisadorInserido.id);
+          
+          throw new Error(`Erro ao criar credenciais de acesso: ${authError.message}`);
         }
         
         toast({
           title: "Sucesso",
-          description: "Pesquisador cadastrado com sucesso! Ele já pode fazer login no sistema."
+          description: "Pesquisador cadastrado com sucesso! Ele já pode fazer login no sistema com o usuário e senha cadastrados."
         });
       }
 
@@ -174,6 +179,7 @@ export const PesquisadoresPage = () => {
       setEditingPesquisador(null);
       resetForm();
     } catch (error: any) {
+      console.error('Erro ao cadastrar pesquisador:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao salvar pesquisador",
