@@ -83,6 +83,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          name: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
       subgrupos: {
         Row: {
           codigo: string
@@ -114,6 +138,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      supermercados: {
+        Row: {
+          created_at: string
+          endereco: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          endereco: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          endereco?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
     }
     Views: {

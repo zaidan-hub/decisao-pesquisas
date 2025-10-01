@@ -8,20 +8,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Supermercado } from '@/types';
 import { Plus, Search, Edit, Trash2, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useSupermercados } from '@/hooks/useSupermercados';
+import { supabase } from '@/integrations/supabase/client';
 
 export const SupermercadosPage = () => {
-  const [supermercados, setSupermercados] = useState<Supermercado[]>([
-    {
-      id: '1',
-      nome: 'Extra Hiper',
-      endereco: 'Av. Paulista, 1000 - São Paulo, SP'
-    },
-    {
-      id: '2',
-      nome: 'Pão de Açúcar',
-      endereco: 'Rua Augusta, 2500 - São Paulo, SP'
-    }
-  ]);
+  const { supermercados, loading, refetch } = useSupermercados();
 
   const [showForm, setShowForm] = useState(false);
   const [editingSupermercado, setEditingSupermercado] = useState<Supermercado | null>(null);
@@ -41,7 +32,7 @@ export const SupermercadosPage = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nome || !formData.endereco) {
@@ -53,29 +44,49 @@ export const SupermercadosPage = () => {
       return;
     }
 
-    const supermercado: Supermercado = {
-      id: editingSupermercado?.id || Date.now().toString(),
-      nome: formData.nome,
-      endereco: formData.endereco
-    };
+    try {
+      if (editingSupermercado) {
+        const { error } = await supabase
+          .from('supermercados' as any)
+          .update({ 
+            nome: formData.nome, 
+            endereco: formData.endereco 
+          })
+          .eq('id', editingSupermercado.id) as any;
 
-    if (editingSupermercado) {
-      setSupermercados(prev => prev.map(s => s.id === editingSupermercado.id ? supermercado : s));
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Supermercado atualizado com sucesso!"
+        });
+      } else {
+        const { error } = await supabase
+          .from('supermercados' as any)
+          .insert([{ 
+            nome: formData.nome, 
+            endereco: formData.endereco 
+          }]) as any;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Supermercado cadastrado com sucesso!"
+        });
+      }
+
+      await refetch();
+      setShowForm(false);
+      setEditingSupermercado(null);
+      resetForm();
+    } catch (error: any) {
       toast({
-        title: "Sucesso",
-        description: "Supermercado atualizado com sucesso!"
-      });
-    } else {
-      setSupermercados(prev => [...prev, supermercado]);
-      toast({
-        title: "Sucesso",
-        description: "Supermercado cadastrado com sucesso!"
+        title: "Erro",
+        description: error.message || "Erro ao salvar supermercado",
+        variant: "destructive"
       });
     }
-
-    setShowForm(false);
-    setEditingSupermercado(null);
-    resetForm();
   };
 
   const handleEdit = (supermercado: Supermercado) => {
@@ -87,14 +98,29 @@ export const SupermercadosPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteSupermercado) {
-      setSupermercados(prev => prev.filter(s => s.id !== deleteSupermercado.id));
-      setDeleteSupermercado(null);
-      toast({
-        title: "Supermercado excluído",
-        description: "O supermercado foi removido do sistema."
-      });
+      try {
+        const { error } = await supabase
+          .from('supermercados' as any)
+          .delete()
+          .eq('id', deleteSupermercado.id) as any;
+
+        if (error) throw error;
+
+        await refetch();
+        setDeleteSupermercado(null);
+        toast({
+          title: "Supermercado excluído",
+          description: "O supermercado foi removido do sistema."
+        });
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error.message || "Erro ao excluir supermercado",
+          variant: "destructive"
+        });
+      }
     }
   };
 
