@@ -19,7 +19,7 @@ export const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password || !role) {
+    if (!email || !password) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios.",
@@ -29,12 +29,12 @@ export const LoginForm = () => {
     }
 
     setLoading(true);
-    const success = await login(email, password, role);
+    const { error } = await login(email, password);
     
-    if (!success) {
+    if (error) {
       toast({
         title: "Erro de autenticação",
-        description: "Email, senha ou tipo de usuário incorretos.",
+        description: error,
         variant: "destructive"
       });
     } else {

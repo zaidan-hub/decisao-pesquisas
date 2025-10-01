@@ -1,83 +1,127 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string, role: string) => Promise<boolean>;
-  logout: () => void;
+  session: Session | null;
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  signup: (email: string, password: string, name: string, role: string) => Promise<{ error: string | null }>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for prototype
-const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'admin@sistema.com',
-    name: 'Administrador',
-    role: 'admin'
-  },
-  {
-    id: '2',
-    email: 'maria.silva@sistema.com',
-    name: 'Maria Silva',
-    role: 'pesquisador'
-  }
-];
-
-// Mock pesquisadores para autenticação
-const mockPesquisadores = [
-  { id: '2', login: 'maria.silva', senha: '123456', nome: 'Maria Silva', email: 'maria.silva@sistema.com' },
-  { id: '4', login: 'joao.santos', senha: '123456', nome: 'João Santos', email: 'joao.santos@sistema.com' },
-  { id: '5', login: 'ana.costa', senha: '123456', nome: 'Ana Costa', email: 'ana.costa@sistema.com' }
-];
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = async (email: string, password: string, role: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Admin login com email
-    if (role === 'admin') {
-      const foundUser = mockUsers.find(u => u.email === email && u.role === role);
-      if (foundUser && password === '123456') {
-        setUser(foundUser);
-        return true;
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          setTimeout(() => {
+            loadUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setUser(null);
+        }
       }
-    }
-    
-    // Pesquisador login com login ou email
-    if (role === 'pesquisador') {
-      const foundPesquisador = mockPesquisadores.find(p => 
-        (p.login === email || p.email === email) && p.senha === password
-      );
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        loadUserProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles' as any)
+        .select('*')
+        .eq('id', userId)
+        .single() as any;
+
+      if (error) throw error;
       
-      if (foundPesquisador) {
-        const user: User = {
-          id: foundPesquisador.id,
-          email: foundPesquisador.email,
-          name: foundPesquisador.nome,
-          role: 'pesquisador'
-        };
-        setUser(user);
-        return true;
+      if (data) {
+        setUser({
+          id: data.id as string,
+          email: data.email as string,
+          name: data.name as string,
+          role: data.role as 'admin' | 'pesquisador'
+        });
       }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    return false;
   };
 
-  const logout = () => {
+  const signup = async (email: string, password: string, name: string, role: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name,
+            role
+          }
+        }
+      });
+
+      if (error) return { error: error.message };
+      if (!data.user) return { error: 'Erro ao criar usuário' };
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'Erro ao criar conta' };
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'Erro ao fazer login' };
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
   };
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !!session;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, session, login, signup, logout, isAuthenticated, loading }}>
       {children}
     </AuthContext.Provider>
   );
