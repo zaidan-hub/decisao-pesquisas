@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Lista, Produto, Grupo, Subgrupo } from '@/types';
-import { Plus, Search, Edit, Trash2, Copy, List, Package, Layers, FolderOpen } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, List, Package, Layers, FolderOpen, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
@@ -222,6 +223,27 @@ export const ListasPage = () => {
     return produtos.find(p => p.id === id)?.nome || 'N/A';
   };
 
+  // Helper functions for checking if all items in a group/subgroup are selected
+  const isGrupoFullySelected = (grupoId: string) => {
+    const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
+    return grupoProdutos.length > 0 && grupoProdutos.every(id => formData.produtos.includes(id));
+  };
+
+  const isGrupoPartiallySelected = (grupoId: string) => {
+    const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
+    return grupoProdutos.some(id => formData.produtos.includes(id)) && !isGrupoFullySelected(grupoId);
+  };
+
+  const isSubgrupoFullySelected = (subgrupoId: string) => {
+    const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
+    return subgrupoProdutos.length > 0 && subgrupoProdutos.every(id => formData.produtos.includes(id));
+  };
+
+  const isSubgrupoPartiallySelected = (subgrupoId: string) => {
+    const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
+    return subgrupoProdutos.some(id => formData.produtos.includes(id)) && !isSubgrupoFullySelected(subgrupoId);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -263,16 +285,14 @@ export const ListasPage = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label>Produtos da Lista</Label>
-                  <div className="flex gap-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={toggleAllProdutos}
-                    >
-                      {formData.produtos.length === produtos.length ? 'Desmarcar Todos' : 'Marcar Todos'}
-                    </Button>
-                  </div>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={toggleAllProdutos}
+                  >
+                    {formData.produtos.length === produtos.length ? 'Desmarcar Todos' : 'Marcar Todos'}
+                  </Button>
                 </div>
 
                 {/* Search Products */}
@@ -286,57 +306,90 @@ export const ListasPage = () => {
                   />
                 </div>
 
-                {/* Quick selections by group/subgroup */}
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Seleção Rápida:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {grupos.map(grupo => (
-                      <Button
-                        key={grupo.id}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleGrupoProdutos(grupo.id)}
-                      >
-                        <Layers className="w-3 h-3 mr-1" />
-                        {grupo.nome}
-                      </Button>
-                    ))}
-                    {subgrupos.map(subgrupo => (
-                      <Button
-                        key={subgrupo.id}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleSubgrupoProdutos(subgrupo.id)}
-                      >
-                        <FolderOpen className="w-3 h-3 mr-1" />
-                        {subgrupo.nome}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                {/* Hierarchical product selection */}
+                <div className="border rounded-md max-h-96 overflow-y-auto">
+                  <Accordion type="multiple" className="w-full">
+                    {grupos.map((grupo) => {
+                      const grupoSubgrupos = subgrupos.filter(s => s.grupoId === grupo.id);
+                      const grupoProdutosCount = produtos.filter(p => p.grupoId === grupo.id).length;
+                      
+                      if (grupoProdutosCount === 0) return null;
 
-                {/* Products list */}
-                <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                  {filteredProdutos.map((produto) => (
-                    <div key={produto.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`produto-${produto.id}`}
-                        checked={formData.produtos.includes(produto.id)}
-                        onCheckedChange={() => toggleProduto(produto.id)}
-                      />
-                      <label 
-                        htmlFor={`produto-${produto.id}`} 
-                        className="text-sm cursor-pointer flex-1"
-                      >
-                        <span className="font-medium">{produto.nome}</span>
-                        <span className="text-muted-foreground ml-2">
-                          ({produto.codigo} - {produto.unidadeMedida})
-                        </span>
-                      </label>
-                    </div>
-                  ))}
+                      return (
+                        <AccordionItem key={grupo.id} value={grupo.id}>
+                          <AccordionTrigger className="px-4 hover:no-underline">
+                            <div className="flex items-center gap-3 w-full" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isGrupoFullySelected(grupo.id)}
+                                onCheckedChange={() => toggleGrupoProdutos(grupo.id)}
+                                className={isGrupoPartiallySelected(grupo.id) ? "data-[state=checked]:bg-primary/50" : ""}
+                              />
+                              <div className="flex items-center gap-2 flex-1">
+                                <Layers className="w-4 h-4 text-primary" />
+                                <span className="font-medium">{grupo.nome}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  ({grupoProdutosCount} produtos)
+                                </span>
+                              </div>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-2">
+                            <Accordion type="multiple" className="w-full pl-6">
+                              {grupoSubgrupos.map((subgrupo) => {
+                                const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupo.id);
+                                
+                                if (subgrupoProdutos.length === 0) return null;
+
+                                return (
+                                  <AccordionItem key={subgrupo.id} value={subgrupo.id}>
+                                    <AccordionTrigger className="py-2 hover:no-underline">
+                                      <div className="flex items-center gap-3 w-full" onClick={(e) => e.stopPropagation()}>
+                                        <Checkbox
+                                          checked={isSubgrupoFullySelected(subgrupo.id)}
+                                          onCheckedChange={() => toggleSubgrupoProdutos(subgrupo.id)}
+                                          className={isSubgrupoPartiallySelected(subgrupo.id) ? "data-[state=checked]:bg-primary/50" : ""}
+                                        />
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <FolderOpen className="w-4 h-4 text-primary" />
+                                          <span className="font-medium">{subgrupo.nome}</span>
+                                          <span className="text-sm text-muted-foreground">
+                                            ({subgrupoProdutos.length} produtos)
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pl-6 pb-2">
+                                      <div className="space-y-2">
+                                        {subgrupoProdutos.map((produto) => (
+                                          <div key={produto.id} className="flex items-center gap-2 py-1">
+                                            <Checkbox
+                                              id={`produto-${produto.id}`}
+                                              checked={formData.produtos.includes(produto.id)}
+                                              onCheckedChange={() => toggleProduto(produto.id)}
+                                            />
+                                            <label 
+                                              htmlFor={`produto-${produto.id}`} 
+                                              className="text-sm cursor-pointer flex-1 flex items-center gap-2"
+                                            >
+                                              <Package className="w-3 h-3 text-muted-foreground" />
+                                              <span>{produto.nome}</span>
+                                              <span className="text-muted-foreground">
+                                                ({produto.codigo} - {produto.unidadeMedida})
+                                              </span>
+                                            </label>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </AccordionContent>
+                                  </AccordionItem>
+                                );
+                              })}
+                            </Accordion>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
                 </div>
 
                 <div className="text-sm text-muted-foreground">
