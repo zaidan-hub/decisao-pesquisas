@@ -7,6 +7,8 @@ export const useColetas = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Limpar estado antes de buscar
+    setColetas([]);
     fetchColetas();
   }, []);
 
@@ -37,6 +39,8 @@ export const useColetas = () => {
         fotos: coleta.fotos || {}
       }));
 
+      console.log('🔍 DADOS DO BANCO:', data);
+      console.log('🔍 COLETAS FORMATADAS:', coletasFormatadas);
       setColetas(coletasFormatadas);
     } catch (error) {
       console.error('Erro ao buscar coletas:', error);
