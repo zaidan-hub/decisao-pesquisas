@@ -20,8 +20,6 @@ const pesquisadorSchema = z.object({
   nome: z.string().trim().nonempty({ message: "Nome é obrigatório" }).max(100, { message: "Nome deve ter no máximo 100 caracteres" }),
   email: z.string().trim().email({ message: "Email inválido" }).max(255, { message: "Email deve ter no máximo 255 caracteres" }),
   telefone: z.string().trim().max(20, { message: "Telefone deve ter no máximo 20 caracteres" }),
-  login: z.string().trim().nonempty({ message: "Login é obrigatório" }).min(3, { message: "Login deve ter pelo menos 3 caracteres" }).max(50, { message: "Login deve ter no máximo 50 caracteres" }).regex(/^[a-zA-Z0-9._]+$/, { message: "Login deve conter apenas letras, números, pontos e underscores" }),
-  senha: z.string().nonempty({ message: "Senha é obrigatória" }).min(6, { message: "Senha deve ter pelo menos 6 caracteres" }).max(100, { message: "Senha deve ter no máximo 100 caracteres" }),
   ativo: z.boolean()
 });
 
@@ -40,8 +38,6 @@ export const PesquisadoresPage = () => {
     nome: '',
     email: '',
     telefone: '',
-    login: '',
-    senha: '',
     ativo: true
   });
 
@@ -56,8 +52,6 @@ export const PesquisadoresPage = () => {
       nome: '',
       email: '',
       telefone: '',
-      login: '',
-      senha: '',
       ativo: true
     });
   };
@@ -95,36 +89,28 @@ export const PesquisadoresPage = () => {
       return;
     }
 
-    // Validar login único
-    const loginExists = pesquisadores.some(p => 
-      p.login.toLowerCase() === formData.login.toLowerCase() && 
-      p.id !== editingPesquisador?.id
-    );
-
-    if (loginExists) {
-      toast({
-        title: "Login já existe",
-        description: "Este login já está cadastrado para outro pesquisador.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       const pesquisadorData = {
         codigo: formData.codigo || generateCode(),
         nome: formData.nome,
         email: formData.email,
         telefone: formData.telefone,
-        login: formData.login,
-        senha: formData.senha,
+        login: '', // Será definido manualmente no backend
+        senha: '', // Será definido manualmente no backend
         ativo: formData.ativo
       };
 
       if (editingPesquisador) {
+        // Manter login e senha existentes ao editar
         const { error } = await supabase
           .from('pesquisadores' as any)
-          .update(pesquisadorData)
+          .update({
+            codigo: pesquisadorData.codigo,
+            nome: pesquisadorData.nome,
+            email: pesquisadorData.email,
+            telefone: pesquisadorData.telefone,
+            ativo: pesquisadorData.ativo
+          })
           .eq('id', editingPesquisador.id) as any;
 
         if (error) throw error;
@@ -134,43 +120,15 @@ export const PesquisadoresPage = () => {
           description: "Pesquisador atualizado com sucesso!"
         });
       } else {
-        // Primeiro inserir na tabela de pesquisadores
-        const { data: pesquisadorInserido, error: errorPesquisador } = await supabase
+        const { error } = await supabase
           .from('pesquisadores' as any)
-          .insert([pesquisadorData])
-          .select()
-          .single() as any;
+          .insert([pesquisadorData]) as any;
 
-        if (errorPesquisador) throw errorPesquisador;
-
-        // Depois criar usuário no auth do Supabase
-        const authEmail = `${formData.login}@sistema.local`;
-        const { error: authError } = await supabase.auth.signUp({
-          email: authEmail,
-          password: formData.senha,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              name: formData.nome,
-              role: 'pesquisador',
-              email: formData.email // Email real do pesquisador
-            }
-          }
-        });
-
-        if (authError) {
-          // Se falhar ao criar auth, deletar o pesquisador da tabela
-          await supabase
-            .from('pesquisadores' as any)
-            .delete()
-            .eq('id', pesquisadorInserido.id);
-          
-          throw new Error(`Erro ao criar credenciais de acesso: ${authError.message}`);
-        }
+        if (error) throw error;
         
         toast({
           title: "Sucesso",
-          description: "Pesquisador cadastrado com sucesso! Ele já pode fazer login no sistema com o usuário e senha cadastrados."
+          description: "Pesquisador cadastrado! Crie as credenciais de acesso manualmente no painel Backend > Users."
         });
       }
 
@@ -195,8 +153,6 @@ export const PesquisadoresPage = () => {
       nome: pesquisador.nome,
       email: pesquisador.email,
       telefone: pesquisador.telefone,
-      login: pesquisador.login,
-      senha: pesquisador.senha,
       ativo: pesquisador.ativo
     });
     setShowForm(true);
@@ -253,8 +209,7 @@ export const PesquisadoresPage = () => {
     .filter(p => 
       p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.login.toLowerCase().includes(searchTerm.toLowerCase())
+      p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
@@ -331,35 +286,6 @@ export const PesquisadoresPage = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="login">Login *</Label>
-                <Input
-                  id="login"
-                  value={formData.login}
-                  onChange={(e) => setFormData(prev => ({ ...prev, login: e.target.value }))}
-                  placeholder="usuario.nome"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Apenas letras, números, pontos e underscores
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="senha">Senha *</Label>
-                <Input
-                  id="senha"
-                  type="text"
-                  value={formData.senha}
-                  onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
-                  placeholder="Digite a senha"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Mínimo de 6 caracteres
-                </p>
-              </div>
-
               <div className="flex items-center space-x-2">
                 <Switch
                   id="ativo"
@@ -424,7 +350,7 @@ export const PesquisadoresPage = () => {
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <User className="w-4 h-4" />
                         <span><strong>Código:</strong> {pesquisador.codigo}</span>
@@ -433,11 +359,6 @@ export const PesquisadoresPage = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Mail className="w-4 h-4" />
                         <span>{pesquisador.email}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Key className="w-4 h-4" />
-                        <span><strong>Login:</strong> {pesquisador.login}</span>
                       </div>
                       
                       {pesquisador.telefone && (
