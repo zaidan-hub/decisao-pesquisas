@@ -33,7 +33,11 @@ export const PesquisasPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔵 SUBMIT INICIADO');
+    console.log('📋 FORM DATA:', formData);
+    
     if (!formData.supermercadoId || !formData.pesquisadorId) {
+      console.log('❌ VALIDAÇÃO FALHOU - campos obrigatórios vazios');
       toast({
         title: "Campos obrigatórios",
         description: "Supermercado e pesquisador são obrigatórios.",
@@ -42,15 +46,19 @@ export const PesquisasPage = () => {
       return;
     }
 
+    console.log('✅ VALIDAÇÃO OK - preparando coleta');
+
     // Buscar produtos da lista selecionada
     let produtosColeta: string[] = [];
     if (formData.listaId) {
       const lista = listas.find(l => l.id === formData.listaId);
       produtosColeta = lista?.produtos || [];
+      console.log('📦 PRODUTOS DA LISTA:', produtosColeta.length);
     }
 
     // Gerar número automaticamente baseado no total de coletas + 1
     const proximoNumero = String(coletas.length + 1).padStart(3, '0');
+    console.log('🔢 NÚMERO GERADO:', proximoNumero);
 
     const novaColeta: Omit<Coleta, 'id'> = {
       data: formData.data,
@@ -66,15 +74,22 @@ export const PesquisasPage = () => {
       fotos: {}
     };
 
+    console.log('📝 NOVA COLETA:', novaColeta);
+    console.log('🚀 CHAMANDO createColeta...');
+
     const { error } = await createColeta(novaColeta);
     
+    console.log('📡 RESPOSTA:', { error });
+    
     if (error) {
+      console.log('❌ ERRO AO CRIAR:', error);
       toast({
         title: "Erro",
         description: error,
         variant: "destructive"
       });
     } else {
+      console.log('✅ COLETA CRIADA COM SUCESSO');
       toast({
         title: "Sucesso",
         description: "Coleta cadastrada com sucesso!"
