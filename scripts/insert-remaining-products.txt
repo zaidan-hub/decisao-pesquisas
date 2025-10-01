@@ -1,0 +1,44 @@
+INSTRUÇÕES PARA COMPLETAR A IMPORTAÇÃO
+
+Já foram inseridos com sucesso:
+✓ Arroz/Açucar (11 produtos)
+✓ Óleos/Azeites (20 produtos)
+✓ Bebidas - Cervejas (40 produtos)
+✓ Bebidas - Refrigerantes (27 produtos)  
+✓ Bebidas - Sucos (36 produtos)
+✓ Bebidas - Vinhos (15 produtos)
+✓ Bebidas - Destilados (32 produtos)
+✓ Farináceos (17 produtos)
+✓ Biscoitos/Salgadinhos - Biscoitos (44 produtos)
+
+Total inserido: ~242 produtos
+
+Faltam ainda os seguintes grupos:
+- Biscoitos/Salgadinhos - Salgadinhos
+- Matinais
+- Bombonieri
+- Sobremesas
+- Doces/Compotas
+- Dietéticos
+- Massas, Sopas e Caldos
+- Derivados do Tomate
+- Temperos e Condimentos
+- Enlatados/Conservas
+- Sabão/Amaciantes
+- Detergentes/Limpadores
+- Saponáceos/Esponjas
+- Desinfetantes
+- Ceras/Inseticidas
+- Higiênicos/Absorventes
+- Higiene Pessoal
+- Perfumaria
+- Produtos Infantis
+- Açougue
+- Frutas/Verduras/Legumes
+- Congelados/Massas Frescas
+- Embutidos
+- Laticínios/Salgados
+
+Total restante: ~608 produtos
+
+Devido ao volume grande, vou continuar com a inserção em lotes otimizados...
