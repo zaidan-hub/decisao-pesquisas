@@ -9,11 +9,12 @@ import { Coleta, Supermercado, Pesquisador } from '@/types';
 import { Plus, Search, Calendar, Store, User, FileText, Package, Bell } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
+import { useSupermercados } from '@/hooks/useSupermercados';
+import { usePesquisadores } from '@/hooks/usePesquisadores';
 
 export const PesquisasPage = () => {
-  // Dados limpos
-  const mockSupermercados: Supermercado[] = [];
-  const mockPesquisadores: Pesquisador[] = [];
+  const { supermercados, loading: loadingSupermercados } = useSupermercados();
+  const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
 
   const [showForm, setShowForm] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
@@ -90,11 +91,11 @@ export const PesquisasPage = () => {
   };
 
   const getSupermercadoNome = (id: string) => {
-    return mockSupermercados.find(s => s.id === id)?.nome || 'N/A';
+    return supermercados.find(s => s.id === id)?.nome || 'N/A';
   };
 
   const getPesquisadorNome = (id: string) => {
-    return mockPesquisadores.find(p => p.id === id)?.nome || 'N/A';
+    return pesquisadores.find(p => p.id === id)?.nome || 'N/A';
   };
 
   // Ordenar coletas por data (mais recente primeiro)
@@ -109,7 +110,7 @@ export const PesquisasPage = () => {
         coleta={selectedColeta}
         onBack={() => setSelectedColeta(null)}
         onUpdateColeta={handleUpdateColeta}
-        supermercados={mockSupermercados}
+        supermercados={supermercados}
       />
     );
   }
@@ -176,14 +177,20 @@ export const PesquisasPage = () => {
                     <SelectValue placeholder="Selecione o supermercado" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockSupermercados.map((supermercado) => (
-                      <SelectItem key={supermercado.id} value={supermercado.id}>
-                        <div className="flex items-center gap-2">
-                          <Store className="w-4 h-4" />
-                          {supermercado.nome}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {loadingSupermercados ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : supermercados.length === 0 ? (
+                      <SelectItem value="empty" disabled>Nenhum supermercado cadastrado</SelectItem>
+                    ) : (
+                      supermercados.map((supermercado) => (
+                        <SelectItem key={supermercado.id} value={supermercado.id}>
+                          <div className="flex items-center gap-2">
+                            <Store className="w-4 h-4" />
+                            {supermercado.nome}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -199,14 +206,20 @@ export const PesquisasPage = () => {
                     <SelectValue placeholder="Selecione o pesquisador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockPesquisadores.filter(p => p.ativo).map((pesquisador) => (
-                      <SelectItem key={pesquisador.id} value={pesquisador.id}>
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          {pesquisador.nome}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {loadingPesquisadores ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : pesquisadores.filter(p => p.ativo).length === 0 ? (
+                      <SelectItem value="empty" disabled>Nenhum pesquisador ativo</SelectItem>
+                    ) : (
+                      pesquisadores.filter(p => p.ativo).map((pesquisador) => (
+                        <SelectItem key={pesquisador.id} value={pesquisador.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4" />
+                            {pesquisador.nome}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
