@@ -7,8 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Lista } from '@/types';
-import { Plus, Search, Edit, Trash2, Copy, List } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
@@ -28,6 +29,7 @@ export const ListasPage = () => {
   const [deleteLista, setDeleteLista] = useState<Lista | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
 
   // Form state
   const [formData, setFormData] = useState({
@@ -219,51 +221,51 @@ export const ListasPage = () => {
     return produtos.find(p => p.id === id)?.nome || 'N/A';
   };
 
-  // Build hierarchical structure for display
-  const buildHierarchy = () => {
-    const rows: Array<{
-      type: 'grupo' | 'subgrupo' | 'produto';
-      id: string;
-      grupoNome?: string;
-      subgrupoNome?: string;
-      produtoNome?: string;
-      produtoCodigo?: string;
-      produtoUnidade?: string;
+  // Build hierarchical structure grouped by grupo and subgrupo
+  const buildGroupedHierarchy = () => {
+    const grouped: Array<{
+      grupo: { id: string; nome: string };
+      subgrupos: Array<{
+        id: string;
+        nome: string;
+        produtos: Array<{
+          id: string;
+          nome: string;
+          codigo: string;
+          unidade: string;
+        }>;
+      }>;
     }> = [];
 
     grupos.forEach(grupo => {
       const grupoSubgrupos = subgrupos.filter(s => s.grupoId === grupo.id);
-      
-      grupoSubgrupos.forEach(subgrupo => {
-        const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupo.id);
-        
-        subgrupoProdutos.forEach((produto, idx) => {
-          rows.push({
-            type: 'produto',
-            id: produto.id,
-            grupoNome: idx === 0 && subgrupoProdutos.length > 0 ? grupo.nome : undefined,
-            subgrupoNome: idx === 0 ? subgrupo.nome : undefined,
-            produtoNome: produto.nome,
-            produtoCodigo: produto.codigo,
-            produtoUnidade: produto.unidadeMedida
-          });
+      const subgruposWithProducts = grupoSubgrupos
+        .map(subgrupo => ({
+          id: subgrupo.id,
+          nome: subgrupo.nome,
+          produtos: produtos
+            .filter(p => p.subgrupoId === subgrupo.id)
+            .map(p => ({
+              id: p.id,
+              nome: p.nome,
+              codigo: p.codigo,
+              unidade: p.unidadeMedida
+            }))
+        }))
+        .filter(sg => sg.produtos.length > 0);
+
+      if (subgruposWithProducts.length > 0) {
+        grouped.push({
+          grupo: { id: grupo.id, nome: grupo.nome },
+          subgrupos: subgruposWithProducts
         });
-      });
+      }
     });
 
-    return rows;
+    return grouped;
   };
 
-  const hierarchyRows = buildHierarchy();
-
-  // Filter by search term
-  const filteredRows = productSearchTerm
-    ? hierarchyRows.filter(row => 
-        row.produtoNome?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-        row.grupoNome?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-        row.subgrupoNome?.toLowerCase().includes(productSearchTerm.toLowerCase())
-      )
-    : hierarchyRows;
+  const groupedHierarchy = buildGroupedHierarchy();
 
   // Helper functions for selection
   const isGrupoFullySelected = (grupoId: string) => {
@@ -274,6 +276,18 @@ export const ListasPage = () => {
   const isSubgrupoFullySelected = (subgrupoId: string) => {
     const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
     return subgrupoProdutos.length > 0 && subgrupoProdutos.every(id => formData.produtos.includes(id));
+  };
+
+  const toggleSubgrupoExpansion = (subgrupoId: string) => {
+    setExpandedSubgrupos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(subgrupoId)) {
+        newSet.delete(subgrupoId);
+      } else {
+        newSet.add(subgrupoId);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -339,9 +353,9 @@ export const ListasPage = () => {
                 </div>
 
                 {/* Table with 3 columns: Grupo, Subgrupo, Produto */}
-                <div className="border rounded-md max-h-96 overflow-auto">
+                <div className="border rounded-md max-h-[500px] overflow-auto">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableHeader className="sticky top-0 bg-background z-10 border-b">
                       <TableRow>
                         <TableHead className="w-[30%]">Grupo</TableHead>
                         <TableHead className="w-[30%]">Subgrupo</TableHead>
@@ -349,59 +363,93 @@ export const ListasPage = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredRows.map((row, idx) => {
-                        const grupo = grupos.find(g => g.nome === row.grupoNome);
-                        const subgrupo = subgrupos.find(s => s.nome === row.subgrupoNome);
+                      {groupedHierarchy.map((grupoData) => {
+                        let grupoRendered = false;
                         
-                        return (
-                          <TableRow key={`${row.id}-${idx}`}>
-                            {/* Grupo Column */}
-                            <TableCell className="align-top">
-                              {row.grupoNome && grupo && (
-                                <div className="flex items-center gap-2">
-                                  <Checkbox
-                                    checked={isGrupoFullySelected(grupo.id)}
-                                    onCheckedChange={() => toggleGrupoProdutos(grupo.id)}
-                                  />
-                                  <span className="font-medium">{row.grupoNome}</span>
-                                </div>
-                              )}
-                            </TableCell>
+                        return grupoData.subgrupos.map((subgrupoData, subIdx) => {
+                          const showGrupo = !grupoRendered;
+                          if (showGrupo) grupoRendered = true;
+                          
+                          const isExpanded = expandedSubgrupos.has(subgrupoData.id);
+                          
+                          return (
+                            <Collapsible 
+                              key={subgrupoData.id} 
+                              open={isExpanded}
+                              onOpenChange={() => toggleSubgrupoExpansion(subgrupoData.id)}
+                              asChild
+                            >
+                              <>
+                                {/* Subgrupo Row (collapsed) */}
+                                <TableRow className="border-b">
+                                  {/* Grupo Column */}
+                                  <TableCell className="align-top" rowSpan={isExpanded ? subgrupoData.produtos.length + 1 : 1}>
+                                    {showGrupo && (
+                                      <div className="flex items-center gap-2">
+                                        <Checkbox
+                                          checked={isGrupoFullySelected(grupoData.grupo.id)}
+                                          onCheckedChange={() => toggleGrupoProdutos(grupoData.grupo.id)}
+                                        />
+                                        <span className="font-medium">{grupoData.grupo.nome}</span>
+                                      </div>
+                                    )}
+                                  </TableCell>
 
-                            {/* Subgrupo Column */}
-                            <TableCell className="align-top">
-                              {row.subgrupoNome && subgrupo && (
-                                <div className="flex items-center gap-2">
-                                  <Checkbox
-                                    checked={isSubgrupoFullySelected(subgrupo.id)}
-                                    onCheckedChange={() => toggleSubgrupoProdutos(subgrupo.id)}
-                                  />
-                                  <span className="font-medium">{row.subgrupoNome}</span>
-                                </div>
-                              )}
-                            </TableCell>
+                                  {/* Subgrupo Column */}
+                                  <TableCell colSpan={2}>
+                                    <CollapsibleTrigger asChild>
+                                      <div className="flex items-center gap-2 cursor-pointer w-full hover:bg-muted/50 -m-2 p-2 rounded">
+                                        {isExpanded ? (
+                                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                        ) : (
+                                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                        )}
+                                        <Checkbox
+                                          checked={isSubgrupoFullySelected(subgrupoData.id)}
+                                          onCheckedChange={() => toggleSubgrupoProdutos(subgrupoData.id)}
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <span className="font-medium">{subgrupoData.nome}</span>
+                                        <span className="text-sm text-muted-foreground">
+                                          ({subgrupoData.produtos.length} produtos)
+                                        </span>
+                                      </div>
+                                    </CollapsibleTrigger>
+                                  </TableCell>
+                                </TableRow>
 
-                            {/* Produto Column */}
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  id={`produto-${row.id}`}
-                                  checked={formData.produtos.includes(row.id)}
-                                  onCheckedChange={() => toggleProduto(row.id)}
-                                />
-                                <label 
-                                  htmlFor={`produto-${row.id}`} 
-                                  className="text-sm cursor-pointer flex-1"
-                                >
-                                  <span>{row.produtoNome}</span>
-                                  <span className="text-muted-foreground ml-2">
-                                    ({row.produtoCodigo} - {row.produtoUnidade})
-                                  </span>
-                                </label>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
+                                {/* Products Rows (expanded) */}
+                                <CollapsibleContent asChild>
+                                  <>
+                                    {subgrupoData.produtos.map((produto) => (
+                                      <TableRow key={produto.id} className="bg-muted/20">
+                                        <TableCell></TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2 pl-8">
+                                            <Checkbox
+                                              id={`produto-${produto.id}`}
+                                              checked={formData.produtos.includes(produto.id)}
+                                              onCheckedChange={() => toggleProduto(produto.id)}
+                                            />
+                                            <label 
+                                              htmlFor={`produto-${produto.id}`} 
+                                              className="text-sm cursor-pointer flex-1"
+                                            >
+                                              <span>{produto.nome}</span>
+                                              <span className="text-muted-foreground ml-2">
+                                                ({produto.codigo} - {produto.unidade})
+                                              </span>
+                                            </label>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </>
+                                </CollapsibleContent>
+                              </>
+                            </Collapsible>
+                          );
+                        });
                       })}
                     </TableBody>
                   </Table>
