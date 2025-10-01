@@ -11,37 +11,10 @@ export const ColetasTab = () => {
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
   const [coletas, setColetas] = useState<Coleta[]>([]);
 
-  // Mock data - coletas para o pesquisador logado
-  const mockColetas: Coleta[] = [
-    {
-      id: '1',
-      data: '2024-01-20',
-      supermercadoId: '1',
-      pesquisadorId: user?.id || '2',
-      numero: '001',
-      grupo: 'A',
-      ano: '2024',
-      status: 'não iniciada',
-      produtos: ['1', '2', '3']
-    },
-    {
-      id: '2',
-      data: '2024-01-18',
-      supermercadoId: '2',
-      pesquisadorId: user?.id || '2',
-      numero: '002',
-      grupo: 'A',
-      ano: '2024',
-      status: 'iniciada',
-      produtos: ['1', '4', '5'],
-      precos: { '1': 5.99 }
-    }
-  ];
+  // Dados limpos - serão preenchidos quando houver integração real
+  const mockColetas: Coleta[] = [];
 
-  const mockSupermercados: Supermercado[] = [
-    { id: '1', nome: 'Extra Hiper', endereco: 'Av. Paulista, 1000 - São Paulo, SP' },
-    { id: '2', nome: 'Pão de Açúcar', endereco: 'Rua Augusta, 2500 - São Paulo, SP' }
-  ];
+  const mockSupermercados: Supermercado[] = [];
 
   useEffect(() => {
     // Filtrar coletas para o pesquisador logado que não estão finalizadas

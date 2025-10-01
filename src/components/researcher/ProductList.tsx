@@ -8,6 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Search, MessageSquare, CheckCircle, Camera } from 'lucide-react';
 import { Coleta, Produto, Grupo, Subgrupo } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { useGrupos } from '@/hooks/useGrupos';
+import { useSubgrupos } from '@/hooks/useSubgrupos';
+import { useProdutos } from '@/hooks/useProdutos';
 
 interface ProductListProps {
   coleta: Coleta;
@@ -25,43 +28,27 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [tempObservacao, setTempObservacao] = useState('');
 
-  // Mock data
-  const mockProdutos: Produto[] = [
-    { id: '1', codigo: 'PRD001', nome: 'Arroz Branco 5kg', grupoId: '1', subgrupoId: '1', unidadeMedida: 'kg' },
-    { id: '2', codigo: 'PRD002', nome: 'Feijão Carioca 1kg', grupoId: '1', subgrupoId: '1', unidadeMedida: 'kg' },
-    { id: '3', codigo: 'PRD003', nome: 'Açúcar Cristal 1kg', grupoId: '1', subgrupoId: '2', unidadeMedida: 'kg' },
-    { id: '4', codigo: 'PRD004', nome: 'Leite Integral 1L', grupoId: '2', subgrupoId: '3', unidadeMedida: 'L' },
-    { id: '5', codigo: 'PRD005', nome: 'Pão de Forma', grupoId: '2', subgrupoId: '4', unidadeMedida: 'un' },
-  ];
-
-  const mockGrupos: Grupo[] = [
-    { id: '1', codigo: 'GRP001', nome: 'Alimentos Básicos' },
-    { id: '2', codigo: 'GRP002', nome: 'Laticínios e Pães' },
-  ];
-
-  const mockSubgrupos: Subgrupo[] = [
-    { id: '1', codigo: 'SUB001', nome: 'Grãos e Cereais', grupoId: '1' },
-    { id: '2', codigo: 'SUB002', nome: 'Açúcares', grupoId: '1' },
-    { id: '3', codigo: 'SUB003', nome: 'Leites', grupoId: '2' },
-    { id: '4', codigo: 'SUB004', nome: 'Pães', grupoId: '2' },
-  ];
+  // Buscar dados reais do banco
+  const { grupos } = useGrupos();
+  const { subgrupos } = useSubgrupos();
+  const { produtos } = useProdutos();
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
-    const produtos = mockProdutos.filter(p => coleta.produtos.includes(p.id));
+    const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
     
     // Filtrar por busca
-    const produtosFiltrados = produtos.filter(p =>
+    const produtosComBusca = produtosFiltrados.filter(p =>
       p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Ordenar por grupo > subgrupo > produto
-    return produtosFiltrados.sort((a, b) => {
-      const grupoA = mockGrupos.find(g => g.id === a.grupoId);
-      const grupoB = mockGrupos.find(g => g.id === b.grupoId);
-      const subgrupoA = mockSubgrupos.find(s => s.id === a.subgrupoId);
-      const subgrupoB = mockSubgrupos.find(s => s.id === b.subgrupoId);
+    return produtosComBusca.sort((a, b) => {
+      const grupoA = grupos.find(g => g.id === a.grupoId);
+      const grupoB = grupos.find(g => g.id === b.grupoId);
+      const subgrupoA = subgrupos.find(s => s.id === a.subgrupoId);
+      const subgrupoB = subgrupos.find(s => s.id === b.subgrupoId);
       
       // Comparar por grupo
       if (grupoA?.nome !== grupoB?.nome) {
@@ -165,34 +152,34 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
   };
 
   const getProdutoInfo = (produtoId: string) => {
-    const produto = mockProdutos.find(p => p.id === produtoId);
-    const grupo = mockGrupos.find(g => g.id === produto?.grupoId);
-    const subgrupo = mockSubgrupos.find(s => s.id === produto?.subgrupoId);
+    const produto = produtos.find(p => p.id === produtoId);
+    const grupo = grupos.find(g => g.id === produto?.grupoId);
+    const subgrupo = subgrupos.find(s => s.id === produto?.subgrupoId);
     return { produto, grupo, subgrupo };
   };
 
   // Agrupar produtos por grupo/subgrupo para exibição
   const produtosAgrupados = useMemo(() => {
-    const grupos: { [key: string]: { [key: string]: Produto[] } } = {};
+    const gruposMap: { [key: string]: { [key: string]: Produto[] } } = {};
     
     produtosDaColeta.forEach(produto => {
-      const grupo = mockGrupos.find(g => g.id === produto.grupoId);
-      const subgrupo = mockSubgrupos.find(s => s.id === produto.subgrupoId);
+      const grupo = grupos.find(g => g.id === produto.grupoId);
+      const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
       
       const grupoNome = grupo?.nome || 'Sem Grupo';
       const subgrupoNome = subgrupo?.nome || 'Sem Subgrupo';
       
-      if (!grupos[grupoNome]) {
-        grupos[grupoNome] = {};
+      if (!gruposMap[grupoNome]) {
+        gruposMap[grupoNome] = {};
       }
-      if (!grupos[grupoNome][subgrupoNome]) {
-        grupos[grupoNome][subgrupoNome] = [];
+      if (!gruposMap[grupoNome][subgrupoNome]) {
+        gruposMap[grupoNome][subgrupoNome] = [];
       }
-      grupos[grupoNome][subgrupoNome].push(produto);
+      gruposMap[grupoNome][subgrupoNome].push(produto);
     });
     
-    return grupos;
-  }, [produtosDaColeta]);
+    return gruposMap;
+  }, [produtosDaColeta, grupos, subgrupos]);
 
   const totalPreenchidos = Object.keys(precos).filter(id => precos[id] > 0).length;
   const totalProdutos = coleta.produtos.length;

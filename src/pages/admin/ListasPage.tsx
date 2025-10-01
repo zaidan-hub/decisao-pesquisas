@@ -9,41 +9,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Lista, Produto, Grupo, Subgrupo } from '@/types';
 import { Plus, Search, Edit, Trash2, Copy, List, Package, Layers, FolderOpen } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useGrupos } from '@/hooks/useGrupos';
+import { useSubgrupos } from '@/hooks/useSubgrupos';
+import { useProdutos } from '@/hooks/useProdutos';
 
 export const ListasPage = () => {
-  // Mock data
-  const mockProdutos: Produto[] = [
-    { id: '1', codigo: 'PRD001', nome: 'Carne Bovina (Alcatra)', grupoId: '1', subgrupoId: '1', unidadeMedida: 'kg' },
-    { id: '2', codigo: 'PRD002', nome: 'Leite Integral 1L', grupoId: '1', subgrupoId: '2', unidadeMedida: 'unidade' },
-    { id: '3', codigo: 'PRD003', nome: 'Arroz Branco 5kg', grupoId: '1', subgrupoId: '3', unidadeMedida: 'unidade' },
-    { id: '4', codigo: 'PRD004', nome: 'Feijão Preto 1kg', grupoId: '1', subgrupoId: '3', unidadeMedida: 'unidade' },
-    { id: '5', codigo: 'PRD005', nome: 'Detergente Líquido', grupoId: '2', subgrupoId: '4', unidadeMedida: 'unidade' }
-  ];
+  // Buscar dados reais do banco
+  const { grupos } = useGrupos();
+  const { subgrupos } = useSubgrupos();
+  const { produtos } = useProdutos();
 
-  const mockGrupos: Grupo[] = [
-    { id: '1', codigo: 'GRP001', nome: 'Alimentação' },
-    { id: '2', codigo: 'GRP002', nome: 'Limpeza' }
-  ];
-
-  const mockSubgrupos: Subgrupo[] = [
-    { id: '1', codigo: 'SUB001', nome: 'Carnes', grupoId: '1' },
-    { id: '2', codigo: 'SUB002', nome: 'Laticínios', grupoId: '1' },
-    { id: '3', codigo: 'SUB003', nome: 'Grãos', grupoId: '1' },
-    { id: '4', codigo: 'SUB004', nome: 'Detergentes', grupoId: '2' }
-  ];
-
-  const [listas, setListas] = useState<Lista[]>([
-    {
-      id: '1',
-      nome: 'Lista Básica',
-      produtos: ['1', '2', '3']
-    },
-    {
-      id: '2',
-      nome: 'Lista Completa',
-      produtos: ['1', '2', '3', '4', '5']
-    }
-  ]);
+  const [listas, setListas] = useState<Lista[]>([]);
 
   const [showForm, setShowForm] = useState(false);
   const [editingLista, setEditingLista] = useState<Lista | null>(null);
@@ -144,7 +120,7 @@ export const ListasPage = () => {
   };
 
   const toggleAllProdutos = () => {
-    const allIds = mockProdutos.map(p => p.id);
+    const allIds = produtos.map(p => p.id);
     setFormData(prev => ({
       ...prev,
       produtos: prev.produtos.length === allIds.length ? [] : allIds
@@ -152,7 +128,7 @@ export const ListasPage = () => {
   };
 
   const toggleGrupoProdutos = (grupoId: string) => {
-    const grupoProdutos = mockProdutos.filter(p => p.grupoId === grupoId).map(p => p.id);
+    const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
     const allSelected = grupoProdutos.every(id => formData.produtos.includes(id));
     
     if (allSelected) {
@@ -169,7 +145,7 @@ export const ListasPage = () => {
   };
 
   const toggleSubgrupoProdutos = (subgrupoId: string) => {
-    const subgrupoProdutos = mockProdutos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
+    const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
     const allSelected = subgrupoProdutos.every(id => formData.produtos.includes(id));
     
     if (allSelected) {
@@ -189,12 +165,12 @@ export const ListasPage = () => {
     .filter(l => l.nome.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
-  const filteredProdutos = mockProdutos.filter(p => 
+  const filteredProdutos = produtos.filter(p => 
     p.nome.toLowerCase().includes(productSearchTerm.toLowerCase())
   );
 
   const getProdutoNome = (id: string) => {
-    return mockProdutos.find(p => p.id === id)?.nome || 'N/A';
+    return produtos.find(p => p.id === id)?.nome || 'N/A';
   };
 
   return (
@@ -245,7 +221,7 @@ export const ListasPage = () => {
                       size="sm"
                       onClick={toggleAllProdutos}
                     >
-                      {formData.produtos.length === mockProdutos.length ? 'Desmarcar Todos' : 'Marcar Todos'}
+                      {formData.produtos.length === produtos.length ? 'Desmarcar Todos' : 'Marcar Todos'}
                     </Button>
                   </div>
                 </div>
@@ -265,7 +241,7 @@ export const ListasPage = () => {
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm">Seleção Rápida:</h4>
                   <div className="flex flex-wrap gap-2">
-                    {mockGrupos.map(grupo => (
+                    {grupos.map(grupo => (
                       <Button
                         key={grupo.id}
                         type="button"
@@ -277,7 +253,7 @@ export const ListasPage = () => {
                         {grupo.nome}
                       </Button>
                     ))}
-                    {mockSubgrupos.map(subgrupo => (
+                    {subgrupos.map(subgrupo => (
                       <Button
                         key={subgrupo.id}
                         type="button"

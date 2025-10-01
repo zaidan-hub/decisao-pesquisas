@@ -11,65 +11,13 @@ import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
 
 export const PesquisasPage = () => {
-  // Mock data
-  const [coletas, setColetas] = useState<Coleta[]>([
-    {
-      id: '1',
-      data: '2024-01-20',
-      supermercadoId: '1',
-      pesquisadorId: '1',
-      numero: '001',
-      grupo: 'A',
-      ano: '2024',
-      status: 'finalizada',
-      produtos: ['1', '2', '3']
-    },
-    {
-      id: '2',
-      data: '2024-01-18',
-      supermercadoId: '2',
-      pesquisadorId: '2',
-      numero: '002',
-      grupo: 'A',
-      ano: '2024',
-      status: 'iniciada',
-      produtos: ['1', '4', '5']
-    },
-    {
-      id: '3',
-      data: '2024-01-15',
-      supermercadoId: '1',
-      pesquisadorId: '2',
-      numero: '003',
-      grupo: 'A',
-      ano: '2024',
-      status: 'finalizada',
-      produtos: ['1', '2', '3'],
-      observacoesFinais: [
-        {
-          id: '1',
-          texto: 'Produto 1 estava em promoção',
-          dataHora: '2024-01-15T10:30:00-03:00'
-        }
-      ],
-      adminVisualizouObservacoes: false
-    }
-  ]);
-
-  const mockSupermercados: Supermercado[] = [
-    { id: '1', nome: 'Extra Hiper', endereco: 'Av. Paulista, 1000 - São Paulo, SP' },
-    { id: '2', nome: 'Pão de Açúcar', endereco: 'Rua Augusta, 2500 - São Paulo, SP' },
-    { id: '3', nome: 'Carrefour', endereco: 'Rua da Consolação, 3000 - São Paulo, SP' }
-  ];
-
-  const mockPesquisadores: Pesquisador[] = [
-    { id: '1', codigo: 'PES001', nome: 'Maria Silva', email: 'maria@sistema.com', telefone: '(11) 99999-1111', ativo: true, login: 'maria.silva', senha: '123456' },
-    { id: '2', codigo: 'PES002', nome: 'João Santos', email: 'joao@sistema.com', telefone: '(11) 99999-2222', ativo: true, login: 'joao.santos', senha: '123456' },
-    { id: '3', codigo: 'PES003', nome: 'Ana Costa', email: 'ana@sistema.com', telefone: '(11) 99999-3333', ativo: false, login: 'ana.costa', senha: '123456' }
-  ];
+  // Dados limpos
+  const mockSupermercados: Supermercado[] = [];
+  const mockPesquisadores: Pesquisador[] = [];
 
   const [showForm, setShowForm] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
+  const [coletas, setColetas] = useState<Coleta[]>([]);
   const [formData, setFormData] = useState({
     data: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
     supermercadoId: '',
