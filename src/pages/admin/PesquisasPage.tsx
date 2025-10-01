@@ -33,32 +33,29 @@ export const PesquisasPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    alert('🔵 SUBMIT INICIADO');
-    alert('📋 FORM DATA: ' + JSON.stringify(formData));
+    console.log('🔵 SUBMIT INICIADO');
+    console.log('📋 FORM DATA:', formData);
     
-    if (!formData.supermercadoId || !formData.pesquisadorId) {
-      alert('❌ VALIDAÇÃO FALHOU - campos obrigatórios vazios');
+    if (!formData.supermercadoId || !formData.pesquisadorId || !formData.listaId) {
+      console.log('❌ VALIDAÇÃO FALHOU - campos obrigatórios vazios');
       toast({
         title: "Campos obrigatórios",
-        description: "Supermercado e pesquisador são obrigatórios.",
+        description: "Supermercado, pesquisador e lista são obrigatórios.",
         variant: "destructive"
       });
       return;
     }
 
-    alert('✅ VALIDAÇÃO OK - preparando coleta');
+    console.log('✅ VALIDAÇÃO OK - preparando coleta');
 
     // Buscar produtos da lista selecionada
-    let produtosColeta: string[] = [];
-    if (formData.listaId) {
-      const lista = listas.find(l => l.id === formData.listaId);
-      produtosColeta = lista?.produtos || [];
-      alert('📦 PRODUTOS DA LISTA: ' + produtosColeta.length);
-    }
+    const lista = listas.find(l => l.id === formData.listaId);
+    const produtosColeta = lista?.produtos || [];
+    console.log('📦 PRODUTOS DA LISTA:', produtosColeta.length);
 
     // Gerar número automaticamente baseado no total de coletas + 1
     const proximoNumero = String(coletas.length + 1).padStart(3, '0');
-    alert('🔢 NÚMERO GERADO: ' + proximoNumero);
+    console.log('🔢 NÚMERO GERADO:', proximoNumero);
 
     const novaColeta: Omit<Coleta, 'id'> = {
       data: formData.data,
@@ -74,22 +71,22 @@ export const PesquisasPage = () => {
       fotos: {}
     };
 
-    alert('📝 NOVA COLETA: ' + JSON.stringify(novaColeta));
-    alert('🚀 CHAMANDO createColeta...');
+    console.log('📝 NOVA COLETA:', novaColeta);
+    console.log('🚀 CHAMANDO createColeta...');
 
     const { error } = await createColeta(novaColeta);
     
-    alert('📡 RESPOSTA: ' + JSON.stringify({ error }));
+    console.log('📡 RESPOSTA:', { error });
     
     if (error) {
-      alert('❌ ERRO AO CRIAR: ' + error);
+      console.log('❌ ERRO AO CRIAR:', error);
       toast({
         title: "Erro",
         description: error,
         variant: "destructive"
       });
     } else {
-      alert('✅ COLETA CRIADA COM SUCESSO');
+      console.log('✅ COLETA CRIADA COM SUCESSO');
       toast({
         title: "Sucesso",
         description: "Coleta cadastrada com sucesso!"
@@ -260,21 +257,25 @@ export const PesquisasPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lista">Lista de Produtos (opcional)</Label>
+                <Label htmlFor="lista">Lista de Produtos *</Label>
                 <Select 
                   value={formData.listaId} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, listaId: value }))}
+                  required
                 >
                   <SelectTrigger id="lista">
                     <SelectValue placeholder="Selecione uma lista" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma lista</SelectItem>
-                    {listas.map((lista) => (
-                      <SelectItem key={lista.id} value={lista.id}>
-                        {lista.nome} ({lista.produtos.length} produtos)
-                      </SelectItem>
-                    ))}
+                    {listas.length === 0 ? (
+                      <SelectItem value="empty" disabled>Nenhuma lista cadastrada</SelectItem>
+                    ) : (
+                      listas.map((lista) => (
+                        <SelectItem key={lista.id} value={lista.id}>
+                          {lista.nome} ({lista.produtos.length} produtos)
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <input type="hidden" name="listaId" value={formData.listaId} autoComplete="off" />
