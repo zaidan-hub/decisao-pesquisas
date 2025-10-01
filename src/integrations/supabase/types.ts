@@ -191,6 +191,68 @@ export type Database = {
         }
         Relationships: []
       }
+      relatorios: {
+        Row: {
+          coletas: string[]
+          created_at: string
+          data: string
+          id: string
+          nome: string
+          nome_cliente: string
+          produtos: string[]
+          relatorio_padrao_id: string | null
+        }
+        Insert: {
+          coletas?: string[]
+          created_at?: string
+          data: string
+          id?: string
+          nome: string
+          nome_cliente: string
+          produtos?: string[]
+          relatorio_padrao_id?: string | null
+        }
+        Update: {
+          coletas?: string[]
+          created_at?: string
+          data?: string
+          id?: string
+          nome?: string
+          nome_cliente?: string
+          produtos?: string[]
+          relatorio_padrao_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relatorios_relatorio_padrao_id_fkey"
+            columns: ["relatorio_padrao_id"]
+            isOneToOne: false
+            referencedRelation: "relatorios_padrao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relatorios_padrao: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          produtos: string[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          produtos?: string[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          produtos?: string[]
+        }
+        Relationships: []
+      }
       subgrupos: {
         Row: {
           codigo: string
