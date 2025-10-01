@@ -51,6 +51,8 @@ export const useColetas = () => {
 
   const createColeta = async (coletaData: Omit<Coleta, 'id'>) => {
     try {
+      console.log('🔵 CRIANDO COLETA:', coletaData);
+      
       const { data, error } = await supabase
         .from('coletas' as any)
         .insert({
@@ -71,10 +73,13 @@ export const useColetas = () => {
         .select()
         .single() as any;
 
+      console.log('🟢 RESPOSTA INSERT:', { data, error });
+
       if (error) throw error;
       await fetchColetas();
       return { data, error: null };
     } catch (error: any) {
+      console.error('🔴 ERRO AO CRIAR:', error);
       return { data: null, error: error.message };
     }
   };
