@@ -6,7 +6,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminDashboard } from "@/components/AdminDashboard";
 import { ResearcherDashboard } from "@/components/ResearcherDashboard";
 import Auth from "./pages/Auth";
-import AdminSetup from "./pages/AdminSetup";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -45,7 +44,6 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route path="/setup" element={<AdminSetup />} />
           <Route path="/" element={<AppContent />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
