@@ -11,6 +11,8 @@ import { Pesquisador } from '@/types';
 import { Plus, Search, Edit, Trash2, User, Phone, Mail, UserCheck, UserX, Key, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { usePesquisadores } from '@/hooks/usePesquisadores';
+import { supabase } from '@/integrations/supabase/client';
 
 // Schema de validação com zod
 const pesquisadorSchema = z.object({
@@ -24,38 +26,7 @@ const pesquisadorSchema = z.object({
 });
 
 export const PesquisadoresPage = () => {
-  const [pesquisadores, setPesquisadores] = useState<Pesquisador[]>([
-    {
-      id: '1',
-      codigo: 'PES001',
-      nome: 'Maria Silva',
-      email: 'maria.silva@sistema.com',
-      telefone: '(11) 99999-1111',
-      ativo: true,
-      login: 'maria.silva',
-      senha: '123456'
-    },
-    {
-      id: '2',
-      codigo: 'PES002',
-      nome: 'João Santos',
-      email: 'joao.santos@sistema.com',
-      telefone: '(11) 99999-2222',
-      ativo: true,
-      login: 'joao.santos',
-      senha: '123456'
-    },
-    {
-      id: '3',
-      codigo: 'PES003',
-      nome: 'Ana Costa',
-      email: 'ana.costa@sistema.com',
-      telefone: '(11) 99999-3333',
-      ativo: false,
-      login: 'ana.costa',
-      senha: '123456'
-    }
-  ]);
+  const { pesquisadores, loading, refetch } = usePesquisadores();
 
   const [showForm, setShowForm] = useState(false);
   const [editingPesquisador, setEditingPesquisador] = useState<Pesquisador | null>(null);
@@ -91,7 +62,7 @@ export const PesquisadoresPage = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -139,34 +110,53 @@ export const PesquisadoresPage = () => {
       return;
     }
 
-    const pesquisador: Pesquisador = {
-      id: editingPesquisador?.id || Date.now().toString(),
-      codigo: formData.codigo || generateCode(),
-      nome: formData.nome,
-      email: formData.email,
-      telefone: formData.telefone,
-      login: formData.login,
-      senha: formData.senha,
-      ativo: formData.ativo
-    };
+    try {
+      const pesquisadorData = {
+        codigo: formData.codigo || generateCode(),
+        nome: formData.nome,
+        email: formData.email,
+        telefone: formData.telefone,
+        login: formData.login,
+        senha: formData.senha,
+        ativo: formData.ativo
+      };
 
-    if (editingPesquisador) {
-      setPesquisadores(prev => prev.map(p => p.id === editingPesquisador.id ? pesquisador : p));
+      if (editingPesquisador) {
+        const { error } = await supabase
+          .from('pesquisadores' as any)
+          .update(pesquisadorData)
+          .eq('id', editingPesquisador.id) as any;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Pesquisador atualizado com sucesso!"
+        });
+      } else {
+        const { error } = await supabase
+          .from('pesquisadores' as any)
+          .insert([pesquisadorData]) as any;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Pesquisador cadastrado com sucesso!"
+        });
+      }
+
+      await refetch();
+      setShowForm(false);
+      setEditingPesquisador(null);
+      resetForm();
+    } catch (error: any) {
       toast({
-        title: "Sucesso",
-        description: "Pesquisador atualizado com sucesso!"
-      });
-    } else {
-      setPesquisadores(prev => [...prev, pesquisador]);
-      toast({
-        title: "Sucesso",
-        description: "Pesquisador cadastrado com sucesso!"
+        title: "Erro",
+        description: error.message || "Erro ao salvar pesquisador",
+        variant: "destructive"
       });
     }
-
-    setShowForm(false);
-    setEditingPesquisador(null);
-    resetForm();
   };
 
   const handleEdit = (pesquisador: Pesquisador) => {
@@ -183,23 +173,51 @@ export const PesquisadoresPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (pesquisador: Pesquisador) => {
-    setPesquisadores(prev => prev.filter(p => p.id !== pesquisador.id));
-    setDeletePesquisador(null);
-    toast({
-      title: "Pesquisador excluído",
-      description: "O pesquisador foi removido do sistema."
-    });
+  const handleDelete = async (pesquisador: Pesquisador) => {
+    try {
+      const { error } = await supabase
+        .from('pesquisadores' as any)
+        .delete()
+        .eq('id', pesquisador.id) as any;
+
+      if (error) throw error;
+
+      await refetch();
+      setDeletePesquisador(null);
+      toast({
+        title: "Pesquisador excluído",
+        description: "O pesquisador foi removido do sistema."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir pesquisador",
+        variant: "destructive"
+      });
+    }
   };
 
-  const toggleStatus = (pesquisador: Pesquisador) => {
-    setPesquisadores(prev => prev.map(p => 
-      p.id === pesquisador.id ? { ...p, ativo: !p.ativo } : p
-    ));
-    toast({
-      title: "Status alterado",
-      description: `Pesquisador ${pesquisador.ativo ? 'desativado' : 'ativado'} com sucesso.`
-    });
+  const toggleStatus = async (pesquisador: Pesquisador) => {
+    try {
+      const { error } = await supabase
+        .from('pesquisadores' as any)
+        .update({ ativo: !pesquisador.ativo })
+        .eq('id', pesquisador.id) as any;
+
+      if (error) throw error;
+
+      await refetch();
+      toast({
+        title: "Status alterado",
+        description: `Pesquisador ${pesquisador.ativo ? 'desativado' : 'ativado'} com sucesso.`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao alterar status",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredPesquisadores = pesquisadores

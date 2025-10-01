@@ -12,14 +12,15 @@ import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
+import { useListas } from '@/hooks/useListas';
+import { supabase } from '@/integrations/supabase/client';
 
 export const ListasPage = () => {
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
   const { produtos } = useProdutos();
-
-  const [listas, setListas] = useState<Lista[]>([]);
+  const { listas, loading, refetch } = useListas();
 
   const [showForm, setShowForm] = useState(false);
   const [editingLista, setEditingLista] = useState<Lista | null>(null);
@@ -40,7 +41,7 @@ export const ListasPage = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nome) {
@@ -52,29 +53,48 @@ export const ListasPage = () => {
       return;
     }
 
-    const lista: Lista = {
-      id: editingLista?.id || Date.now().toString(),
-      nome: formData.nome,
-      produtos: formData.produtos
-    };
+    try {
+      const listaData = {
+        nome: formData.nome,
+        produtos: formData.produtos
+      };
 
-    if (editingLista) {
-      setListas(prev => prev.map(l => l.id === editingLista.id ? lista : l));
+      if (editingLista) {
+        const { error } = await supabase
+          .from('listas' as any)
+          .update(listaData)
+          .eq('id', editingLista.id) as any;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Lista atualizada com sucesso!"
+        });
+      } else {
+        const { error } = await supabase
+          .from('listas' as any)
+          .insert([listaData]) as any;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Lista cadastrada com sucesso!"
+        });
+      }
+
+      await refetch();
+      setShowForm(false);
+      setEditingLista(null);
+      resetForm();
+    } catch (error: any) {
       toast({
-        title: "Sucesso",
-        description: "Lista atualizada com sucesso!"
-      });
-    } else {
-      setListas(prev => [...prev, lista]);
-      toast({
-        title: "Sucesso",
-        description: "Lista cadastrada com sucesso!"
+        title: "Erro",
+        description: error.message || "Erro ao salvar lista",
+        variant: "destructive"
       });
     }
-
-    setShowForm(false);
-    setEditingLista(null);
-    resetForm();
   };
 
   const handleEdit = (lista: Lista) => {
@@ -86,27 +106,56 @@ export const ListasPage = () => {
     setShowForm(true);
   };
 
-  const handleDuplicate = (lista: Lista) => {
-    const novaLista: Lista = {
-      id: Date.now().toString(),
-      nome: `${lista.nome} (Cópia)`,
-      produtos: [...lista.produtos]
-    };
-    setListas(prev => [...prev, novaLista]);
-    toast({
-      title: "Lista duplicada",
-      description: "Uma cópia da lista foi criada."
-    });
+  const handleDuplicate = async (lista: Lista) => {
+    try {
+      const novaLista = {
+        nome: `${lista.nome} (Cópia)`,
+        produtos: lista.produtos
+      };
+      
+      const { error } = await supabase
+        .from('listas' as any)
+        .insert([novaLista]) as any;
+
+      if (error) throw error;
+
+      await refetch();
+      toast({
+        title: "Lista duplicada",
+        description: "Uma cópia da lista foi criada."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao duplicar lista",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteLista) {
-      setListas(prev => prev.filter(l => l.id !== deleteLista.id));
-      setDeleteLista(null);
-      toast({
-        title: "Lista excluída",
-        description: "A lista foi removida do sistema."
-      });
+      try {
+        const { error } = await supabase
+          .from('listas' as any)
+          .delete()
+          .eq('id', deleteLista.id) as any;
+
+        if (error) throw error;
+
+        await refetch();
+        setDeleteLista(null);
+        toast({
+          title: "Lista excluída",
+          description: "A lista foi removida do sistema."
+        });
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error.message || "Erro ao excluir lista",
+          variant: "destructive"
+        });
+      }
     }
   };
 

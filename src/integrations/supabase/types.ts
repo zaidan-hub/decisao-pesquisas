@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      clientes: {
+        Row: {
+          contatos: Json | null
+          created_at: string
+          data_inicio_contrato: string | null
+          id: string
+          nome: string
+          situacao: string
+        }
+        Insert: {
+          contatos?: Json | null
+          created_at?: string
+          data_inicio_contrato?: string | null
+          id?: string
+          nome: string
+          situacao: string
+        }
+        Update: {
+          contatos?: Json | null
+          created_at?: string
+          data_inicio_contrato?: string | null
+          id?: string
+          nome?: string
+          situacao?: string
+        }
+        Relationships: []
+      }
       grupos: {
         Row: {
           codigo: string
@@ -32,6 +59,63 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+        }
+        Relationships: []
+      }
+      listas: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          produtos: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          produtos?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          produtos?: string[] | null
+        }
+        Relationships: []
+      }
+      pesquisadores: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string
+          id: string
+          login: string
+          nome: string
+          senha: string
+          telefone: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          email: string
+          id?: string
+          login: string
+          nome: string
+          senha: string
+          telefone?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          email?: string
+          id?: string
+          login?: string
+          nome?: string
+          senha?: string
+          telefone?: string | null
         }
         Relationships: []
       }

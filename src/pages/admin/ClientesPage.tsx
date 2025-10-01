@@ -9,25 +9,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Cliente, Contato } from '@/types';
 import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useClientes } from '@/hooks/useClientes';
+import { supabase } from '@/integrations/supabase/client';
 
 export const ClientesPage = () => {
-  const [clientes, setClientes] = useState<Cliente[]>([
-    {
-      id: '1',
-      nome: 'Empresa ABC Ltda',
-      situacao: 'Ativo',
-      dataInicioContrato: '2024-01-15',
-      contatos: [
-        { id: '1', nome: 'João Silva', telefone: '(11) 99999-9999', email: 'joao@empresaabc.com' }
-      ]
-    },
-    {
-      id: '2',
-      nome: 'XYZ Comércio',
-      situacao: 'Inativo',
-      contatos: []
-    }
-  ]);
+  const { clientes, loading, refetch } = useClientes();
 
   const [showForm, setShowForm] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
@@ -51,7 +37,7 @@ export const ClientesPage = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nome || !formData.situacao) {
@@ -63,31 +49,50 @@ export const ClientesPage = () => {
       return;
     }
 
-    const cliente: Cliente = {
-      id: editingCliente?.id || Date.now().toString(),
-      nome: formData.nome,
-      situacao: formData.situacao,
-      contatos: formData.contatos,
-      dataInicioContrato: formData.dataInicioContrato || undefined
-    };
+    try {
+      const clienteData = {
+        nome: formData.nome,
+        situacao: formData.situacao,
+        data_inicio_contrato: formData.dataInicioContrato || null,
+        contatos: formData.contatos
+      };
 
-    if (editingCliente) {
-      setClientes(prev => prev.map(c => c.id === editingCliente.id ? cliente : c));
+      if (editingCliente) {
+        const { error } = await supabase
+          .from('clientes' as any)
+          .update(clienteData)
+          .eq('id', editingCliente.id) as any;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Cliente atualizado com sucesso!"
+        });
+      } else {
+        const { error } = await supabase
+          .from('clientes' as any)
+          .insert([clienteData]) as any;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso",
+          description: "Cliente cadastrado com sucesso!"
+        });
+      }
+
+      await refetch();
+      setShowForm(false);
+      setEditingCliente(null);
+      resetForm();
+    } catch (error: any) {
       toast({
-        title: "Sucesso",
-        description: "Cliente atualizado com sucesso!"
-      });
-    } else {
-      setClientes(prev => [...prev, cliente]);
-      toast({
-        title: "Sucesso",
-        description: "Cliente cadastrado com sucesso!"
+        title: "Erro",
+        description: error.message || "Erro ao salvar cliente",
+        variant: "destructive"
       });
     }
-
-    setShowForm(false);
-    setEditingCliente(null);
-    resetForm();
   };
 
   const handleEdit = (cliente: Cliente) => {
@@ -101,14 +106,29 @@ export const ClientesPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteCliente) {
-      setClientes(prev => prev.filter(c => c.id !== deleteCliente.id));
-      setDeleteCliente(null);
-      toast({
-        title: "Cliente excluído",
-        description: "O cliente foi removido do sistema."
-      });
+      try {
+        const { error } = await supabase
+          .from('clientes' as any)
+          .delete()
+          .eq('id', deleteCliente.id) as any;
+
+        if (error) throw error;
+
+        await refetch();
+        setDeleteCliente(null);
+        toast({
+          title: "Cliente excluído",
+          description: "O cliente foi removido do sistema."
+        });
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error.message || "Erro ao excluir cliente",
+          variant: "destructive"
+        });
+      }
     }
   };
 
