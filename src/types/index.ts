@@ -46,6 +46,7 @@ export interface Produto {
   grupoId: string;
   subgrupoId: string;
   unidadeMedida: string;
+  quantidade?: string;
 }
 
 export interface Pesquisador {

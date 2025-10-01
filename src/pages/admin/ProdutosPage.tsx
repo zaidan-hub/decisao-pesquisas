@@ -121,7 +121,8 @@ export const ProdutosPage = () => {
         .update({ 
           nome: editingProduto.nome, 
           codigo: editingProduto.codigo,
-          unidade_medida: editingProduto.unidadeMedida
+          unidade_medida: editingProduto.unidadeMedida,
+          quantidade: editingProduto.quantidade
         })
         .eq('id', editingProduto.id);
 
@@ -306,7 +307,7 @@ export const ProdutosPage = () => {
                     <div className="flex-1">
                       <div className="font-medium">{produto.nome}</div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {produto.codigo} • {produto.unidadeMedida}
+                        {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
                       </div>
                     </div>
                   </div>
@@ -412,13 +413,25 @@ export const ProdutosPage = () => {
                 onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, nome: e.target.value} : null)}
               />
             </div>
-            <div>
-              <Label htmlFor="produto-unidade">Unidade de Medida</Label>
-              <Input
-                id="produto-unidade"
-                value={editingProduto?.unidadeMedida || ''}
-                onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, unidadeMedida: e.target.value} : null)}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="produto-quantidade">Quantidade</Label>
+                <Input
+                  id="produto-quantidade"
+                  value={editingProduto?.quantidade || ''}
+                  onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, quantidade: e.target.value} : null)}
+                  placeholder="Ex: 330"
+                />
+              </div>
+              <div>
+                <Label htmlFor="produto-unidade">Unidade de Medida</Label>
+                <Input
+                  id="produto-unidade"
+                  value={editingProduto?.unidadeMedida || ''}
+                  onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, unidadeMedida: e.target.value} : null)}
+                  placeholder="Ex: ML"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditingProduto(null)}>Cancelar</Button>

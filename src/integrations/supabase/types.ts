@@ -42,6 +42,7 @@ export type Database = {
           grupo_id: string
           id: string
           nome: string
+          quantidade: string | null
           subgrupo_id: string
           unidade_medida: string
         }
@@ -51,6 +52,7 @@ export type Database = {
           grupo_id: string
           id?: string
           nome: string
+          quantidade?: string | null
           subgrupo_id: string
           unidade_medida: string
         }
@@ -60,6 +62,7 @@ export type Database = {
           grupo_id?: string
           id?: string
           nome?: string
+          quantidade?: string | null
           subgrupo_id?: string
           unidade_medida?: string
         }
