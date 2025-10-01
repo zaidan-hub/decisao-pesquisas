@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Lock, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +48,35 @@ export default function Auth() {
     }
     
     setLoading(false);
+  };
+
+  // Função para criar usuário admin
+  const createAdminUser = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('create-admin');
+      
+      if (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao criar usuário admin: " + error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Usuário admin criado! Agora você pode fazer login.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao criar admin.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -103,6 +133,16 @@ export default function Auth() {
               disabled={loading}
             >
               {loading ? 'Entrando...' : 'Entrar'}
+            </Button>
+            
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full mt-2" 
+              onClick={createAdminUser}
+              disabled={loading}
+            >
+              Criar Usuário Admin
             </Button>
           </form>
         </CardContent>
