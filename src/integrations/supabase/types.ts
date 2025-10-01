@@ -14,7 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      grupos: {
+        Row: {
+          codigo: string
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      produtos: {
+        Row: {
+          codigo: string
+          created_at: string
+          grupo_id: string
+          id: string
+          nome: string
+          subgrupo_id: string
+          unidade_medida: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          grupo_id: string
+          id?: string
+          nome: string
+          subgrupo_id: string
+          unidade_medida: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          grupo_id?: string
+          id?: string
+          nome?: string
+          subgrupo_id?: string
+          unidade_medida?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_subgrupo_id_fkey"
+            columns: ["subgrupo_id"]
+            isOneToOne: false
+            referencedRelation: "subgrupos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subgrupos: {
+        Row: {
+          codigo: string
+          created_at: string
+          grupo_id: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          grupo_id: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          grupo_id?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subgrupos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
