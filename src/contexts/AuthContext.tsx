@@ -73,8 +73,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signup = async (email: string, password: string, name: string, role: string) => {
+  const signup = async (username: string, password: string, name: string, role: string) => {
     try {
+      // Convert username to email format for Supabase Auth
+      const email = `${username}@sistema.local`;
       const redirectUrl = `${window.location.origin}/`;
       
       const { data, error } = await supabase.auth.signUp({
@@ -84,7 +86,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           emailRedirectTo: redirectUrl,
           data: {
             name,
-            role
+            role,
+            email // Store the fake email
           }
         }
       });
@@ -98,17 +101,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
+      // Convert username to email format for Supabase Auth
+      const email = `${username}@sistema.local`;
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error) return { error: error.message };
+      if (error) return { error: 'Usuário ou senha inválidos' };
       return { error: null };
     } catch (error: any) {
-      return { error: error.message || 'Erro ao fazer login' };
+      return { error: 'Erro ao fazer login' };
     }
   };
 
