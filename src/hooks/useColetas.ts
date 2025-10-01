@@ -14,12 +14,22 @@ export const useColetas = () => {
 
   const fetchColetas = async () => {
     try {
-      const { data, error } = await supabase
-        .from('coletas' as any)
-        .select('*')
-        .order('created_at', { ascending: false }) as any;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token || '';
 
-      if (error) throw error;
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-list-coletas`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Erro ao listar coletas (${res.status})`);
+      }
+
+      const { data } = await res.json();
 
       // Converter dados do banco para o formato da aplicação
       const coletasFormatadas = (data || []).map((coleta: any) => ({
@@ -39,8 +49,7 @@ export const useColetas = () => {
         fotos: coleta.fotos || {}
       }));
 
-      console.log('🔍 DADOS DO BANCO:', data);
-      console.log('🔍 COLETAS FORMATADAS:', coletasFormatadas);
+      console.log('🔍 COLETAS (edge):', coletasFormatadas);
       setColetas(coletasFormatadas);
     } catch (error) {
       console.error('Erro ao buscar coletas:', error);
@@ -48,42 +57,50 @@ export const useColetas = () => {
       setLoading(false);
     }
   };
-
   const createColeta = async (coletaData: Omit<Coleta, 'id'>) => {
     try {
       console.log('🔵 CRIANDO COLETA:', coletaData);
-      
-      const { data, error } = await supabase
-        .from('coletas' as any)
-        .insert({
-          data: coletaData.data,
-          supermercado_id: coletaData.supermercadoId,
-          pesquisador_id: coletaData.pesquisadorId,
-          numero: coletaData.numero,
-          ano: coletaData.ano,
-          status: coletaData.status,
-          produtos: coletaData.produtos,
-          precos: coletaData.precos || {},
-          precos_editados_admin: coletaData.precosEditadosAdmin || {},
-          observacoes_produtos: coletaData.observacoesProdutos || {},
-          observacoes_finais: coletaData.observacoesFinais || [],
-          admin_visualizou_observacoes: false,
-          fotos: coletaData.fotos || {}
-        })
-        .select()
-        .single() as any;
 
-      console.log('🟢 RESPOSTA INSERT:', { data, error });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token || '';
 
-      if (error) throw error;
+      const payload = {
+        data: coletaData.data,
+        supermercado_id: coletaData.supermercadoId,
+        pesquisador_id: coletaData.pesquisadorId,
+        numero: coletaData.numero,
+        ano: coletaData.ano,
+        status: coletaData.status,
+        produtos: coletaData.produtos,
+        precos: coletaData.precos || {},
+        precos_editados_admin: coletaData.precosEditadosAdmin || {},
+        observacoes_produtos: coletaData.observacoesProdutos || {},
+        observacoes_finais: coletaData.observacoesFinais || [],
+        admin_visualizou_observacoes: false,
+        fotos: coletaData.fotos || {},
+      };
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-coleta`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      console.log('🟢 RESPOSTA INSERT (edge):', json);
+
+      if (!res.ok) throw new Error(json.error || 'Erro ao criar coleta');
+
       await fetchColetas();
-      return { data, error: null };
+      return { data: json.data, error: null };
     } catch (error: any) {
       console.error('🔴 ERRO AO CRIAR:', error);
       return { data: null, error: error.message };
     }
   };
-
   const updateColeta = async (id: string, updates: Partial<Coleta>) => {
     try {
       const updateData: any = {};
