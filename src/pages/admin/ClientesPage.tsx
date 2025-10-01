@@ -206,7 +206,7 @@ export const ClientesPage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="situacao">Situação *</Label>
                   <Select value={formData.situacao} onValueChange={(value: 'Ativo' | 'Inativo') => setFormData(prev => ({ ...prev, situacao: value }))}>
-                    <SelectTrigger>
+                    <SelectTrigger id="situacao">
                       <SelectValue placeholder="Selecione a situação" />
                     </SelectTrigger>
                     <SelectContent>

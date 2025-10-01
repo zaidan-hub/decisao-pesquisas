@@ -189,7 +189,7 @@ export const PesquisasPage = () => {
                   onValueChange={(value) => setFormData(prev => ({ ...prev, supermercadoId: value }))}
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="supermercado">
                     <SelectValue placeholder="Selecione o supermercado" />
                   </SelectTrigger>
                   <SelectContent>
@@ -218,7 +218,7 @@ export const PesquisasPage = () => {
                   onValueChange={(value) => setFormData(prev => ({ ...prev, pesquisadorId: value }))}
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="pesquisador">
                     <SelectValue placeholder="Selecione o pesquisador" />
                   </SelectTrigger>
                   <SelectContent>
@@ -246,7 +246,7 @@ export const PesquisasPage = () => {
                   value={formData.listaId} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, listaId: value }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="lista">
                     <SelectValue placeholder="Selecione uma lista" />
                   </SelectTrigger>
                   <SelectContent>

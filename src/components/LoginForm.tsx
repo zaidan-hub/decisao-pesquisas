@@ -85,7 +85,7 @@ export const LoginForm = () => {
               <div className="space-y-2">
                 <Label htmlFor="role">Tipo de Usuário *</Label>
                 <Select value={role} onValueChange={setRole} required>
-                  <SelectTrigger>
+                  <SelectTrigger id="role">
                     <SelectValue placeholder="Selecione o tipo de usuário" />
                   </SelectTrigger>
                   <SelectContent>
