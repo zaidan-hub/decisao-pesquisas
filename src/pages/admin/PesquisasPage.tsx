@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Coleta, Supermercado, Pesquisador } from '@/types';
-import { Plus, Search, Calendar, Store, User, FileText, Package, Bell } from 'lucide-react';
+import { Plus, Search, Calendar, Store, User, FileText, Package, Bell, Edit2, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
 import { useSupermercados } from '@/hooks/useSupermercados';
@@ -17,17 +18,27 @@ import { useListas } from '@/hooks/useListas';
 export const PesquisasPage = () => {
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
-  const { coletas, createColeta, updateColeta } = useColetas();
+  const { coletas, createColeta, updateColeta, deleteColeta } = useColetas();
   const { listas } = useListas();
 
   const [showForm, setShowForm] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
+  const [coletaToEdit, setColetaToEdit] = useState<Coleta | null>(null);
+  const [coletaToDelete, setColetaToDelete] = useState<Coleta | null>(null);
   const [formData, setFormData] = useState({
     data: new Date().toISOString().split('T')[0],
     supermercadoId: '',
     pesquisadorId: '',
     listaId: '',
     ano: new Date().getFullYear().toString()
+  });
+  const [editFormData, setEditFormData] = useState({
+    data: '',
+    supermercadoId: '',
+    pesquisadorId: '',
+    ano: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,6 +126,76 @@ export const PesquisasPage = () => {
 
   const handleViewColeta = (coleta: Coleta) => {
     setSelectedColeta(coleta);
+  };
+
+  const handleEditColeta = (coleta: Coleta) => {
+    if (coleta.status !== 'não iniciada') {
+      toast({
+        title: "Ação não permitida",
+        description: "Apenas coletas não iniciadas podem ser editadas.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setColetaToEdit(coleta);
+    setEditFormData({
+      data: coleta.data.split('T')[0],
+      supermercadoId: coleta.supermercadoId,
+      pesquisadorId: coleta.pesquisadorId,
+      ano: coleta.ano || ''
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!coletaToEdit) return;
+    
+    // Converter data para timezone de Brasília
+    const dataLocal = new Date(editFormData.data + 'T12:00:00-03:00');
+    
+    await updateColeta(coletaToEdit.id, {
+      data: dataLocal.toISOString(),
+      supermercadoId: editFormData.supermercadoId,
+      pesquisadorId: editFormData.pesquisadorId,
+      ano: editFormData.ano
+    });
+    
+    toast({
+      title: "Sucesso",
+      description: "Coleta atualizada com sucesso!"
+    });
+    
+    setShowEditDialog(false);
+    setColetaToEdit(null);
+  };
+
+  const handleDeleteColeta = (coleta: Coleta) => {
+    if (coleta.status !== 'não iniciada') {
+      toast({
+        title: "Ação não permitida",
+        description: "Apenas coletas não iniciadas podem ser deletadas.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setColetaToDelete(coleta);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!coletaToDelete) return;
+    
+    await deleteColeta(coletaToDelete.id);
+    
+    toast({
+      title: "Sucesso",
+      description: "Coleta deletada com sucesso!"
+    });
+    
+    setShowDeleteDialog(false);
+    setColetaToDelete(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -386,6 +467,26 @@ export const PesquisasPage = () => {
                       <Search className="w-4 h-4 mr-1" />
                       Visualizar
                     </Button>
+                    
+                    {coleta.status === 'não iniciada' && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditColeta(coleta)}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteColeta(coleta)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                    
                     {/* Notification Bell for Post-completion Observations */}
                     {coleta.observacoesFinais && 
                      coleta.observacoesFinais.length > 0 && 
@@ -414,6 +515,110 @@ export const PesquisasPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de Edição */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Coleta</DialogTitle>
+            <DialogDescription>
+              Altere as informações da coleta não iniciada
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-data">Data *</Label>
+              <Input
+                id="edit-data"
+                type="date"
+                value={editFormData.data}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, data: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Supermercado Pesquisado *</Label>
+              <Select 
+                value={editFormData.supermercadoId} 
+                onValueChange={(value) => setEditFormData(prev => ({ ...prev, supermercadoId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o supermercado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {supermercados.map((supermercado) => (
+                    <SelectItem key={supermercado.id} value={supermercado.id}>
+                      {supermercado.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Pesquisador *</Label>
+              <Select 
+                value={editFormData.pesquisadorId} 
+                onValueChange={(value) => setEditFormData(prev => ({ ...prev, pesquisadorId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o pesquisador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pesquisadores.filter(p => p.ativo).map((pesquisador) => (
+                    <SelectItem key={pesquisador.id} value={pesquisador.id}>
+                      {pesquisador.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-ano">Ano</Label>
+              <Input
+                id="edit-ano"
+                value={editFormData.ano}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, ano: e.target.value }))}
+                placeholder="2024"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowEditDialog(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveEdit}>
+                Salvar Alterações
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar esta coleta? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Deletar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
