@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ArrowLeft, Edit2, Save, X, MessageSquare, Camera } from 'lucide-react';
 import { Coleta, Produto, Grupo, Subgrupo, Supermercado } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -281,26 +282,42 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
                             {!isEditing && (
                               <div className="flex gap-2">
                                 {coleta.fotos?.[produto.id] && coleta.fotos[produto.id].length > 0 && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="bg-blue-50 border-blue-200"
-                                  >
-                                    <Camera className="w-4 h-4" />
-                                    <span className="ml-1 text-xs">
-                                      {coleta.fotos[produto.id].length}
-                                    </span>
-                                  </Button>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="bg-blue-50 border-blue-200 hover:bg-blue-100"
+                                      >
+                                        <Camera className="w-4 h-4" />
+                                        <span className="ml-1 text-xs">
+                                          {coleta.fotos[produto.id].length}
+                                        </span>
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-3xl">
+                                      <DialogHeader>
+                                        <DialogTitle>Fotos - {produto.nome}</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+                                        {coleta.fotos[produto.id].map((foto, index) => (
+                                          <img
+                                            key={index}
+                                            src={foto}
+                                            alt={`Foto ${index + 1} de ${produto.nome}`}
+                                            className="w-full h-auto rounded-lg border"
+                                          />
+                                        ))}
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
                                 )}
                                 
                                 {coleta.observacoesProdutos?.[produto.id] && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="bg-yellow-50 border-yellow-200"
-                                  >
-                                    <MessageSquare className="w-4 h-4" />
-                                  </Button>
+                                  <div className="bg-yellow-50 border border-yellow-200 rounded px-2 py-1 flex items-center gap-1">
+                                    <MessageSquare className="w-3 h-3 text-yellow-600" />
+                                    <span className="text-xs text-yellow-700">Obs</span>
+                                  </div>
                                 )}
                               </div>
                             )}
