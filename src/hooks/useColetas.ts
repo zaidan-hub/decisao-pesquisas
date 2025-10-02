@@ -69,6 +69,15 @@ export const useColetas = () => {
 
       if (error) {
         console.error('🔴 ERRO (edge):', error);
+        
+        // Melhor tratamento para erros de autorização
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          throw new Error('Sessão expirada. Faça login novamente.');
+        }
+        if (error.message?.includes('403') || error.message?.includes('Forbidden')) {
+          throw new Error('Você não tem permissão de administrador. Contate o suporte.');
+        }
+        
         throw error;
       }
 
