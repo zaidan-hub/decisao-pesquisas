@@ -61,7 +61,12 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
   };
 
   const handleUpdatePrecos = (precos: { [produtoId: string]: number }, observacoes: { [produtoId: string]: string }, fotos?: { [produtoId: string]: string[] }) => {
-    onUpdateColeta(coleta.id, coleta.status, { precos, observacoesProdutos: observacoes });
+    console.log('📸 Salvando fotos:', fotos);
+    onUpdateColeta(coleta.id, coleta.status, { 
+      precos, 
+      observacoesProdutos: observacoes,
+      fotos: fotos || {}
+    });
   };
 
   if (showProductList) {
