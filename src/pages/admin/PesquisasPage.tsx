@@ -57,8 +57,11 @@ export const PesquisasPage = () => {
     const proximoNumero = String(coletas.length + 1).padStart(3, '0');
     console.log('🔢 NÚMERO GERADO:', proximoNumero);
 
+    // Converter data para timezone de Brasília (GMT-3)
+    const dataLocal = new Date(formData.data + 'T12:00:00-03:00');
+    
     const novaColeta: Omit<Coleta, 'id'> = {
-      data: formData.data,
+      data: dataLocal.toISOString(),
       supermercadoId: formData.supermercadoId,
       pesquisadorId: formData.pesquisadorId,
       numero: proximoNumero,
@@ -115,7 +118,8 @@ export const PesquisasPage = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
   };
 
   const getSupermercadoNome = (id: string) => {
