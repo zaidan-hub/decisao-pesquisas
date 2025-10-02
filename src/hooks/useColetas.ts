@@ -45,7 +45,7 @@ export const useColetas = () => {
   };
   const createColeta = async (coletaData: Omit<Coleta, 'id'>) => {
     try {
-      console.log('🔵 CRIANDO COLETA:', coletaData);
+      console.log('🔵 CRIANDO COLETA (edge):', coletaData);
 
       const payload = {
         data: coletaData.data,
@@ -63,19 +63,19 @@ export const useColetas = () => {
         fotos: coletaData.fotos || {},
       };
 
-      // Inserção direta respeitando as políticas de segurança (admin tem permissão)
-      const { data, error } = await supabase
-        .from('coletas' as any)
-        .insert(payload as any)
-        .select()
-        .single() as any;
+      const { data, error } = await supabase.functions.invoke('admin-create-coleta', {
+        body: payload,
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('🔴 ERRO (edge):', error);
+        throw error;
+      }
 
-      console.log('🟢 COLETA INSERIDA:', data);
+      console.log('🟢 RESPOSTA INSERT (edge):', data);
 
       await fetchColetas();
-      return { data, error: null };
+      return { data: (data as any)?.data, error: null };
     } catch (error: any) {
       console.error('🔴 ERRO AO CRIAR:', error);
       const message = error?.message || 'Erro ao criar coleta';
