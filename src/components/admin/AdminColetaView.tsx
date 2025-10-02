@@ -51,8 +51,17 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
+    console.log('🔍 ADMIN DEBUG PRODUTOS:', {
+      totalProdutos: produtos.length,
+      produtosColeta: coleta.produtos.length,
+      grupos: grupos.length,
+      subgrupos: subgrupos.length
+    });
+
     const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
     
+    console.log('🔍 ADMIN PRODUTOS FILTRADOS:', produtosFiltrados.length);
+
     return produtosFiltrados.sort((a, b) => {
       const grupoA = grupos.find(g => g.id === a.grupoId);
       const grupoB = grupos.find(g => g.id === b.grupoId);
@@ -69,7 +78,7 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
       
       return a.nome.localeCompare(b.nome);
     });
-  }, [coleta.produtos]);
+  }, [coleta.produtos, produtos, grupos, subgrupos]);
 
   // Agrupar produtos por grupo/subgrupo para exibição
   const produtosAgrupados = useMemo(() => {
