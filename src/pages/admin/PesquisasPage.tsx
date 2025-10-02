@@ -197,13 +197,13 @@ export const PesquisasPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="supermercado">Supermercado Pesquisado *</Label>
+                <Label id="label-supermercado">Supermercado Pesquisado *</Label>
                 <Select 
                   value={formData.supermercadoId} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, supermercadoId: value }))}
                   required
                 >
-                  <SelectTrigger id="supermercado">
+                  <SelectTrigger aria-labelledby="label-supermercado">
                     <SelectValue placeholder="Selecione o supermercado" />
                   </SelectTrigger>
                   <SelectContent>
@@ -227,13 +227,13 @@ export const PesquisasPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pesquisador">Pesquisador *</Label>
+                <Label id="label-pesquisador">Pesquisador *</Label>
                 <Select 
                   value={formData.pesquisadorId} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, pesquisadorId: value }))}
                   required
                 >
-                  <SelectTrigger id="pesquisador">
+                  <SelectTrigger aria-labelledby="label-pesquisador">
                     <SelectValue placeholder="Selecione o pesquisador" />
                   </SelectTrigger>
                   <SelectContent>
@@ -257,13 +257,13 @@ export const PesquisasPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lista">Lista de Produtos *</Label>
+                <Label id="label-lista">Lista de Produtos *</Label>
                 <Select 
                   value={formData.listaId} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, listaId: value }))}
                   required
                 >
-                  <SelectTrigger id="lista">
+                  <SelectTrigger aria-labelledby="label-lista">
                     <SelectValue placeholder="Selecione uma lista" />
                   </SelectTrigger>
                   <SelectContent>

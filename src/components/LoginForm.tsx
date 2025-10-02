@@ -83,9 +83,9 @@ export const LoginForm = () => {
           {!showForgotPassword ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="role">Tipo de Usuário *</Label>
+                <Label id="label-role">Tipo de Usuário *</Label>
                 <Select value={role} onValueChange={setRole} required>
-                  <SelectTrigger id="role">
+                  <SelectTrigger aria-labelledby="label-role">
                     <SelectValue placeholder="Selecione o tipo de usuário" />
                   </SelectTrigger>
                   <SelectContent>
