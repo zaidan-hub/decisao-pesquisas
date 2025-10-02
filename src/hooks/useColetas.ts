@@ -14,25 +14,11 @@ export const useColetas = () => {
 
   const fetchColetas = async () => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token || '';
+      const { data, error } = await supabase.functions.invoke('admin-list-coletas');
+      if (error) throw error;
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-list-coletas`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Erro ao listar coletas (${res.status})`);
-      }
-
-      const { data } = await res.json();
-
-      // Converter dados do banco para o formato da aplicação
-      const coletasFormatadas = (data || []).map((coleta: any) => ({
+      const rows = (data as any)?.data || [];
+      const coletasFormatadas = rows.map((coleta: any) => ({
         id: coleta.id,
         data: coleta.data,
         supermercadoId: coleta.supermercado_id,
@@ -61,9 +47,6 @@ export const useColetas = () => {
     try {
       console.log('🔵 CRIANDO COLETA:', coletaData);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token || '';
-
       const payload = {
         data: coletaData.data,
         supermercado_id: coletaData.supermercadoId,
@@ -80,25 +63,20 @@ export const useColetas = () => {
         fotos: coletaData.fotos || {},
       };
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-coleta`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+      const { data, error } = await supabase.functions.invoke('admin-create-coleta', {
+        body: payload,
       });
 
-      const json = await res.json().catch(() => ({}));
-      console.log('🟢 RESPOSTA INSERT (edge):', json);
+      if (error) throw error;
 
-      if (!res.ok) throw new Error(json.error || 'Erro ao criar coleta');
+      console.log('🟢 RESPOSTA INSERT (edge):', data);
 
       await fetchColetas();
-      return { data: json.data, error: null };
+      return { data: (data as any)?.data, error: null };
     } catch (error: any) {
       console.error('🔴 ERRO AO CRIAR:', error);
-      return { data: null, error: error.message };
+      const message = error?.message || 'Erro ao criar coleta';
+      return { data: null, error: message };
     }
   };
   const updateColeta = async (id: string, updates: Partial<Coleta>) => {
