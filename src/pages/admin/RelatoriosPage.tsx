@@ -16,6 +16,7 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { useRelatoriosPadrao, RelatorioPadrao } from '@/hooks/useRelatoriosPadrao';
 import { useRelatorios, Relatorio } from '@/hooks/useRelatorios';
+import { useColetas } from '@/hooks/useColetas';
 import { generatePDF, generateTXT } from '@/lib/reportGenerator';
 import { Produto, Coleta } from '@/types';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -28,6 +29,7 @@ export const RelatoriosPage = () => {
   const { supermercados } = useSupermercados();
   const { relatoriosPadrao, createRelatorioPadrao, updateRelatorioPadrao, deleteRelatorioPadrao } = useRelatoriosPadrao();
   const { relatorios, createRelatorio, deleteRelatorio } = useRelatorios();
+  const { coletas } = useColetas();
 
   // Estados para relatório padrão
   const [showRelatorioPadraoDialog, setShowRelatorioPadraoDialog] = useState(false);
@@ -47,8 +49,8 @@ export const RelatoriosPage = () => {
   const [produtosSelecionadosRelatorio, setProdutosSelecionadosRelatorio] = useState<string[]>([]);
   const [coletasSelecionadas, setColetasSelecionadas] = useState<string[]>([]);
 
-  // Mock de coletas para o exemplo
-  const mockColetas: Coleta[] = [];
+  // Filtrar apenas coletas finalizadas para os relatórios
+  const coletasFinalizadas = coletas.filter(c => c.status === 'finalizada');
 
   // Estados de controle
   const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
@@ -293,7 +295,7 @@ export const RelatoriosPage = () => {
 
   const handleExportPDF = (relatorio: Relatorio) => {
     const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
-    const coletasRelatorio = mockColetas.filter(c => relatorio.coletas.includes(c.id));
+    const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
     generatePDF({
       nome: relatorio.nome,
@@ -309,7 +311,7 @@ export const RelatoriosPage = () => {
 
   const handleExportTXT = (relatorio: Relatorio) => {
     const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
-    const coletasRelatorio = mockColetas.filter(c => relatorio.coletas.includes(c.id));
+    const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
     generateTXT({
       nome: relatorio.nome,
@@ -692,12 +694,12 @@ export const RelatoriosPage = () => {
                 <div className="space-y-2">
                   <Label>Coletas Consideradas *</Label>
                   <div className="border rounded-md p-4 space-y-2 max-h-[200px] overflow-y-auto">
-                    {mockColetas.length === 0 ? (
+                    {coletasFinalizadas.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhuma coleta disponível
+                        Nenhuma coleta finalizada disponível
                       </p>
                     ) : (
-                      mockColetas.map(coleta => {
+                      coletasFinalizadas.map(coleta => {
                         const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
                         return (
                           <div key={coleta.id} className="flex items-center gap-2">
