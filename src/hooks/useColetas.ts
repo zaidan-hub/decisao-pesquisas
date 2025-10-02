@@ -63,16 +63,19 @@ export const useColetas = () => {
         fotos: coletaData.fotos || {},
       };
 
-      const { data, error } = await supabase.functions.invoke('admin-create-coleta', {
-        body: payload,
-      });
+      // Inserção direta respeitando as políticas de segurança (admin tem permissão)
+      const { data, error } = await supabase
+        .from('coletas' as any)
+        .insert(payload as any)
+        .select()
+        .single() as any;
 
       if (error) throw error;
 
-      console.log('🟢 RESPOSTA INSERT (edge):', data);
+      console.log('🟢 COLETA INSERIDA:', data);
 
       await fetchColetas();
-      return { data: (data as any)?.data, error: null };
+      return { data, error: null };
     } catch (error: any) {
       console.error('🔴 ERRO AO CRIAR:', error);
       const message = error?.message || 'Erro ao criar coleta';
