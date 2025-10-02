@@ -14,11 +14,14 @@ export const useColetas = () => {
 
   const fetchColetas = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('admin-list-coletas');
+      const { data: rows, error } = await supabase
+        .from('coletas')
+        .select('*')
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
 
-      const rows = (data as any)?.data || [];
-      const coletasFormatadas = rows.map((coleta: any) => ({
+      const coletasFormatadas = (rows || []).map((coleta: any) => ({
         id: coleta.id,
         data: coleta.data,
         supermercadoId: coleta.supermercado_id,
@@ -35,7 +38,7 @@ export const useColetas = () => {
         fotos: coleta.fotos || {}
       }));
 
-      console.log('🔍 COLETAS (edge):', coletasFormatadas);
+      console.log('🔍 COLETAS CARREGADAS:', coletasFormatadas);
       setColetas(coletasFormatadas);
     } catch (error) {
       console.error('Erro ao buscar coletas:', error);
