@@ -35,7 +35,15 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
+    console.log('🔍 DEBUG PRODUTOS:', {
+      todosOsProdutos: produtos.length,
+      produtosDaColeta: coleta.produtos.length,
+      produtosIds: coleta.produtos
+    });
+
     const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
+    
+    console.log('🔍 PRODUTOS FILTRADOS:', produtosFiltrados);
     
     // Filtrar por busca
     const produtosComBusca = produtosFiltrados.filter(p =>
@@ -63,7 +71,7 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
       // Comparar por produto
       return a.nome.localeCompare(b.nome);
     });
-  }, [coleta.produtos, searchTerm]);
+  }, [coleta.produtos, searchTerm, produtos, grupos, subgrupos]);
 
   const handlePrecoChange = (produtoId: string, valor: string) => {
     const precoNumerico = parseFloat(valor) || 0;
