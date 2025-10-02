@@ -20,6 +20,15 @@ export const ColetasTab = () => {
   const coletasPesquisador = coletas.filter(c => {
     // Buscar o pesquisador pelo email do usuário logado
     const pesquisador = pesquisadores.find(p => p.email.toLowerCase() === user?.email?.toLowerCase());
+    
+    console.log('🔍 DEBUG FILTRO:', {
+      userEmail: user?.email,
+      pesquisadorEncontrado: pesquisador,
+      coletaPesquisadorId: c.pesquisadorId,
+      coletaStatus: c.status,
+      match: pesquisador && c.pesquisadorId === pesquisador.id
+    });
+    
     return pesquisador && c.pesquisadorId === pesquisador.id && c.status !== 'finalizada';
   });
 
