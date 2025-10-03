@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,12 +14,15 @@ import { AdminColetaView } from '@/components/admin/AdminColetaView';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { usePesquisadores } from '@/hooks/usePesquisadores';
 import { useColetas } from '@/hooks/useColetas';
+import { useColetasAdmin } from '@/hooks/useColetasAdmin';
 import { useListas } from '@/hooks/useListas';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const PesquisasPage = () => {
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
-  const { coletas, createColeta, updateColeta, deleteColeta } = useColetas();
+  const { coletas: coletasAdmin, loading: loadingColetas, refetch: refetchColetas } = useColetasAdmin();
+  const { createColeta, updateColeta, deleteColeta } = useColetas();
   const { listas } = useListas();
 
   const [showForm, setShowForm] = useState(false);
@@ -65,7 +69,7 @@ export const PesquisasPage = () => {
     console.log('📦 PRODUTOS DA LISTA:', produtosColeta.length);
 
     // Gerar número automaticamente baseado no total de coletas + 1
-    const proximoNumero = String(coletas.length + 1).padStart(3, '0');
+    const proximoNumero = String(coletasAdmin.length + 1).padStart(3, '0');
     console.log('🔢 NÚMERO GERADO:', proximoNumero);
 
     const novaColeta: Omit<Coleta, 'id'> = {
@@ -104,6 +108,7 @@ export const PesquisasPage = () => {
       });
       setShowForm(false);
       resetForm();
+      refetchColetas();
     }
   };
 
@@ -119,14 +124,40 @@ export const PesquisasPage = () => {
 
   const handleUpdateColeta = async (coletaId: string, updatedData: Partial<Coleta>) => {
     await updateColeta(coletaId, updatedData);
+    refetchColetas();
   };
 
-  const handleViewColeta = (coleta: Coleta) => {
-    setSelectedColeta(coleta);
+  const handleViewColeta = async (coletaId: string) => {
+    // Buscar coleta completa com todos os detalhes
+    const { data } = await supabase
+      .from('coletas')
+      .select('*')
+      .eq('id', coletaId)
+      .single();
+    
+    if (data) {
+      const coletaCompleta: Coleta = {
+        id: data.id,
+        data: data.data,
+        supermercadoId: data.supermercado_id,
+        pesquisadorId: data.pesquisador_id,
+        numero: data.numero,
+        ano: data.ano,
+        status: data.status as 'não iniciada' | 'iniciada' | 'finalizada',
+        produtos: data.produtos || [],
+        precos: (data.precos as any) || {},
+        precosEditadosAdmin: (data.precos_editados_admin as any) || {},
+        observacoesProdutos: (data.observacoes_produtos as any) || {},
+        observacoesFinais: (data.observacoes_finais as any) || [],
+        adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
+        fotos: (data.fotos as any) || {}
+      };
+      setSelectedColeta(coletaCompleta);
+    }
   };
 
-  const handleEditColeta = (coleta: Coleta) => {
-    if (coleta.status !== 'não iniciada') {
+  const handleEditColeta = async (coletaId: string, status: string) => {
+    if (status !== 'não iniciada') {
       toast({
         title: "Ação não permitida",
         description: "Apenas coletas não iniciadas podem ser editadas.",
@@ -135,14 +166,40 @@ export const PesquisasPage = () => {
       return;
     }
     
-    setColetaToEdit(coleta);
-    setEditFormData({
-      data: coleta.data.split('T')[0],
-      supermercadoId: coleta.supermercadoId,
-      pesquisadorId: coleta.pesquisadorId,
-      ano: coleta.ano || ''
-    });
-    setShowEditDialog(true);
+    // Buscar dados completos da coleta
+    const { data } = await supabase
+      .from('coletas')
+      .select('*')
+      .eq('id', coletaId)
+      .single();
+    
+    if (data) {
+      const coletaCompleta: Coleta = {
+        id: data.id,
+        data: data.data,
+        supermercadoId: data.supermercado_id,
+        pesquisadorId: data.pesquisador_id,
+        numero: data.numero,
+        ano: data.ano,
+        status: data.status as 'não iniciada' | 'iniciada' | 'finalizada',
+        produtos: data.produtos || [],
+        precos: (data.precos as any) || {},
+        precosEditadosAdmin: (data.precos_editados_admin as any) || {},
+        observacoesProdutos: (data.observacoes_produtos as any) || {},
+        observacoesFinais: (data.observacoes_finais as any) || [],
+        adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
+        fotos: (data.fotos as any) || {}
+      };
+      
+      setColetaToEdit(coletaCompleta);
+      setEditFormData({
+        data: coletaCompleta.data.split('T')[0],
+        supermercadoId: coletaCompleta.supermercadoId,
+        pesquisadorId: coletaCompleta.pesquisadorId,
+        ano: coletaCompleta.ano || ''
+      });
+      setShowEditDialog(true);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -160,12 +217,13 @@ export const PesquisasPage = () => {
       description: "Coleta atualizada com sucesso!"
     });
     
+    refetchColetas();
     setShowEditDialog(false);
     setColetaToEdit(null);
   };
 
-  const handleDeleteColeta = (coleta: Coleta) => {
-    if (coleta.status !== 'não iniciada') {
+  const handleDeleteColeta = async (coletaId: string, status: string) => {
+    if (status !== 'não iniciada') {
       toast({
         title: "Ação não permitida",
         description: "Apenas coletas não iniciadas podem ser deletadas.",
@@ -174,8 +232,34 @@ export const PesquisasPage = () => {
       return;
     }
     
-    setColetaToDelete(coleta);
-    setShowDeleteDialog(true);
+    // Buscar dados completos da coleta
+    const { data } = await supabase
+      .from('coletas')
+      .select('*')
+      .eq('id', coletaId)
+      .single();
+    
+    if (data) {
+      const coletaCompleta: Coleta = {
+        id: data.id,
+        data: data.data,
+        supermercadoId: data.supermercado_id,
+        pesquisadorId: data.pesquisador_id,
+        numero: data.numero,
+        ano: data.ano,
+        status: data.status as 'não iniciada' | 'iniciada' | 'finalizada',
+        produtos: data.produtos || [],
+        precos: (data.precos as any) || {},
+        precosEditadosAdmin: (data.precos_editados_admin as any) || {},
+        observacoesProdutos: (data.observacoes_produtos as any) || {},
+        observacoesFinais: (data.observacoes_finais as any) || [],
+        adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
+        fotos: (data.fotos as any) || {}
+      };
+      
+      setColetaToDelete(coletaCompleta);
+      setShowDeleteDialog(true);
+    }
   };
 
   const confirmDelete = async () => {
@@ -188,6 +272,7 @@ export const PesquisasPage = () => {
       description: "Coleta deletada com sucesso!"
     });
     
+    refetchColetas();
     setShowDeleteDialog(false);
     setColetaToDelete(null);
   };
@@ -205,10 +290,8 @@ export const PesquisasPage = () => {
     return pesquisadores.find(p => p.id === id)?.nome || 'N/A';
   };
 
-  // Ordenar coletas por data (mais recente primeiro)
-  const coletasOrdenadas = [...coletas].sort((a, b) => 
-    new Date(b.data).getTime() - new Date(a.data).getTime()
-  );
+  // Coletas já vêm ordenadas do hook
+  const coletasOrdenadas = coletasAdmin;
 
   // Se uma coleta está selecionada, mostrar a visualização admin
   if (selectedColeta) {
@@ -404,8 +487,19 @@ export const PesquisasPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {coletasOrdenadas.map((coleta) => (
+            {loadingColetas ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 border rounded-lg">
+                    <Skeleton className="h-6 w-48 mb-2" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {coletasOrdenadas.map((coleta) => (
                 <div 
                   key={coleta.id}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -447,7 +541,7 @@ export const PesquisasPage = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Package className="w-4 h-4" />
-                        <span><strong>Produtos:</strong> {coleta.produtos.length} itens</span>
+                        <span><strong>Produtos:</strong> {coleta.produtosCount} itens</span>
                       </div>
                     </div>
                   </div>
@@ -456,7 +550,7 @@ export const PesquisasPage = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => handleViewColeta(coleta)}
+                      onClick={() => handleViewColeta(coleta.id)}
                     >
                       <Search className="w-4 h-4 mr-1" />
                       Visualizar
@@ -467,30 +561,18 @@ export const PesquisasPage = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleEditColeta(coleta)}
+                          onClick={() => handleEditColeta(coleta.id, coleta.status)}
                         >
                           <Edit2 className="w-4 h-4" />
                         </Button>
                         <Button 
                           variant="destructive" 
                           size="sm"
-                          onClick={() => handleDeleteColeta(coleta)}
+                          onClick={() => handleDeleteColeta(coleta.id, coleta.status)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </>
-                    )}
-                    
-                    {/* Notification Bell for Post-completion Observations */}
-                    {coleta.observacoesFinais && 
-                     coleta.observacoesFinais.length > 0 && 
-                     !coleta.adminVisualizouObservacoes && (
-                      <div className="relative">
-                        <Bell className="w-4 h-4 text-yellow-500" />
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                          {coleta.observacoesFinais.length}
-                        </span>
-                      </div>
                     )}
                   </div>
                 </div>
@@ -506,6 +588,7 @@ export const PesquisasPage = () => {
                 </div>
               )}
             </div>
+            )}
           </CardContent>
         </Card>
       </div>
