@@ -65,9 +65,11 @@ export const generatePDF = (data: RelatorioData) => {
   let produtosNaoEncontrados = 0;
 
   data.produtos.forEach(produto => {
-    const temPreco = data.coletas.some(coleta => 
-      coleta.precos && coleta.precos[produto.id] && coleta.precos[produto.id] > 0
-    );
+    const temPreco = data.coletas.some(coleta => {
+      // Priorizar preços editados pelo admin
+      const precoFinal = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      return precoFinal > 0;
+    });
     if (temPreco) {
       produtosEncontrados++;
     } else {
@@ -108,10 +110,11 @@ export const generatePDF = (data: RelatorioData) => {
       produto.unidadeMedida || '-'
     ];
 
-    // Preços por supermercado
+    // Preços por supermercado (priorizar preços editados pelo admin)
     const precos: number[] = [];
     data.coletas.forEach(coleta => {
-      const preco = coleta.precos?.[produto.id] || 0;
+      // Se existir preço editado pelo admin, usar ele; caso contrário, usar o preço original
+      const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
       precos.push(preco);
       row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
     });
@@ -176,7 +179,8 @@ export const generateTXT = (data: RelatorioData) => {
   produtosOrdenados.forEach(produto => {
     data.coletas.forEach(coleta => {
       const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
-      const preco = coleta.precos?.[produto.id] || 0;
+      // Priorizar preços editados pelo admin
+      const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
       
       if (preco > 0) {
         const dataFormatada = new Date(coleta.data)
