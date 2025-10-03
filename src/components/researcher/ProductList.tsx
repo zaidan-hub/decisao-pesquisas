@@ -25,6 +25,7 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
   const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
   const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>(coleta.fotos || {});
   const [showObservationDialog, setShowObservationDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [tempObservacao, setTempObservacao] = useState('');
 
@@ -209,7 +210,7 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
         </div>
         
         <Button 
-          onClick={onFinalizarColeta}
+          onClick={() => setShowConfirmDialog(true)}
           disabled={totalPreenchidos === 0}
         >
           <CheckCircle className="w-4 h-4 mr-2" />
@@ -368,6 +369,33 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
                 Salvar
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Finalize Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="mx-4">
+          <DialogHeader>
+            <DialogTitle>Finalizar Coleta</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja finalizar esta coleta? Você ainda poderá adicionar observações posteriormente.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowConfirmDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              setShowConfirmDialog(false);
+              onFinalizarColeta();
+            }}>
+              Sim, Finalizar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
