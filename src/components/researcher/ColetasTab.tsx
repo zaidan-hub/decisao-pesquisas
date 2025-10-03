@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { ColetaDetail } from './ColetaDetail';
 import { Coleta, Supermercado } from '@/types';
@@ -11,26 +12,30 @@ import { usePesquisadores } from '@/hooks/usePesquisadores';
 
 export const ColetasTab = () => {
   const { user } = useAuth();
-  const { coletas, updateColeta } = useColetas();
-  const { supermercados } = useSupermercados();
-  const { pesquisadores } = usePesquisadores();
+  const { coletas, loading: loadingColetas, updateColeta } = useColetas();
+  const { supermercados, loading: loadingSupermercados } = useSupermercados();
+  const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
 
-  // Filtrar coletas do pesquisador logado (não finalizadas)
-  const coletasPesquisador = coletas.filter(c => {
-    // Buscar o pesquisador pelo email do usuário logado
-    const pesquisador = pesquisadores.find(p => p.email.toLowerCase() === user?.email?.toLowerCase());
-    
-    console.log('🔍 DEBUG FILTRO:', {
-      userEmail: user?.email,
-      pesquisadorEncontrado: pesquisador,
-      coletaPesquisadorId: c.pesquisadorId,
-      coletaStatus: c.status,
-      match: pesquisador && c.pesquisadorId === pesquisador.id
+  // Filtrar coletas do pesquisador logado (não finalizadas) - otimizado com useMemo
+  const coletasPesquisador = useMemo(() => {
+    return coletas.filter(c => {
+      // Buscar o pesquisador pelo email do usuário logado
+      const pesquisador = pesquisadores.find(p => p.email.toLowerCase() === user?.email?.toLowerCase());
+      
+      console.log('🔍 DEBUG FILTRO:', {
+        userEmail: user?.email,
+        pesquisadorEncontrado: pesquisador,
+        coletaPesquisadorId: c.pesquisadorId,
+        coletaStatus: c.status,
+        match: pesquisador && c.pesquisadorId === pesquisador.id
+      });
+      
+      return pesquisador && c.pesquisadorId === pesquisador.id && c.status !== 'finalizada';
     });
-    
-    return pesquisador && c.pesquisadorId === pesquisador.id && c.status !== 'finalizada';
-  });
+  }, [coletas, pesquisadores, user?.email]);
+
+  const isLoading = loadingColetas || loadingSupermercados || loadingPesquisadores;
 
   const getSupermercadoNome = (id: string) => {
     return supermercados.find(s => s.id === id)?.nome || 'N/A';
@@ -77,7 +82,13 @@ export const ColetasTab = () => {
         </p>
       </div>
 
-      {coletasPesquisador.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      ) : coletasPesquisador.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

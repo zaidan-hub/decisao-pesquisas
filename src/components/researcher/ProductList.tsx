@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ interface ProductListProps {
   onFinalizarColeta: () => void;
 }
 
-export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta }: ProductListProps) => {
+export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinalizarColeta }: ProductListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(coleta.precos || {});
   const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
@@ -401,4 +401,4 @@ export const ProductList = ({ coleta, onBack, onUpdatePrecos, onFinalizarColeta 
       </Dialog>
     </div>
   );
-};
+});

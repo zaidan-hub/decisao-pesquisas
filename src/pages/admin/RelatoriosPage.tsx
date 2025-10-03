@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, FileText, Trash2, FileDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -19,13 +20,13 @@ import { useColetas } from '@/hooks/useColetas';
 import { generatePDF, generateTXT } from '@/lib/reportGenerator';
 
 export const RelatoriosPage = () => {
-  const { produtos } = useProdutos();
-  const { grupos } = useGrupos();
-  const { subgrupos } = useSubgrupos();
-  const { supermercados } = useSupermercados();
-  const { listas } = useListas();
-  const { relatorios, createRelatorio, deleteRelatorio } = useRelatorios();
-  const { coletas } = useColetas();
+  const { produtos, loading: loadingProdutos } = useProdutos();
+  const { grupos, loading: loadingGrupos } = useGrupos();
+  const { subgrupos, loading: loadingSubgrupos } = useSubgrupos();
+  const { supermercados, loading: loadingSupermercados } = useSupermercados();
+  const { listas, loading: loadingListas } = useListas();
+  const { relatorios, loading: loadingRelatorios, createRelatorio, deleteRelatorio } = useRelatorios();
+  const { coletas, loading: loadingColetas } = useColetas();
 
   // Estados para relatório
   const [showRelatorioDialog, setShowRelatorioDialog] = useState(false);
@@ -35,11 +36,18 @@ export const RelatoriosPage = () => {
   const [coletasSelecionadas, setColetasSelecionadas] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Filtrar apenas coletas finalizadas para os relatórios
-  const coletasFinalizadas = coletas.filter(c => c.status === 'finalizada');
+  // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
+  const coletasFinalizadas = useMemo(
+    () => coletas.filter(c => c.status === 'finalizada'),
+    [coletas]
+  );
 
-  // Handlers para relatório
-  const handleCreateRelatorio = async () => {
+  // Loading geral
+  const isLoading = loadingProdutos || loadingGrupos || loadingSubgrupos || 
+                    loadingSupermercados || loadingListas || loadingRelatorios || loadingColetas;
+
+  // Handlers para relatório (otimizados com useCallback)
+  const handleCreateRelatorio = useCallback(async () => {
     if (!listaSelecionada) {
       toast({
         title: "Campo obrigatório",
@@ -93,17 +101,17 @@ export const RelatoriosPage = () => {
       });
       resetRelatorioForm();
     }
-  };
+  }, [listaSelecionada, nomeCliente, coletasSelecionadas, listas, dataRelatorio, createRelatorio]);
 
-  const resetRelatorioForm = () => {
+  const resetRelatorioForm = useCallback(() => {
     setListaSelecionada('');
     setNomeCliente('');
     setDataRelatorio(new Date().toISOString().split('T')[0]);
     setColetasSelecionadas([]);
     setShowRelatorioDialog(false);
-  };
+  }, []);
 
-  const handleExportPDF = (relatorio: Relatorio) => {
+  const handleExportPDF = useCallback((relatorio: Relatorio) => {
     const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
@@ -117,9 +125,9 @@ export const RelatoriosPage = () => {
       grupos,
       subgrupos
     });
-  };
+  }, [produtos, coletas, supermercados, grupos, subgrupos]);
 
-  const handleExportTXT = (relatorio: Relatorio) => {
+  const handleExportTXT = useCallback((relatorio: Relatorio) => {
     const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
@@ -133,7 +141,7 @@ export const RelatoriosPage = () => {
       grupos,
       subgrupos
     });
-  };
+  }, [produtos, coletas, supermercados, grupos, subgrupos]);
 
   return (
     <div className="space-y-6">
@@ -248,7 +256,13 @@ export const RelatoriosPage = () => {
           <CardDescription>Relatórios criados e prontos para exportação</CardDescription>
         </CardHeader>
         <CardContent>
-          {relatorios.length === 0 ? (
+          {loadingRelatorios ? (
+            <div className="space-y-2">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : relatorios.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Nenhum relatório gerado</h3>
