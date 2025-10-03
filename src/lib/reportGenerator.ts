@@ -104,7 +104,8 @@ export const generatePDF = (data: RelatorioData) => {
     const row: any[] = [
       produto.codigo,
       produto.nome,
-      produto.quantidade || produto.unidadeMedida
+      produto.quantidade || '-',
+      produto.unidadeMedida || '-'
     ];
 
     // Preços por supermercado
@@ -125,10 +126,10 @@ export const generatePDF = (data: RelatorioData) => {
       for (let i = 0; i < precos.length; i++) {
         if (precos[i] > 0) {
           if (precos[i] === maxPreco) {
-            row[3 + i] += ' +';
+            row[4 + i] += ' +';
           }
           if (precos[i] === minPreco) {
-            row[3 + i] += ' -';
+            row[4 + i] += ' -';
           }
         }
       }
@@ -142,6 +143,7 @@ export const generatePDF = (data: RelatorioData) => {
     'Código',
     'Produto',
     'Quantidade',
+    'Unidade',
     ...Array.from(coletasPorSupermercado.values()).map(c => c.nome)
   ];
 
@@ -153,8 +155,9 @@ export const generatePDF = (data: RelatorioData) => {
     headStyles: { fillColor: [66, 66, 66] },
     columnStyles: {
       0: { cellWidth: 20 },
-      1: { cellWidth: 60 },
-      2: { cellWidth: 25 }
+      1: { cellWidth: 50 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 20 }
     }
   });
 
@@ -188,7 +191,8 @@ export const generateTXT = (data: RelatorioData) => {
           produto.codigo,
           supermercado?.nome || 'N/A',
           preco.toFixed(2),
-          produto.quantidade || produto.unidadeMedida,
+          produto.quantidade || '-',
+          produto.unidadeMedida || '-',
           produto.nome
         ].join('\t');
         
