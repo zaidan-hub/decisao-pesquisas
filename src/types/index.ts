@@ -99,6 +99,7 @@ export interface Coleta {
   observacoesFinais?: ObservacaoFinal[]; // Observações adicionadas após finalização
   adminVisualizouObservacoes?: boolean; // Se admin já visualizou as observações
   fotos?: { [produtoId: string]: string[] }; // Fotos por produto
+  produtosComFotos?: string[]; // IDs dos produtos que possuem fotos (sem carregar as imagens)
 }
 
 export interface ObservacaoFinal {
