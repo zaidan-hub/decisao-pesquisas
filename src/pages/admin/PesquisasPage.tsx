@@ -10,6 +10,7 @@ import { Coleta, Supermercado, Pesquisador } from '@/types';
 import { Plus, Search, Calendar, Store, User, FileText, Package, Bell, Edit2, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
+import { ColetaLoadingDialog } from '@/components/admin/ColetaLoadingDialog';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { usePesquisadores } from '@/hooks/usePesquisadores';
 import { useColetas } from '@/hooks/useColetas';
@@ -31,6 +32,9 @@ export const PesquisasPage = () => {
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
   const [coletaToEdit, setColetaToEdit] = useState<Coleta | null>(null);
   const [coletaToDelete, setColetaToDelete] = useState<Coleta | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [showLoadingDialog, setShowLoadingDialog] = useState(false);
   const [formData, setFormData] = useState({
     data: new Date().toISOString().split('T')[0],
     supermercadoId: '',
@@ -127,41 +131,91 @@ export const PesquisasPage = () => {
   };
 
   const handleViewColeta = async (coletaId: string) => {
-    // Buscar dados completos apenas quando necessário
-    const { data, error } = await supabase
-      .from('coletas')
-      .select('*')
-      .eq('id', coletaId)
-      .single();
+    // Iniciar loading
+    setShowLoadingDialog(true);
+    setLoadingProgress(0);
+    setLoadingMessage('Iniciando...');
 
-    if (error) {
+    try {
+      // Etapa 1: Buscar dados da coleta (0% → 30%)
+      setLoadingProgress(5);
+      setLoadingMessage('Buscando dados da coleta...');
+      
+      const { data, error } = await supabase
+        .from('coletas')
+        .select('*')
+        .eq('id', coletaId)
+        .single();
+
+      if (error) {
+        setShowLoadingDialog(false);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os detalhes da coleta.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setLoadingProgress(30);
+      setLoadingMessage('Dados da coleta carregados...');
+
+      // Pequeno delay para suavizar transição
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Etapa 2: Processar produtos (30% → 60%)
+      setLoadingProgress(40);
+      const totalProdutos = data.produtos?.length || 0;
+      setLoadingMessage(`Carregando ${totalProdutos} produtos...`);
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setLoadingProgress(60);
+      
+      // Etapa 3: Processar preços e fotos (60% → 80%)
+      setLoadingMessage('Processando preços e fotos...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setLoadingProgress(80);
+
+      // Etapa 4: Organizar informações (80% → 95%)
+      setLoadingMessage('Organizando informações...');
+      const coletaCompleta: Coleta = {
+        id: data.id,
+        data: data.data,
+        supermercadoId: data.supermercado_id,
+        pesquisadorId: data.pesquisador_id,
+        numero: data.numero,
+        ano: data.ano,
+        status: data.status as Coleta['status'],
+        produtos: data.produtos || [],
+        precos: (data.precos as any) || {},
+        precosEditadosAdmin: (data.precos_editados_admin as any) || {},
+        observacoesProdutos: (data.observacoes_produtos as any) || {},
+        observacoesFinais: (data.observacoes_finais as any) || [],
+        adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
+        fotos: (data.fotos as any) || {}
+      };
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      setLoadingProgress(95);
+
+      // Etapa 5: Finalizar (95% → 100%)
+      setLoadingMessage('Quase pronto...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      setLoadingProgress(100);
+      
+      // Pequeno delay final para mostrar 100%
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      setSelectedColeta(coletaCompleta);
+      setShowLoadingDialog(false);
+    } catch (err) {
+      setShowLoadingDialog(false);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os detalhes da coleta.",
+        description: "Ocorreu um erro ao carregar a coleta.",
         variant: "destructive"
       });
-      return;
     }
-
-    // Formatar coleta completa
-    const coletaCompleta: Coleta = {
-      id: data.id,
-      data: data.data,
-      supermercadoId: data.supermercado_id,
-      pesquisadorId: data.pesquisador_id,
-      numero: data.numero,
-      ano: data.ano,
-      status: data.status as Coleta['status'],
-      produtos: data.produtos || [],
-      precos: (data.precos as any) || {},
-      precosEditadosAdmin: (data.precos_editados_admin as any) || {},
-      observacoesProdutos: (data.observacoes_produtos as any) || {},
-      observacoesFinais: (data.observacoes_finais as any) || [],
-      adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
-      fotos: (data.fotos as any) || {}
-    };
-
-    setSelectedColeta(coletaCompleta);
   };
 
   const handleEditColeta = async (coletaAdmin: any) => {
@@ -309,6 +363,12 @@ export const PesquisasPage = () => {
 
   return (
     <div className="space-y-6">
+      <ColetaLoadingDialog 
+        isOpen={showLoadingDialog}
+        progress={loadingProgress}
+        message={loadingMessage}
+      />
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
