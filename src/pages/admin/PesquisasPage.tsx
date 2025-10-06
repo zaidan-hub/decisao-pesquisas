@@ -13,12 +13,16 @@ import { AdminColetaView } from '@/components/admin/AdminColetaView';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { usePesquisadores } from '@/hooks/usePesquisadores';
 import { useColetas } from '@/hooks/useColetas';
+import { useColetasAdmin } from '@/hooks/useColetasAdmin';
 import { useListas } from '@/hooks/useListas';
+import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
 
 export const PesquisasPage = () => {
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
-  const { coletas, createColeta, updateColeta, deleteColeta } = useColetas();
+  const { coletas: coletasAdmin, loading: loadingColetas, refetch: refetchColetas } = useColetasAdmin();
+  const { createColeta, updateColeta, deleteColeta } = useColetas();
   const { listas } = useListas();
 
   const [showForm, setShowForm] = useState(false);
@@ -65,7 +69,7 @@ export const PesquisasPage = () => {
     console.log('📦 PRODUTOS DA LISTA:', produtosColeta.length);
 
     // Gerar número automaticamente baseado no total de coletas + 1
-    const proximoNumero = String(coletas.length + 1).padStart(3, '0');
+    const proximoNumero = String(coletasAdmin.length + 1).padStart(3, '0');
     console.log('🔢 NÚMERO GERADO:', proximoNumero);
 
     const novaColeta: Omit<Coleta, 'id'> = {
@@ -104,6 +108,7 @@ export const PesquisasPage = () => {
       });
       setShowForm(false);
       resetForm();
+      refetchColetas(); // Atualizar lista otimizada
     }
   };
 
@@ -121,12 +126,46 @@ export const PesquisasPage = () => {
     await updateColeta(coletaId, updatedData);
   };
 
-  const handleViewColeta = (coleta: Coleta) => {
-    setSelectedColeta(coleta);
+  const handleViewColeta = async (coletaId: string) => {
+    // Buscar dados completos apenas quando necessário
+    const { data, error } = await supabase
+      .from('coletas')
+      .select('*')
+      .eq('id', coletaId)
+      .single();
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os detalhes da coleta.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Formatar coleta completa
+    const coletaCompleta: Coleta = {
+      id: data.id,
+      data: data.data,
+      supermercadoId: data.supermercado_id,
+      pesquisadorId: data.pesquisador_id,
+      numero: data.numero,
+      ano: data.ano,
+      status: data.status as Coleta['status'],
+      produtos: data.produtos || [],
+      precos: (data.precos as any) || {},
+      precosEditadosAdmin: (data.precos_editados_admin as any) || {},
+      observacoesProdutos: (data.observacoes_produtos as any) || {},
+      observacoesFinais: (data.observacoes_finais as any) || [],
+      adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
+      fotos: (data.fotos as any) || {}
+    };
+
+    setSelectedColeta(coletaCompleta);
   };
 
-  const handleEditColeta = (coleta: Coleta) => {
-    if (coleta.status !== 'não iniciada') {
+  const handleEditColeta = async (coletaAdmin: any) => {
+    if (coletaAdmin.status !== 'não iniciada') {
       toast({
         title: "Ação não permitida",
         description: "Apenas coletas não iniciadas podem ser editadas.",
@@ -134,13 +173,46 @@ export const PesquisasPage = () => {
       });
       return;
     }
+
+    // Buscar dados completos para edição
+    const { data, error } = await supabase
+      .from('coletas')
+      .select('*')
+      .eq('id', coletaAdmin.id)
+      .single();
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os detalhes da coleta.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const coletaCompleta: Coleta = {
+      id: data.id,
+      data: data.data,
+      supermercadoId: data.supermercado_id,
+      pesquisadorId: data.pesquisador_id,
+      numero: data.numero,
+      ano: data.ano,
+      status: data.status as Coleta['status'],
+      produtos: data.produtos || [],
+      precos: (data.precos as any) || {},
+      precosEditadosAdmin: (data.precos_editados_admin as any) || {},
+      observacoesProdutos: (data.observacoes_produtos as any) || {},
+      observacoesFinais: (data.observacoes_finais as any) || [],
+      adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
+      fotos: (data.fotos as any) || {}
+    };
     
-    setColetaToEdit(coleta);
+    setColetaToEdit(coletaCompleta);
     setEditFormData({
-      data: coleta.data.split('T')[0],
-      supermercadoId: coleta.supermercadoId,
-      pesquisadorId: coleta.pesquisadorId,
-      ano: coleta.ano || ''
+      data: coletaCompleta.data.split('T')[0],
+      supermercadoId: coletaCompleta.supermercadoId,
+      pesquisadorId: coletaCompleta.pesquisadorId,
+      ano: coletaCompleta.ano || ''
     });
     setShowEditDialog(true);
   };
@@ -162,10 +234,11 @@ export const PesquisasPage = () => {
     
     setShowEditDialog(false);
     setColetaToEdit(null);
+    refetchColetas(); // Atualizar lista otimizada
   };
 
-  const handleDeleteColeta = (coleta: Coleta) => {
-    if (coleta.status !== 'não iniciada') {
+  const handleDeleteColeta = (coletaAdmin: any) => {
+    if (coletaAdmin.status !== 'não iniciada') {
       toast({
         title: "Ação não permitida",
         description: "Apenas coletas não iniciadas podem ser deletadas.",
@@ -174,7 +247,7 @@ export const PesquisasPage = () => {
       return;
     }
     
-    setColetaToDelete(coleta);
+    setColetaToDelete(coletaAdmin);
     setShowDeleteDialog(true);
   };
 
@@ -190,6 +263,7 @@ export const PesquisasPage = () => {
     
     setShowDeleteDialog(false);
     setColetaToDelete(null);
+    refetchColetas(); // Atualizar lista otimizada
   };
 
   const formatDate = (dateString: string) => {
@@ -205,10 +279,8 @@ export const PesquisasPage = () => {
     return pesquisadores.find(p => p.id === id)?.nome || 'N/A';
   };
 
-  // Ordenar coletas por data (mais recente primeiro)
-  const coletasOrdenadas = [...coletas].sort((a, b) => 
-    new Date(b.data).getTime() - new Date(a.data).getTime()
-  );
+  // Coletas já vêm ordenadas do hook useColetasAdmin
+  const coletasOrdenadas = coletasAdmin;
 
   // Se uma coleta está selecionada, mostrar a visualização admin
   if (selectedColeta) {
@@ -404,8 +476,32 @@ export const PesquisasPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {coletasOrdenadas.map((coleta) => (
+            {loadingColetas ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 border rounded-lg">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-6 w-20" />
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : coletasOrdenadas.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhuma coleta cadastrada ainda.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {coletasOrdenadas.map((coleta) => (
                 <div 
                   key={coleta.id}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -447,7 +543,7 @@ export const PesquisasPage = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Package className="w-4 h-4" />
-                        <span><strong>Produtos:</strong> {coleta.produtos.length} itens</span>
+                        <span><strong>Produtos:</strong> {coleta.produtosCount} itens</span>
                       </div>
                     </div>
                   </div>
@@ -456,7 +552,7 @@ export const PesquisasPage = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => handleViewColeta(coleta)}
+                      onClick={() => handleViewColeta(coleta.id)}
                     >
                       <Search className="w-4 h-4 mr-1" />
                       Visualizar
@@ -480,32 +576,11 @@ export const PesquisasPage = () => {
                         </Button>
                       </>
                     )}
-                    
-                    {/* Notification Bell for Post-completion Observations */}
-                    {coleta.observacoesFinais && 
-                     coleta.observacoesFinais.length > 0 && 
-                     !coleta.adminVisualizouObservacoes && (
-                      <div className="relative">
-                        <Bell className="w-4 h-4 text-yellow-500" />
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                          {coleta.observacoesFinais.length}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
-              
-              {coletasOrdenadas.length === 0 && (
-                <div className="text-center py-8">
-                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Nenhuma coleta encontrada</h3>
-                  <p className="text-muted-foreground">
-                    Cadastre a primeira coleta clicando no botão "Nova Coleta"
-                  </p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
