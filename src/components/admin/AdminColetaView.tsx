@@ -197,9 +197,9 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
     }
   };
 
-  // Verificar se produto tem fotos (usando lista de IDs passada do componente pai)
+  // Verificar se produto tem fotos (pelo contador no array produtos ou fotos já carregadas)
   const produtoTemFotos = (produtoId: string): boolean => {
-    return coleta.produtosComFotos?.includes(produtoId) || false;
+    return fotosPorProduto[produtoId]?.length > 0;
   };
 
   return (

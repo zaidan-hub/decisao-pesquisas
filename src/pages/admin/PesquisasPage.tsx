@@ -143,7 +143,7 @@ export const PesquisasPage = () => {
       
       const { data, error } = await supabase
         .from('coletas')
-        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes, fotos')
+        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes')
         .eq('id', coletaId)
         .single();
 
@@ -178,10 +178,6 @@ export const PesquisasPage = () => {
 
       // Etapa 4: Organizar informações (80% → 95%)
       setLoadingMessage('Organizando informações...');
-      
-      // Extrair IDs de produtos que possuem fotos (sem carregar as imagens)
-      const produtosComFotos = Object.keys(data.fotos || {});
-      
       const coletaCompleta: Coleta = {
         id: data.id,
         data: data.data,
@@ -196,8 +192,7 @@ export const PesquisasPage = () => {
         observacoesProdutos: (data.observacoes_produtos as any) || {},
         observacoesFinais: (data.observacoes_finais as any) || [],
         adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
-        fotos: {}, // Fotos serão carregadas sob demanda
-        produtosComFotos // Adicionar lista de IDs com fotos
+        fotos: {} // Fotos serão carregadas sob demanda
       };
       
       await new Promise(resolve => setTimeout(resolve, 200));
