@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Edit2, Save, X, MessageSquare, Camera } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, X, MessageSquare, Camera, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Coleta, Produto, Grupo, Subgrupo, Supermercado } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -24,6 +25,8 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   );
   const [isEditing, setIsEditing] = useState(false);
   const [tempPrecos, setTempPrecos] = useState<{ [produtoId: string]: string }>({});
+  const [fotosPorProduto, setFotosPorProduto] = useState<{ [produtoId: string]: string[] }>({});
+  const [loadingFotos, setLoadingFotos] = useState<{ [produtoId: string]: boolean }>({});
 
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
@@ -152,6 +155,51 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   // Verificar se o preço foi editado pelo admin
   const foiEditadoPeloAdmin = (produtoId: string): boolean => {
     return produtoId in precosEditados;
+  };
+
+  // Buscar fotos sob demanda quando o Dialog for aberto
+  const handleLoadFotos = async (produtoId: string) => {
+    if (fotosPorProduto[produtoId] || loadingFotos[produtoId]) {
+      return; // Já carregou ou está carregando
+    }
+
+    setLoadingFotos(prev => ({ ...prev, [produtoId]: true }));
+    
+    try {
+      const { data, error } = await supabase
+        .from('coletas')
+        .select('fotos')
+        .eq('id', coleta.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data?.fotos?.[produtoId]) {
+        setFotosPorProduto(prev => ({
+          ...prev,
+          [produtoId]: data.fotos[produtoId]
+        }));
+      } else {
+        setFotosPorProduto(prev => ({
+          ...prev,
+          [produtoId]: []
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar fotos:', error);
+      toast({
+        title: "Erro ao carregar fotos",
+        description: "Não foi possível carregar as fotos do produto.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingFotos(prev => ({ ...prev, [produtoId]: false }));
+    }
+  };
+
+  // Verificar se produto tem fotos (pelo contador no array produtos ou fotos já carregadas)
+  const produtoTemFotos = (produtoId: string): boolean => {
+    return fotosPorProduto[produtoId]?.length > 0;
   };
 
   return (
@@ -290,26 +338,31 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
                             
                             {!isEditing && (
                               <div className="flex gap-2">
-                                {coleta.fotos?.[produto.id] && coleta.fotos[produto.id].length > 0 && (
-                                  <Dialog>
-                                    <DialogTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="bg-blue-50 border-blue-200 hover:bg-blue-100"
-                                      >
-                                        <Camera className="w-4 h-4" />
-                                        <span className="ml-1 text-xs">
-                                          {coleta.fotos[produto.id].length}
-                                        </span>
-                                      </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-3xl">
-                                      <DialogHeader>
-                                        <DialogTitle>Fotos - {produto.nome}</DialogTitle>
-                                      </DialogHeader>
+                                <Dialog onOpenChange={(open) => {
+                                  if (open) {
+                                    handleLoadFotos(produto.id);
+                                  }
+                                }}>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="bg-blue-50 border-blue-200 hover:bg-blue-100"
+                                    >
+                                      <Camera className="w-4 h-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-3xl">
+                                    <DialogHeader>
+                                      <DialogTitle>Fotos - {produto.nome}</DialogTitle>
+                                    </DialogHeader>
+                                    {loadingFotos[produto.id] ? (
+                                      <div className="flex justify-center items-center py-12">
+                                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                      </div>
+                                    ) : fotosPorProduto[produto.id]?.length > 0 ? (
                                       <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
-                                        {coleta.fotos[produto.id].map((foto, index) => (
+                                        {fotosPorProduto[produto.id].map((foto, index) => (
                                           <img
                                             key={index}
                                             src={foto}
@@ -318,9 +371,13 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
                                           />
                                         ))}
                                       </div>
-                                    </DialogContent>
-                                  </Dialog>
-                                )}
+                                    ) : (
+                                      <div className="text-center py-8 text-muted-foreground">
+                                        Nenhuma foto disponível
+                                      </div>
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
                                 
                                 {coleta.observacoesProdutos?.[produto.id] && (
                                   <div className="bg-yellow-50 border border-yellow-200 rounded px-2 py-1 flex items-center gap-1">

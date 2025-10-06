@@ -143,7 +143,7 @@ export const PesquisasPage = () => {
       
       const { data, error } = await supabase
         .from('coletas')
-        .select('*')
+        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes')
         .eq('id', coletaId)
         .single();
 
@@ -192,7 +192,7 @@ export const PesquisasPage = () => {
         observacoesProdutos: (data.observacoes_produtos as any) || {},
         observacoesFinais: (data.observacoes_finais as any) || [],
         adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
-        fotos: (data.fotos as any) || {}
+        fotos: {} // Fotos serão carregadas sob demanda
       };
       
       await new Promise(resolve => setTimeout(resolve, 200));
