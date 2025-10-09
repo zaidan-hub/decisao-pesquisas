@@ -36,7 +36,8 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    const [year, month, day] = dateString.split('T')[0].split('-');
+    return `${day}/${month}/${year}`;
   };
 
   const getStatusColor = (status: Coleta['status']) => {
