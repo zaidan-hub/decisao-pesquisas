@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Produto, Grupo, Subgrupo, Supermercado, Coleta } from '@/types';
+import { Produto, Grupo, Subgrupo, Supermercado, Coleta, Departamento } from '@/types';
 
 interface RelatorioData {
   nome: string;
@@ -11,6 +11,7 @@ interface RelatorioData {
   supermercados: Supermercado[];
   grupos: Grupo[];
   subgrupos: Subgrupo[];
+  departamentos: Departamento[];
 }
 
 // Gera PDF do relatório
@@ -84,61 +85,115 @@ export const generatePDF = (data: RelatorioData) => {
   doc.text(`Produtos não encontrados: ${produtosNaoEncontrados}`, 14, yPos);
   yPos += 8;
 
-  // Criar dados da tabela
+  // Criar estrutura hierárquica: Departamento -> Grupo -> Subgrupo -> Produtos
   const tableData: any[] = [];
   
-  // Ordenar produtos por grupo, subgrupo e nome
-  const produtosOrdenados = [...data.produtos].sort((a, b) => {
-    const grupoA = data.grupos.find(g => g.id === a.grupoId);
-    const grupoB = data.grupos.find(g => g.id === b.grupoId);
-    if (grupoA && grupoB && grupoA.nome !== grupoB.nome) {
-      return grupoA.nome.localeCompare(grupoB.nome);
+  // Agrupar produtos por departamento, grupo e subgrupo
+  const hierarchy = new Map<string, Map<string, Map<string, Produto[]>>>();
+  
+  data.produtos.forEach(produto => {
+    const subgrupo = data.subgrupos.find(s => s.id === produto.subgrupoId);
+    const grupo = data.grupos.find(g => g.id === produto.grupoId);
+    const departamento = grupo?.departamentoId 
+      ? data.departamentos.find(d => d.id === grupo.departamentoId)
+      : null;
+    
+    const depKey = departamento?.nome || 'SEM DEPARTAMENTO';
+    const grupoKey = grupo?.nome || 'SEM GRUPO';
+    const subgrupoKey = subgrupo?.nome || 'SEM SUBGRUPO';
+    
+    if (!hierarchy.has(depKey)) {
+      hierarchy.set(depKey, new Map());
     }
-    const subgrupoA = data.subgrupos.find(s => s.id === a.subgrupoId);
-    const subgrupoB = data.subgrupos.find(s => s.id === b.subgrupoId);
-    if (subgrupoA && subgrupoB && subgrupoA.nome !== subgrupoB.nome) {
-      return subgrupoA.nome.localeCompare(subgrupoB.nome);
+    const grupoMap = hierarchy.get(depKey)!;
+    
+    if (!grupoMap.has(grupoKey)) {
+      grupoMap.set(grupoKey, new Map());
     }
-    return a.nome.localeCompare(b.nome);
+    const subgrupoMap = grupoMap.get(grupoKey)!;
+    
+    if (!subgrupoMap.has(subgrupoKey)) {
+      subgrupoMap.set(subgrupoKey, []);
+    }
+    subgrupoMap.get(subgrupoKey)!.push(produto);
   });
+  
+  // Ordenar e criar linhas da tabela com hierarquia
+  const sortedDepartamentos = Array.from(hierarchy.keys()).sort();
+  
+  sortedDepartamentos.forEach(depNome => {
+    // Adicionar linha do departamento (em negrito via estilo)
+    tableData.push([{
+      content: depNome.toUpperCase(),
+      colSpan: 4 + data.coletas.length,
+      styles: { fontStyle: 'bold', fontSize: 10, fillColor: [240, 240, 240] }
+    }]);
+    
+    const grupoMap = hierarchy.get(depNome)!;
+    const sortedGrupos = Array.from(grupoMap.keys()).sort();
+    
+    sortedGrupos.forEach(grupoNome => {
+      // Adicionar linha do grupo (indentada)
+      tableData.push([{
+        content: '  ' + grupoNome.toUpperCase(),
+        colSpan: 4 + data.coletas.length,
+        styles: { fontStyle: 'bold', fontSize: 9, fillColor: [250, 250, 250] }
+      }]);
+      
+      const subgrupoMap = grupoMap.get(grupoNome)!;
+      const sortedSubgrupos = Array.from(subgrupoMap.keys()).sort();
+      
+      sortedSubgrupos.forEach(subgrupoNome => {
+        // Adicionar linha do subgrupo (mais indentada)
+        tableData.push([{
+          content: '    ' + subgrupoNome.toUpperCase(),
+          colSpan: 4 + data.coletas.length,
+          styles: { fontStyle: 'bold', fontSize: 8 }
+        }]);
+        
+        const produtos = subgrupoMap.get(subgrupoNome)!;
+        const produtosOrdenados = produtos.sort((a, b) => a.nome.localeCompare(b.nome));
+        
+        // Adicionar produtos
+        produtosOrdenados.forEach(produto => {
+          const row: any[] = [
+            produto.codigo,
+            produto.nome,
+            produto.quantidade || '-',
+            produto.unidadeMedida || '-'
+          ];
 
-  produtosOrdenados.forEach(produto => {
-    const row: any[] = [
-      produto.codigo,
-      produto.nome,
-      produto.quantidade || '-',
-      produto.unidadeMedida || '-'
-    ];
+          // Preços por supermercado (priorizar preços editados pelo admin)
+          const precos: number[] = [];
+          data.coletas.forEach(coleta => {
+            const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+            precos.push(preco);
+            row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+          });
 
-    // Preços por supermercado (priorizar preços editados pelo admin)
-    const precos: number[] = [];
-    data.coletas.forEach(coleta => {
-      // Se existir preço editado pelo admin, usar ele; caso contrário, usar o preço original
-      const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
-      precos.push(preco);
-      row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+          // Calcular máximo e mínimo (apenas preços > 0)
+          const precosValidos = precos.filter(p => p > 0);
+          if (precosValidos.length > 0) {
+            const maxPreco = Math.max(...precosValidos);
+            const minPreco = Math.min(...precosValidos);
+
+            // Adicionar símbolos + e -
+            for (let i = 0; i < precos.length; i++) {
+              if (precos[i] > 0) {
+                if (precos[i] === maxPreco) {
+                  row[4 + i] += ' +';
+                }
+                if (precos[i] === minPreco) {
+                  row[4 + i] += ' -';
+                }
+              }
+            }
+          }
+
+          tableData.push(row);
+        });
+      });
     });
-
-    // Calcular máximo e mínimo (apenas preços > 0)
-    const precosValidos = precos.filter(p => p > 0);
-    if (precosValidos.length > 0) {
-      const maxPreco = Math.max(...precosValidos);
-      const minPreco = Math.min(...precosValidos);
-
-      // Adicionar símbolos + e -
-      for (let i = 0; i < precos.length; i++) {
-        if (precos[i] > 0) {
-          if (precos[i] === maxPreco) {
-            row[4 + i] += ' +';
-          }
-          if (precos[i] === minPreco) {
-            row[4 + i] += ' -';
-          }
-        }
-      }
-    }
-
-    tableData.push(row);
   });
 
   // Cabeçalhos da tabela

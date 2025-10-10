@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
+import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { useListas } from '@/hooks/useListas';
 import { useRelatorios, Relatorio } from '@/hooks/useRelatorios';
@@ -23,6 +24,7 @@ export const RelatoriosPage = () => {
   const { produtos, loading: loadingProdutos } = useProdutos();
   const { grupos, loading: loadingGrupos } = useGrupos();
   const { subgrupos, loading: loadingSubgrupos } = useSubgrupos();
+  const { departamentos, loading: loadingDepartamentos } = useDepartamentos();
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { listas, loading: loadingListas } = useListas();
   const { relatorios, loading: loadingRelatorios, createRelatorio, deleteRelatorio } = useRelatorios();
@@ -43,7 +45,7 @@ export const RelatoriosPage = () => {
   );
 
   // Loading geral
-  const isLoading = loadingProdutos || loadingGrupos || loadingSubgrupos || 
+  const isLoading = loadingProdutos || loadingGrupos || loadingSubgrupos || loadingDepartamentos ||
                     loadingSupermercados || loadingListas || loadingRelatorios || loadingColetas;
 
   // Handlers para relatório (otimizados com useCallback)
@@ -123,9 +125,10 @@ export const RelatoriosPage = () => {
       coletas: coletasRelatorio,
       supermercados,
       grupos,
-      subgrupos
+      subgrupos,
+      departamentos
     });
-  }, [produtos, coletas, supermercados, grupos, subgrupos]);
+  }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
   const handleExportTXT = useCallback((relatorio: Relatorio) => {
     const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
@@ -139,9 +142,10 @@ export const RelatoriosPage = () => {
       coletas: coletasRelatorio,
       supermercados,
       grupos,
-      subgrupos
+      subgrupos,
+      departamentos
     });
-  }, [produtos, coletas, supermercados, grupos, subgrupos]);
+  }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
   return (
     <div className="space-y-6">
