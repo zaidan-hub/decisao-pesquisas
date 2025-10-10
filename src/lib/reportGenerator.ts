@@ -242,7 +242,7 @@ export const generatePDF = (data: RelatorioData) => {
             doc.setFontSize(8);
             const textWidth = doc.getTextWidth(cellText);
             const symbolX = data.cell.x + textWidth + 2;
-            const symbolY = data.cell.y + data.cell.height / 2 + 2;
+            const symbolY = data.cell.y + (data.cell.height / 2) + (doc.getFontSize() / 3);
             
             // Desenhar símbolos com cores
             if (symbol === '+ -' || symbol === '- +') {
