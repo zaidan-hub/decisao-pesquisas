@@ -89,11 +89,6 @@ export const ProdutosPage = () => {
     } else {
       setSelectedGrupo(grupoId);
       setSelectedSubgrupo(null);
-      // Selecionar automaticamente o departamento pai
-      const grupo = grupos.find(g => g.id === grupoId);
-      if (grupo && grupo.departamentoId) {
-        setSelectedDepartamento(grupo.departamentoId);
-      }
     }
   };
 
@@ -102,31 +97,6 @@ export const ProdutosPage = () => {
       setSelectedSubgrupo(null);
     } else {
       setSelectedSubgrupo(subgrupoId);
-      // Selecionar automaticamente o grupo e departamento pai
-      const subgrupo = subgrupos.find(s => s.id === subgrupoId);
-      if (subgrupo) {
-        setSelectedGrupo(subgrupo.grupoId);
-        const grupo = grupos.find(g => g.id === subgrupo.grupoId);
-        if (grupo && grupo.departamentoId) {
-          setSelectedDepartamento(grupo.departamentoId);
-        }
-      }
-    }
-  };
-
-  const handleProdutoClick = (produtoId: string) => {
-    // Selecionar automaticamente subgrupo, grupo e departamento pai
-    const produto = produtos.find(p => p.id === produtoId);
-    if (produto) {
-      setSelectedSubgrupo(produto.subgrupoId);
-      const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
-      if (subgrupo) {
-        setSelectedGrupo(subgrupo.grupoId);
-        const grupo = grupos.find(g => g.id === subgrupo.grupoId);
-        if (grupo && grupo.departamentoId) {
-          setSelectedDepartamento(grupo.departamentoId);
-        }
-      }
     }
   };
 
@@ -515,7 +485,6 @@ export const ProdutosPage = () => {
               filteredProdutos.map(produto => (
                 <div
                   key={produto.id}
-                  onClick={() => handleProdutoClick(produto.id)}
                   onDoubleClick={() => setEditingProduto(produto)}
                   className="p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                 >
