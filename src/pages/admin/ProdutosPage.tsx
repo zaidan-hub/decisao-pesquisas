@@ -151,7 +151,11 @@ export const ProdutosPage = () => {
     try {
       const { error } = await supabase
         .from('subgrupos')
-        .update({ nome: editingSubgrupo.nome, codigo: editingSubgrupo.codigo })
+        .update({ 
+          nome: editingSubgrupo.nome, 
+          codigo: editingSubgrupo.codigo,
+          grupo_id: editingSubgrupo.grupoId
+        })
         .eq('id', editingSubgrupo.id);
 
       if (error) throw error;
@@ -174,7 +178,7 @@ export const ProdutosPage = () => {
         .update({ 
           nome: editingProduto.nome, 
           codigo: editingProduto.codigo,
-          departamento_id: editingProduto.departamentoId,
+          subgrupo_id: editingProduto.subgrupoId,
           unidade_medida: editingProduto.unidadeMedida,
           quantidade: editingProduto.quantidade
         })
@@ -237,7 +241,6 @@ export const ProdutosPage = () => {
             nome: newItem.nome,
             grupo_id: newItem.grupoId,
             subgrupo_id: newItem.subgrupoId,
-            departamento_id: newItem.departamentoId,
             unidade_medida: newItem.unidadeMedida,
             quantidade: newItem.quantidade
           });
@@ -581,32 +584,6 @@ export const ProdutosPage = () => {
             {addCategory === 'produto' && (
               <>
                 <div>
-                  <Label>Departamento</Label>
-                  <Select value={newItem.departamentoId} onValueChange={(val) => setNewItem({ ...newItem, departamentoId: val })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departamentos.map(d => (
-                        <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Grupo</Label>
-                  <Select value={newItem.grupoId} onValueChange={(val) => setNewItem({ ...newItem, grupoId: val })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {grupos.map(g => (
-                        <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
                   <Label>Subgrupo</Label>
                   <Select value={newItem.subgrupoId} onValueChange={(val) => setNewItem({ ...newItem, subgrupoId: val })}>
                     <SelectTrigger>
@@ -743,6 +720,22 @@ export const ProdutosPage = () => {
                 onChange={(e) => setEditingSubgrupo(editingSubgrupo ? {...editingSubgrupo, nome: e.target.value} : null)}
               />
             </div>
+            <div>
+              <Label>Grupo</Label>
+              <Select 
+                value={editingSubgrupo?.grupoId || ''} 
+                onValueChange={(val) => setEditingSubgrupo(editingSubgrupo ? {...editingSubgrupo, grupoId: val} : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {grupos.map(g => (
+                    <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditingSubgrupo(null)}>Cancelar</Button>
               <Button onClick={handleUpdateSubgrupo}>Salvar</Button>
@@ -773,17 +766,17 @@ export const ProdutosPage = () => {
               />
             </div>
             <div>
-              <Label>Departamento</Label>
+              <Label>Subgrupo</Label>
               <Select 
-                value={editingProduto?.departamentoId || ''} 
-                onValueChange={(val) => setEditingProduto(editingProduto ? {...editingProduto, departamentoId: val} : null)}
+                value={editingProduto?.subgrupoId || ''} 
+                onValueChange={(val) => setEditingProduto(editingProduto ? {...editingProduto, subgrupoId: val} : null)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {departamentos.map(d => (
-                    <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                  {subgrupos.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

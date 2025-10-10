@@ -52,7 +52,6 @@ export interface Produto {
   nome: string;
   grupoId: string;
   subgrupoId: string;
-  departamentoId?: string;
   unidadeMedida: string;
   quantidade?: string;
 }
