@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Grupo, Subgrupo, Produto } from '@/types';
-import { Search, Package, Layers, FolderOpen } from 'lucide-react';
+import { Departamento, Grupo, Subgrupo, Produto } from '@/types';
+import { Search, Package, Layers, FolderOpen, Building2, Plus } from 'lucide-react';
+import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -10,33 +11,55 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const ProdutosPage = () => {
   // Buscar dados do banco
-  const { grupos, loading: loadingGrupos } = useGrupos();
-  const { subgrupos, loading: loadingSubgrupos } = useSubgrupos();
-  const { produtos, loading: loadingProdutos } = useProdutos();
+  const { departamentos, loading: loadingDepartamentos, refetch: refetchDepartamentos } = useDepartamentos();
+  const { grupos, loading: loadingGrupos, refetch: refetchGrupos } = useGrupos();
+  const { subgrupos, loading: loadingSubgrupos, refetch: refetchSubgrupos } = useSubgrupos();
+  const { produtos, loading: loadingProdutos, refetch: refetchProdutos } = useProdutos();
 
+  const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
   const [selectedGrupo, setSelectedGrupo] = useState<string | null>(null);
   const [selectedSubgrupo, setSelectedSubgrupo] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'grupos' | 'subgrupos' | 'produtos'>('grupos');
   
   const [searchTerms, setSearchTerms] = useState({
+    departamentos: '',
     grupos: '',
     subgrupos: '',
     produtos: ''
   });
 
   // Estados para edição
+  const [editingDepartamento, setEditingDepartamento] = useState<Departamento | null>(null);
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
   const [editingSubgrupo, setEditingSubgrupo] = useState<Subgrupo | null>(null);
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
 
+  // Estados para adicionar novo item
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addCategory, setAddCategory] = useState<'departamento' | 'grupo' | 'subgrupo' | 'produto'>('departamento');
+  const [newItem, setNewItem] = useState({
+    codigo: '',
+    nome: '',
+    departamentoId: '',
+    grupoId: '',
+    subgrupoId: '',
+    unidadeMedida: '',
+    quantidade: ''
+  });
+
   // Filtered data
+  const filteredDepartamentos = departamentos.filter(d => 
+    d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
+  );
+
   const filteredGrupos = grupos.filter(g => 
-    g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase())
+    g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
+    (!selectedDepartamento || g.departamentoId === selectedDepartamento)
   );
 
   const filteredSubgrupos = subgrupos.filter(sg => 
@@ -50,42 +73,72 @@ export const ProdutosPage = () => {
   );
 
   // Handlers
+  const handleDepartamentoClick = (departamentoId: string) => {
+    if (selectedDepartamento === departamentoId) {
+      setSelectedDepartamento(null);
+    } else {
+      setSelectedDepartamento(departamentoId);
+      setSelectedGrupo(null);
+      setSelectedSubgrupo(null);
+    }
+  };
+
   const handleGrupoClick = (grupoId: string) => {
     if (selectedGrupo === grupoId) {
       setSelectedGrupo(null);
-      setActiveTab('grupos');
     } else {
       setSelectedGrupo(grupoId);
       setSelectedSubgrupo(null);
-      setActiveTab('subgrupos');
     }
   };
 
   const handleSubgrupoClick = (subgrupoId: string) => {
     if (selectedSubgrupo === subgrupoId) {
       setSelectedSubgrupo(null);
-      setActiveTab('subgrupos');
     } else {
       setSelectedSubgrupo(subgrupoId);
-      setActiveTab('produtos');
     }
   };
 
   // Handlers de edição
+  const handleUpdateDepartamento = async () => {
+    if (!editingDepartamento) return;
+    
+    try {
+      const { error } = await supabase
+        .from('departamentos')
+        .update({ nome: editingDepartamento.nome, codigo: editingDepartamento.codigo })
+        .eq('id', editingDepartamento.id);
+
+      if (error) throw error;
+      
+      toast.success('Departamento atualizado com sucesso');
+      setEditingDepartamento(null);
+      refetchDepartamentos();
+    } catch (error) {
+      console.error('Erro ao atualizar departamento:', error);
+      toast.error('Erro ao atualizar departamento');
+    }
+  };
+
   const handleUpdateGrupo = async () => {
     if (!editingGrupo) return;
     
     try {
       const { error } = await supabase
         .from('grupos')
-        .update({ nome: editingGrupo.nome, codigo: editingGrupo.codigo })
+        .update({ 
+          nome: editingGrupo.nome, 
+          codigo: editingGrupo.codigo,
+          departamento_id: editingGrupo.departamentoId
+        })
         .eq('id', editingGrupo.id);
 
       if (error) throw error;
       
       toast.success('Grupo atualizado com sucesso');
       setEditingGrupo(null);
-      window.location.reload();
+      refetchGrupos();
     } catch (error) {
       console.error('Erro ao atualizar grupo:', error);
       toast.error('Erro ao atualizar grupo');
@@ -105,7 +158,7 @@ export const ProdutosPage = () => {
       
       toast.success('Subgrupo atualizado com sucesso');
       setEditingSubgrupo(null);
-      window.location.reload();
+      refetchSubgrupos();
     } catch (error) {
       console.error('Erro ao atualizar subgrupo:', error);
       toast.error('Erro ao atualizar subgrupo');
@@ -121,6 +174,7 @@ export const ProdutosPage = () => {
         .update({ 
           nome: editingProduto.nome, 
           codigo: editingProduto.codigo,
+          departamento_id: editingProduto.departamentoId,
           unidade_medida: editingProduto.unidadeMedida,
           quantidade: editingProduto.quantidade
         })
@@ -130,10 +184,83 @@ export const ProdutosPage = () => {
       
       toast.success('Produto atualizado com sucesso');
       setEditingProduto(null);
-      window.location.reload();
+      refetchProdutos();
     } catch (error) {
       console.error('Erro ao atualizar produto:', error);
       toast.error('Erro ao atualizar produto');
+    }
+  };
+
+  // Handler para adicionar novo item
+  const handleAddItem = async () => {
+    try {
+      if (addCategory === 'departamento') {
+        const { error } = await supabase
+          .from('departamentos')
+          .insert({ codigo: newItem.codigo, nome: newItem.nome });
+        
+        if (error) throw error;
+        refetchDepartamentos();
+        toast.success('Departamento criado com sucesso');
+        
+      } else if (addCategory === 'grupo') {
+        const { error } = await supabase
+          .from('grupos')
+          .insert({ 
+            codigo: newItem.codigo, 
+            nome: newItem.nome,
+            departamento_id: newItem.departamentoId
+          });
+        
+        if (error) throw error;
+        refetchGrupos();
+        toast.success('Grupo criado com sucesso');
+        
+      } else if (addCategory === 'subgrupo') {
+        const { error } = await supabase
+          .from('subgrupos')
+          .insert({ 
+            codigo: newItem.codigo, 
+            nome: newItem.nome,
+            grupo_id: newItem.grupoId
+          });
+        
+        if (error) throw error;
+        refetchSubgrupos();
+        toast.success('Subgrupo criado com sucesso');
+        
+      } else if (addCategory === 'produto') {
+        const { error } = await supabase
+          .from('produtos')
+          .insert({ 
+            codigo: newItem.codigo, 
+            nome: newItem.nome,
+            grupo_id: newItem.grupoId,
+            subgrupo_id: newItem.subgrupoId,
+            departamento_id: newItem.departamentoId,
+            unidade_medida: newItem.unidadeMedida,
+            quantidade: newItem.quantidade
+          });
+        
+        if (error) throw error;
+        refetchProdutos();
+        toast.success('Produto criado com sucesso');
+      }
+
+      setShowAddDialog(false);
+      setNewItem({
+        codigo: '',
+        nome: '',
+        departamentoId: '',
+        grupoId: '',
+        subgrupoId: '',
+        unidadeMedida: '',
+        quantidade: ''
+      });
+      
+    } catch (error) {
+      console.error('Erro ao criar item:', error);
+      toast.error('Erro ao criar item');
     }
   };
 
@@ -144,13 +271,66 @@ export const ProdutosPage = () => {
         <div>
           <h2 className="text-2xl font-bold">Produtos</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Visualize os produtos cadastrados no sistema
+            Visualize e gerencie os produtos cadastrados no sistema
           </p>
         </div>
+        <Button onClick={() => setShowAddDialog(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Adicionar
+        </Button>
       </div>
 
-      {/* Three Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Four Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Departamentos */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                <CardTitle>Departamentos</CardTitle>
+              </div>
+            </div>
+            <div className="relative mt-2">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerms.departamentos}
+                onChange={(e) => setSearchTerms({ ...searchTerms, departamentos: e.target.value })}
+                className="pl-9"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="max-h-[500px] overflow-y-auto space-y-2">
+            {loadingDepartamentos ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))
+            ) : (
+              filteredDepartamentos.map(depto => (
+                <div
+                  key={depto.id}
+                  onClick={() => handleDepartamentoClick(depto.id)}
+                  onDoubleClick={() => setEditingDepartamento(depto)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedDepartamento === depto.id 
+                      ? 'bg-primary text-primary-foreground border-primary' 
+                      : 'hover:bg-accent'
+                  }`}
+                >
+                  <div className="font-medium">{depto.nome}</div>
+                  <div className="text-xs opacity-70">{depto.codigo}</div>
+                </div>
+              ))
+            )}
+            {!loadingDepartamentos && filteredDepartamentos.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum departamento encontrado
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Grupos */}
         <Card>
           <CardHeader>
@@ -160,10 +340,15 @@ export const ProdutosPage = () => {
                 <CardTitle>Grupos</CardTitle>
               </div>
             </div>
+            {selectedDepartamento && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {departamentos.find(d => d.id === selectedDepartamento)?.nome}
+              </div>
+            )}
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar grupo..."
+                placeholder="Buscar..."
                 value={searchTerms.grupos}
                 onChange={(e) => setSearchTerms({ ...searchTerms, grupos: e.target.value })}
                 className="pl-9"
@@ -187,16 +372,17 @@ export const ProdutosPage = () => {
                       : 'hover:bg-accent'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{grupo.nome}</div>
-                      <div className="text-xs opacity-70">{grupo.codigo}</div>
-                    </div>
-                  </div>
+                  <div className="font-medium">{grupo.nome}</div>
+                  <div className="text-xs opacity-70">{grupo.codigo}</div>
                 </div>
               ))
             )}
-            {!loadingGrupos && filteredGrupos.length === 0 && (
+            {!loadingGrupos && !selectedDepartamento && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Selecione um departamento
+              </p>
+            )}
+            {!loadingGrupos && selectedDepartamento && filteredGrupos.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Nenhum grupo encontrado
               </p>
@@ -221,7 +407,7 @@ export const ProdutosPage = () => {
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar subgrupo..."
+                placeholder="Buscar..."
                 value={searchTerms.subgrupos}
                 onChange={(e) => setSearchTerms({ ...searchTerms, subgrupos: e.target.value })}
                 className="pl-9"
@@ -245,12 +431,8 @@ export const ProdutosPage = () => {
                       : 'hover:bg-accent'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{subgrupo.nome}</div>
-                      <div className="text-xs opacity-70">{subgrupo.codigo}</div>
-                    </div>
-                  </div>
+                  <div className="font-medium">{subgrupo.nome}</div>
+                  <div className="text-xs opacity-70">{subgrupo.codigo}</div>
                 </div>
               ))
             )}
@@ -284,7 +466,7 @@ export const ProdutosPage = () => {
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar produto..."
+                placeholder="Buscar..."
                 value={searchTerms.produtos}
                 onChange={(e) => setSearchTerms({ ...searchTerms, produtos: e.target.value })}
                 className="pl-9"
@@ -303,13 +485,9 @@ export const ProdutosPage = () => {
                   onDoubleClick={() => setEditingProduto(produto)}
                   className="p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="font-medium">{produto.nome}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
-                      </div>
-                    </div>
+                  <div className="font-medium">{produto.nome}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
                   </div>
                 </div>
               ))
@@ -328,6 +506,177 @@ export const ProdutosPage = () => {
         </Card>
       </div>
 
+      {/* Dialog para Adicionar Item */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Categoria</Label>
+              <Select value={addCategory} onValueChange={(val: any) => setAddCategory(val)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="departamento">Departamento</SelectItem>
+                  <SelectItem value="grupo">Grupo</SelectItem>
+                  <SelectItem value="subgrupo">Subgrupo</SelectItem>
+                  <SelectItem value="produto">Produto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Código</Label>
+              <Input
+                value={newItem.codigo}
+                onChange={(e) => setNewItem({ ...newItem, codigo: e.target.value })}
+                placeholder="Ex: MERC"
+              />
+            </div>
+
+            <div>
+              <Label>Nome</Label>
+              <Input
+                value={newItem.nome}
+                onChange={(e) => setNewItem({ ...newItem, nome: e.target.value })}
+                placeholder="Nome do item"
+              />
+            </div>
+
+            {addCategory === 'grupo' && (
+              <div>
+                <Label>Departamento</Label>
+                <Select value={newItem.departamentoId} onValueChange={(val) => setNewItem({ ...newItem, departamentoId: val })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departamentos.map(d => (
+                      <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {addCategory === 'subgrupo' && (
+              <div>
+                <Label>Grupo</Label>
+                <Select value={newItem.grupoId} onValueChange={(val) => setNewItem({ ...newItem, grupoId: val })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {grupos.map(g => (
+                      <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {addCategory === 'produto' && (
+              <>
+                <div>
+                  <Label>Departamento</Label>
+                  <Select value={newItem.departamentoId} onValueChange={(val) => setNewItem({ ...newItem, departamentoId: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departamentos.map(d => (
+                        <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Grupo</Label>
+                  <Select value={newItem.grupoId} onValueChange={(val) => setNewItem({ ...newItem, grupoId: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {grupos.map(g => (
+                        <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Subgrupo</Label>
+                  <Select value={newItem.subgrupoId} onValueChange={(val) => setNewItem({ ...newItem, subgrupoId: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subgrupos.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Quantidade</Label>
+                    <Input
+                      value={newItem.quantidade}
+                      onChange={(e) => setNewItem({ ...newItem, quantidade: e.target.value })}
+                      placeholder="Ex: 330"
+                    />
+                  </div>
+                  <div>
+                    <Label>Unidade</Label>
+                    <Input
+                      value={newItem.unidadeMedida}
+                      onChange={(e) => setNewItem({ ...newItem, unidadeMedida: e.target.value })}
+                      placeholder="Ex: ML"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancelar</Button>
+              <Button onClick={handleAddItem}>Adicionar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Edição de Departamento */}
+      <Dialog open={!!editingDepartamento} onOpenChange={() => setEditingDepartamento(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Departamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Código</Label>
+              <Input
+                value={editingDepartamento?.codigo || ''}
+                onChange={(e) => setEditingDepartamento(editingDepartamento ? {...editingDepartamento, codigo: e.target.value} : null)}
+              />
+            </div>
+            <div>
+              <Label>Nome</Label>
+              <Input
+                value={editingDepartamento?.nome || ''}
+                onChange={(e) => setEditingDepartamento(editingDepartamento ? {...editingDepartamento, nome: e.target.value} : null)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingDepartamento(null)}>Cancelar</Button>
+              <Button onClick={handleUpdateDepartamento}>Salvar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog de Edição de Grupo */}
       <Dialog open={!!editingGrupo} onOpenChange={() => setEditingGrupo(null)}>
         <DialogContent>
@@ -336,20 +685,34 @@ export const ProdutosPage = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="grupo-codigo">Código</Label>
+              <Label>Código</Label>
               <Input
-                id="grupo-codigo"
                 value={editingGrupo?.codigo || ''}
                 onChange={(e) => setEditingGrupo(editingGrupo ? {...editingGrupo, codigo: e.target.value} : null)}
               />
             </div>
             <div>
-              <Label htmlFor="grupo-nome">Nome</Label>
+              <Label>Nome</Label>
               <Input
-                id="grupo-nome"
                 value={editingGrupo?.nome || ''}
                 onChange={(e) => setEditingGrupo(editingGrupo ? {...editingGrupo, nome: e.target.value} : null)}
               />
+            </div>
+            <div>
+              <Label>Departamento</Label>
+              <Select 
+                value={editingGrupo?.departamentoId || ''} 
+                onValueChange={(val) => setEditingGrupo(editingGrupo ? {...editingGrupo, departamentoId: val} : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {departamentos.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditingGrupo(null)}>Cancelar</Button>
@@ -367,17 +730,15 @@ export const ProdutosPage = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="subgrupo-codigo">Código</Label>
+              <Label>Código</Label>
               <Input
-                id="subgrupo-codigo"
                 value={editingSubgrupo?.codigo || ''}
                 onChange={(e) => setEditingSubgrupo(editingSubgrupo ? {...editingSubgrupo, codigo: e.target.value} : null)}
               />
             </div>
             <div>
-              <Label htmlFor="subgrupo-nome">Nome</Label>
+              <Label>Nome</Label>
               <Input
-                id="subgrupo-nome"
                 value={editingSubgrupo?.nome || ''}
                 onChange={(e) => setEditingSubgrupo(editingSubgrupo ? {...editingSubgrupo, nome: e.target.value} : null)}
               />
@@ -398,35 +759,47 @@ export const ProdutosPage = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="produto-codigo">Código</Label>
+              <Label>Código</Label>
               <Input
-                id="produto-codigo"
                 value={editingProduto?.codigo || ''}
                 onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, codigo: e.target.value} : null)}
               />
             </div>
             <div>
-              <Label htmlFor="produto-nome">Nome</Label>
+              <Label>Nome</Label>
               <Input
-                id="produto-nome"
                 value={editingProduto?.nome || ''}
                 onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, nome: e.target.value} : null)}
               />
             </div>
+            <div>
+              <Label>Departamento</Label>
+              <Select 
+                value={editingProduto?.departamentoId || ''} 
+                onValueChange={(val) => setEditingProduto(editingProduto ? {...editingProduto, departamentoId: val} : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {departamentos.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label htmlFor="produto-quantidade">Quantidade</Label>
+                <Label>Quantidade</Label>
                 <Input
-                  id="produto-quantidade"
                   value={editingProduto?.quantidade || ''}
                   onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, quantidade: e.target.value} : null)}
                   placeholder="Ex: 330"
                 />
               </div>
               <div>
-                <Label htmlFor="produto-unidade">Unidade de Medida</Label>
+                <Label>Unidade de Medida</Label>
                 <Input
-                  id="produto-unidade"
                   value={editingProduto?.unidadeMedida || ''}
                   onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, unidadeMedida: e.target.value} : null)}
                   placeholder="Ex: ML"

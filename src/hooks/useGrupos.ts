@@ -18,7 +18,15 @@ export const useGrupos = () => {
         .order('nome');
 
       if (error) throw error;
-      setGrupos(data || []);
+      
+      const mappedData = (data || []).map(item => ({
+        id: item.id,
+        codigo: item.codigo,
+        nome: item.nome,
+        departamentoId: item.departamento_id
+      }));
+      
+      setGrupos(mappedData);
     } catch (error) {
       console.error('Erro ao buscar grupos:', error);
     } finally {

@@ -106,7 +106,7 @@ export type Database = {
           },
         ]
       }
-      grupos: {
+      departamentos: {
         Row: {
           codigo: string
           created_at: string
@@ -126,6 +126,38 @@ export type Database = {
           nome?: string
         }
         Relationships: []
+      }
+      grupos: {
+        Row: {
+          codigo: string
+          created_at: string
+          departamento_id: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          departamento_id?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          departamento_id?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_departamento_id_fkey"
+            columns: ["departamento_id"]
+            isOneToOne: false
+            referencedRelation: "departamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listas: {
         Row: {
@@ -188,6 +220,7 @@ export type Database = {
         Row: {
           codigo: string
           created_at: string
+          departamento_id: string | null
           grupo_id: string
           id: string
           nome: string
@@ -198,6 +231,7 @@ export type Database = {
         Insert: {
           codigo: string
           created_at?: string
+          departamento_id?: string | null
           grupo_id: string
           id?: string
           nome: string
@@ -208,6 +242,7 @@ export type Database = {
         Update: {
           codigo?: string
           created_at?: string
+          departamento_id?: string | null
           grupo_id?: string
           id?: string
           nome?: string
@@ -216,6 +251,13 @@ export type Database = {
           unidade_medida?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "produtos_departamento_id_fkey"
+            columns: ["departamento_id"]
+            isOneToOne: false
+            referencedRelation: "departamentos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "produtos_grupo_id_fkey"
             columns: ["grupo_id"]

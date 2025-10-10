@@ -26,10 +26,17 @@ export interface Contato {
   email: string;
 }
 
+export interface Departamento {
+  id: string;
+  codigo: string;
+  nome: string;
+}
+
 export interface Grupo {
   id: string;
   codigo: string;
   nome: string;
+  departamentoId?: string;
 }
 
 export interface Subgrupo {
@@ -45,6 +52,7 @@ export interface Produto {
   nome: string;
   grupoId: string;
   subgrupoId: string;
+  departamentoId?: string;
   unidadeMedida: string;
   quantidade?: string;
 }
