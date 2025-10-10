@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Lista } from '@/types';
 import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -20,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const ListasPage = () => {
   // Buscar dados reais do banco
+  const { departamentos } = useDepartamentos();
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
   const { produtos } = useProdutos();
@@ -30,6 +32,8 @@ export const ListasPage = () => {
   const [deleteLista, setDeleteLista] = useState<Lista | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [expandedDepartamentos, setExpandedDepartamentos] = useState<Set<string>>(new Set());
+  const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
   const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
 
   // Form state
@@ -180,6 +184,28 @@ export const ListasPage = () => {
     }));
   };
 
+  const toggleDepartamentoProdutos = (departamentoId: string) => {
+    const gruposDoDepartamento = grupos.filter(g => g.departamentoId === departamentoId);
+    const produtosDoDepartamento = produtos.filter(p => {
+      const grupo = grupos.find(g => g.id === p.grupoId);
+      return grupo?.departamentoId === departamentoId;
+    }).map(p => p.id);
+    
+    const allSelected = produtosDoDepartamento.every(id => formData.produtos.includes(id));
+    
+    if (allSelected) {
+      setFormData(prev => ({
+        ...prev,
+        produtos: prev.produtos.filter(id => !produtosDoDepartamento.includes(id))
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        produtos: [...new Set([...prev.produtos, ...produtosDoDepartamento])]
+      }));
+    }
+  };
+
   const toggleGrupoProdutos = (grupoId: string) => {
     const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
     const allSelected = grupoProdutos.every(id => formData.produtos.includes(id));
@@ -222,53 +248,75 @@ export const ListasPage = () => {
     return produtos.find(p => p.id === id)?.nome || 'N/A';
   };
 
-  // Build hierarchical structure grouped by grupo and subgrupo
-  const buildGroupedHierarchy = () => {
-    const grouped: Array<{
-      grupo: { id: string; nome: string };
-      subgrupos: Array<{
+  // Build hierarchical structure grouped by departamento > grupo > subgrupo > produto
+  const buildDepartamentoHierarchy = () => {
+    const hierarchy: Array<{
+      departamento: { id: string; nome: string };
+      grupos: Array<{
         id: string;
         nome: string;
-        produtos: Array<{
+        subgrupos: Array<{
           id: string;
           nome: string;
-          codigo: string;
-          unidade: string;
+          produtos: Array<{
+            id: string;
+            nome: string;
+            codigo: string;
+            unidade: string;
+          }>;
         }>;
       }>;
     }> = [];
 
-    grupos.forEach(grupo => {
-      const grupoSubgrupos = subgrupos.filter(s => s.grupoId === grupo.id);
-      const subgruposWithProducts = grupoSubgrupos
-        .map(subgrupo => ({
-          id: subgrupo.id,
-          nome: subgrupo.nome,
-          produtos: produtos
-            .filter(p => p.subgrupoId === subgrupo.id)
-            .map(p => ({
-              id: p.id,
-              nome: p.nome,
-              codigo: p.codigo,
-              unidade: p.unidadeMedida
-            }))
-        }))
-        .filter(sg => sg.produtos.length > 0);
+    departamentos.forEach(departamento => {
+      const gruposNoDepartamento = grupos.filter(g => g.departamentoId === departamento.id);
+      
+      const gruposWithData = gruposNoDepartamento.map(grupo => {
+        const subgruposNoGrupo = subgrupos.filter(s => s.grupoId === grupo.id);
+        const subgruposWithProducts = subgruposNoGrupo
+          .map(subgrupo => ({
+            id: subgrupo.id,
+            nome: subgrupo.nome,
+            produtos: produtos
+              .filter(p => p.subgrupoId === subgrupo.id)
+              .map(p => ({
+                id: p.id,
+                nome: p.nome,
+                codigo: p.codigo,
+                unidade: p.unidadeMedida
+              }))
+          }))
+          .filter(sg => sg.produtos.length > 0);
 
-      if (subgruposWithProducts.length > 0) {
-        grouped.push({
-          grupo: { id: grupo.id, nome: grupo.nome },
+        return {
+          id: grupo.id,
+          nome: grupo.nome,
           subgrupos: subgruposWithProducts
+        };
+      }).filter(g => g.subgrupos.length > 0);
+
+      if (gruposWithData.length > 0) {
+        hierarchy.push({
+          departamento: { id: departamento.id, nome: departamento.nome },
+          grupos: gruposWithData
         });
       }
     });
 
-    return grouped;
+    return hierarchy;
   };
 
-  const groupedHierarchy = buildGroupedHierarchy();
+  const departamentoHierarchy = buildDepartamentoHierarchy();
 
   // Helper functions for selection
+  const isDepartamentoFullySelected = (departamentoId: string) => {
+    const produtosDoDepartamento = produtos.filter(p => {
+      const grupo = grupos.find(g => g.id === p.grupoId);
+      return grupo?.departamentoId === departamentoId;
+    }).map(p => p.id);
+    return produtosDoDepartamento.length > 0 && produtosDoDepartamento.every(id => formData.produtos.includes(id));
+  };
+
   const isGrupoFullySelected = (grupoId: string) => {
     const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
     return grupoProdutos.length > 0 && grupoProdutos.every(id => formData.produtos.includes(id));
@@ -277,6 +325,30 @@ export const ListasPage = () => {
   const isSubgrupoFullySelected = (subgrupoId: string) => {
     const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
     return subgrupoProdutos.length > 0 && subgrupoProdutos.every(id => formData.produtos.includes(id));
+  };
+
+  const toggleDepartamentoExpansion = (departamentoId: string) => {
+    setExpandedDepartamentos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(departamentoId)) {
+        newSet.delete(departamentoId);
+      } else {
+        newSet.add(departamentoId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleGrupoExpansion = (grupoId: string) => {
+    setExpandedGrupos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(grupoId)) {
+        newSet.delete(grupoId);
+      } else {
+        newSet.add(grupoId);
+      }
+      return newSet;
+    });
   };
 
   const toggleSubgrupoExpansion = (subgrupoId: string) => {
@@ -346,87 +418,98 @@ export const ListasPage = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar produtos, grupos ou subgrupos..."
+                    placeholder="Buscar produtos, departamentos, grupos ou subgrupos..."
                     value={productSearchTerm}
                     onChange={(e) => setProductSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
 
-                {/* Table with 3 columns: Grupo, Subgrupo, Produto */}
-                <div className="border rounded-md max-h-[500px] overflow-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10 border-b">
-                      <TableRow>
-                        <TableHead className="w-[30%]">Grupo</TableHead>
-                        <TableHead className="w-[30%]">Subgrupo</TableHead>
-                        <TableHead className="w-[40%]">Produto</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {groupedHierarchy.map((grupoData) => {
-                        let grupoRendered = false;
-                        
-                        return grupoData.subgrupos.map((subgrupoData, subIdx) => {
-                          const showGrupo = !grupoRendered;
-                          if (showGrupo) grupoRendered = true;
-                          
-                          const isExpanded = expandedSubgrupos.has(subgrupoData.id);
+                {/* Hierarchical list with indentation */}
+                <div className="border rounded-md max-h-[500px] overflow-auto p-4 space-y-2">
+                  {departamentoHierarchy.map((deptData) => {
+                    const isDeptExpanded = expandedDepartamentos.has(deptData.departamento.id);
+                    
+                    return (
+                      <div key={deptData.departamento.id} className="space-y-2">
+                        {/* Departamento */}
+                        <div className="flex items-center gap-2 py-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleDepartamentoExpansion(deptData.departamento.id)}
+                            className="p-0 hover:bg-muted rounded"
+                          >
+                            {isDeptExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                          <Checkbox
+                            checked={isDepartamentoFullySelected(deptData.departamento.id)}
+                            onCheckedChange={() => toggleDepartamentoProdutos(deptData.departamento.id)}
+                          />
+                          <span className="font-semibold text-base">{deptData.departamento.nome}</span>
+                        </div>
+
+                        {/* Grupos */}
+                        {isDeptExpanded && deptData.grupos.map((grupoData) => {
+                          const isGrupoExpanded = expandedGrupos.has(grupoData.id);
                           
                           return (
-                            <Collapsible 
-                              key={subgrupoData.id} 
-                              open={isExpanded}
-                              onOpenChange={() => toggleSubgrupoExpansion(subgrupoData.id)}
-                              asChild
-                            >
-                              <>
-                                {/* Subgrupo Row (collapsed) */}
-                                <TableRow className="border-b">
-                                  {/* Grupo Column */}
-                                  <TableCell className="align-top" rowSpan={isExpanded ? subgrupoData.produtos.length + 1 : 1}>
-                                    {showGrupo && (
-                                      <div className="flex items-center gap-2">
-                                        <Checkbox
-                                          checked={isGrupoFullySelected(grupoData.grupo.id)}
-                                          onCheckedChange={() => toggleGrupoProdutos(grupoData.grupo.id)}
-                                        />
-                                        <span className="font-medium">{grupoData.grupo.nome}</span>
-                                      </div>
-                                    )}
-                                  </TableCell>
+                            <div key={grupoData.id} className="ml-6 space-y-2">
+                              <div className="flex items-center gap-2 py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleGrupoExpansion(grupoData.id)}
+                                  className="p-0 hover:bg-muted rounded"
+                                >
+                                  {isGrupoExpanded ? (
+                                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                  )}
+                                </button>
+                                <Checkbox
+                                  checked={isGrupoFullySelected(grupoData.id)}
+                                  onCheckedChange={() => toggleGrupoProdutos(grupoData.id)}
+                                />
+                                <span className="font-medium">{grupoData.nome}</span>
+                              </div>
 
-                                  {/* Subgrupo Column */}
-                                  <TableCell colSpan={2}>
-                                    <CollapsibleTrigger asChild>
-                                      <div className="flex items-center gap-2 cursor-pointer w-full hover:bg-muted/50 -m-2 p-2 rounded">
-                                        {isExpanded ? (
+                              {/* Subgrupos */}
+                              {isGrupoExpanded && grupoData.subgrupos.map((subgrupoData) => {
+                                const isSubgrupoExpanded = expandedSubgrupos.has(subgrupoData.id);
+                                
+                                return (
+                                  <div key={subgrupoData.id} className="ml-6 space-y-1">
+                                    <div className="flex items-center gap-2 py-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSubgrupoExpansion(subgrupoData.id)}
+                                        className="p-0 hover:bg-muted rounded"
+                                      >
+                                        {isSubgrupoExpanded ? (
                                           <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                         ) : (
                                           <ChevronRight className="w-4 h-4 text-muted-foreground" />
                                         )}
-                                        <Checkbox
-                                          checked={isSubgrupoFullySelected(subgrupoData.id)}
-                                          onCheckedChange={() => toggleSubgrupoProdutos(subgrupoData.id)}
-                                          onClick={(e) => e.stopPropagation()}
-                                        />
-                                        <span className="font-medium">{subgrupoData.nome}</span>
-                                        <span className="text-sm text-muted-foreground">
-                                          ({subgrupoData.produtos.length} produtos)
-                                        </span>
-                                      </div>
-                                    </CollapsibleTrigger>
-                                  </TableCell>
-                                </TableRow>
+                                      </button>
+                                      <Checkbox
+                                        checked={isSubgrupoFullySelected(subgrupoData.id)}
+                                        onCheckedChange={() => toggleSubgrupoProdutos(subgrupoData.id)}
+                                      />
+                                      <span className="text-sm font-medium">{subgrupoData.nome}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        ({subgrupoData.produtos.length} produtos)
+                                      </span>
+                                    </div>
 
-                                {/* Products Rows (expanded) */}
-                                <CollapsibleContent asChild>
-                                  <>
-                                    {subgrupoData.produtos.map((produto) => (
-                                      <TableRow key={produto.id} className="bg-muted/20">
-                                        <TableCell></TableCell>
-                                        <TableCell>
-                                          <div className="flex items-center gap-2 pl-8">
+                                    {/* Produtos */}
+                                    {isSubgrupoExpanded && (
+                                      <div className="ml-6 space-y-1">
+                                        {subgrupoData.produtos.map((produto) => (
+                                          <div key={produto.id} className="flex items-center gap-2 py-1">
                                             <Checkbox
                                               id={`produto-${produto.id}`}
                                               checked={formData.produtos.includes(produto.id)}
@@ -437,23 +520,23 @@ export const ListasPage = () => {
                                               className="text-sm cursor-pointer flex-1"
                                             >
                                               <span>{produto.nome}</span>
-                                              <span className="text-muted-foreground ml-2">
+                                              <span className="text-muted-foreground ml-2 text-xs">
                                                 ({produto.codigo} - {produto.unidade})
                                               </span>
                                             </label>
                                           </div>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </>
-                                </CollapsibleContent>
-                              </>
-                            </Collapsible>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           );
-                        });
-                      })}
-                    </TableBody>
-                  </Table>
+                        })}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="text-sm text-muted-foreground">
