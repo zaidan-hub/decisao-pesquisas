@@ -87,6 +87,8 @@ export const generatePDF = (data: RelatorioData) => {
 
   // Criar estrutura hierárquica: Departamento -> Grupo -> Subgrupo -> Produtos
   const tableData: any[] = [];
+  const symbolsMap = new Map<number, Map<number, string>>(); // rowIndex -> colIndex -> symbol
+  let currentRowIndex = 0;
   
   // Agrupar produtos por departamento, grupo e subgrupo
   const hierarchy = new Map<string, Map<string, Map<string, Produto[]>>>();
@@ -128,6 +130,7 @@ export const generatePDF = (data: RelatorioData) => {
       colSpan: 3 + data.coletas.length,
       styles: { fontStyle: 'bold', fontSize: 10, fillColor: [240, 240, 240] }
     }]);
+    currentRowIndex++;
     
     const grupoMap = hierarchy.get(depNome)!;
     const sortedGrupos = Array.from(grupoMap.keys()).sort();
@@ -139,6 +142,7 @@ export const generatePDF = (data: RelatorioData) => {
         colSpan: 3 + data.coletas.length,
         styles: { fontStyle: 'bold', fontSize: 9, fillColor: [250, 250, 250] }
       }]);
+      currentRowIndex++;
       
       const subgrupoMap = grupoMap.get(grupoNome)!;
       const sortedSubgrupos = Array.from(subgrupoMap.keys()).sort();
@@ -150,6 +154,7 @@ export const generatePDF = (data: RelatorioData) => {
           colSpan: 3 + data.coletas.length,
           styles: { fontStyle: 'bold', fontSize: 8 }
         }]);
+        currentRowIndex++;
         
         const produtos = subgrupoMap.get(subgrupoNome)!;
         const produtosOrdenados = produtos.sort((a, b) => a.nome.localeCompare(b.nome));
@@ -180,20 +185,26 @@ export const generatePDF = (data: RelatorioData) => {
             const maxPreco = Math.max(...precosValidos);
             const minPreco = Math.min(...precosValidos);
 
-            // Adicionar símbolos + e -
+            // Armazenar símbolos no mapa para desenhar coloridos depois
+            if (!symbolsMap.has(currentRowIndex)) {
+              symbolsMap.set(currentRowIndex, new Map());
+            }
+            
             for (let i = 0; i < precos.length; i++) {
               if (precos[i] > 0) {
-                if (precos[i] === maxPreco) {
-                  row[3 + i] += ' +';
-                }
-                if (precos[i] === minPreco) {
-                  row[3 + i] += ' -';
+                if (precos[i] === maxPreco && precos[i] === minPreco) {
+                  symbolsMap.get(currentRowIndex)!.set(3 + i, '+ -');
+                } else if (precos[i] === maxPreco) {
+                  symbolsMap.get(currentRowIndex)!.set(3 + i, '+');
+                } else if (precos[i] === minPreco) {
+                  symbolsMap.get(currentRowIndex)!.set(3 + i, '-');
                 }
               }
             }
           }
 
           tableData.push(row);
+          currentRowIndex++;
         });
       });
     });
@@ -221,24 +232,37 @@ export const generatePDF = (data: RelatorioData) => {
     didDrawCell: (data) => {
       // Aplicar cores aos símbolos + e -
       if (data.section === 'body' && data.column.index >= 3) {
-        const cellText = data.cell.text[0];
-        if (cellText && typeof cellText === 'string') {
-          if (cellText.includes(' +')) {
-            // Desenhar o + em azul
-            const plusIndex = cellText.indexOf(' +');
-            doc.setTextColor(0, 0, 255); // Azul
+        const rowSymbols = symbolsMap.get(data.row.index);
+        if (rowSymbols && rowSymbols.has(data.column.index)) {
+          const symbol = rowSymbols.get(data.column.index)!;
+          const cellText = data.cell.text[0];
+          
+          if (cellText && cellText !== '-') {
+            // Calcular posição do símbolo após o preço
             doc.setFontSize(8);
-            doc.text('+', data.cell.x + data.cell.width - 5, data.cell.y + data.cell.height / 2 + 2);
+            const textWidth = doc.getTextWidth(cellText);
+            const symbolX = data.cell.x + textWidth + 2;
+            const symbolY = data.cell.y + data.cell.height / 2 + 2;
+            
+            // Desenhar símbolos com cores
+            if (symbol === '+ -' || symbol === '- +') {
+              // Desenhar + em azul
+              doc.setTextColor(0, 0, 255);
+              doc.text('+', symbolX, symbolY);
+              // Desenhar - em vermelho
+              doc.setTextColor(255, 0, 0);
+              doc.text('-', symbolX + doc.getTextWidth('+') + 1, symbolY);
+            } else if (symbol === '+') {
+              doc.setTextColor(0, 0, 255); // Azul
+              doc.text('+', symbolX, symbolY);
+            } else if (symbol === '-') {
+              doc.setTextColor(255, 0, 0); // Vermelho
+              doc.text('-', symbolX, symbolY);
+            }
+            
+            // Resetar cor
+            doc.setTextColor(0, 0, 0);
           }
-          if (cellText.includes(' -')) {
-            // Desenhar o - em vermelho
-            const minusIndex = cellText.indexOf(' -');
-            doc.setTextColor(255, 0, 0); // Vermelho
-            doc.setFontSize(8);
-            doc.text('-', data.cell.x + data.cell.width - 5, data.cell.y + data.cell.height / 2 + 2);
-          }
-          // Resetar cor
-          doc.setTextColor(0, 0, 0);
         }
       }
     }
