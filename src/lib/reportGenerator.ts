@@ -125,7 +125,7 @@ export const generatePDF = (data: RelatorioData) => {
     // Adicionar linha do departamento (em negrito via estilo)
     tableData.push([{
       content: depNome.toUpperCase(),
-      colSpan: 4 + data.coletas.length,
+      colSpan: 3 + data.coletas.length,
       styles: { fontStyle: 'bold', fontSize: 10, fillColor: [240, 240, 240] }
     }]);
     
@@ -136,7 +136,7 @@ export const generatePDF = (data: RelatorioData) => {
       // Adicionar linha do grupo (indentada)
       tableData.push([{
         content: '  ' + grupoNome.toUpperCase(),
-        colSpan: 4 + data.coletas.length,
+        colSpan: 3 + data.coletas.length,
         styles: { fontStyle: 'bold', fontSize: 9, fillColor: [250, 250, 250] }
       }]);
       
@@ -147,7 +147,7 @@ export const generatePDF = (data: RelatorioData) => {
         // Adicionar linha do subgrupo (mais indentada)
         tableData.push([{
           content: '    ' + subgrupoNome.toUpperCase(),
-          colSpan: 4 + data.coletas.length,
+          colSpan: 3 + data.coletas.length,
           styles: { fontStyle: 'bold', fontSize: 8 }
         }]);
         
@@ -156,11 +156,14 @@ export const generatePDF = (data: RelatorioData) => {
         
         // Adicionar produtos
         produtosOrdenados.forEach(produto => {
+          const qntd = produto.quantidade && produto.unidadeMedida 
+            ? `${produto.quantidade} ${produto.unidadeMedida}`
+            : produto.quantidade || produto.unidadeMedida || '-';
+          
           const row: any[] = [
             produto.codigo,
             produto.nome,
-            produto.quantidade || '-',
-            produto.unidadeMedida || '-'
+            qntd
           ];
 
           // Preços por supermercado (priorizar preços editados pelo admin)
@@ -181,10 +184,10 @@ export const generatePDF = (data: RelatorioData) => {
             for (let i = 0; i < precos.length; i++) {
               if (precos[i] > 0) {
                 if (precos[i] === maxPreco) {
-                  row[4 + i] += ' +';
+                  row[3 + i] += ' +';
                 }
                 if (precos[i] === minPreco) {
-                  row[4 + i] += ' -';
+                  row[3 + i] += ' -';
                 }
               }
             }
@@ -200,8 +203,7 @@ export const generatePDF = (data: RelatorioData) => {
   const headers = [
     'Código',
     'Produto',
-    'Quantidade',
-    'Unidade',
+    'Qntd',
     ...Array.from(coletasPorSupermercado.values()).map(c => c.nome)
   ];
 
@@ -214,8 +216,7 @@ export const generatePDF = (data: RelatorioData) => {
     columnStyles: {
       0: { cellWidth: 20 },
       1: { cellWidth: 50 },
-      2: { cellWidth: 20 },
-      3: { cellWidth: 20 }
+      2: { cellWidth: 25 }
     }
   });
 
