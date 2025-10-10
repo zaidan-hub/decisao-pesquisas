@@ -16,7 +16,8 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { useListas } from '@/hooks/useListas';
-import { useRelatorios, Relatorio } from '@/hooks/useRelatorios';
+import { useRelatorios } from '@/hooks/useRelatorios';
+import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
 import { generatePDF, generateTXT } from '@/lib/reportGenerator';
 

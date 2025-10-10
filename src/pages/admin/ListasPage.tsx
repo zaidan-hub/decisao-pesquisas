@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Lista } from '@/types';
 import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -494,64 +495,82 @@ export const ListasPage = () => {
 
       {/* List */}
       <div className="grid gap-4">
-        {filteredListas.map((lista) => (
-          <Card key={lista.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <List className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold text-lg">{lista.nome}</h3>
-                  </div>
-                  
-                  <div className="text-sm text-muted-foreground mb-3">
-                    <strong>Produtos:</strong> {lista.produtos.length} itens
-                  </div>
-
-                  {lista.produtos.length > 0 && (
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium">Produtos inclusos:</h4>
-                      <div className="text-sm text-muted-foreground max-h-20 overflow-y-auto">
-                        {lista.produtos.slice(0, 5).map(produtoId => (
-                          <div key={produtoId}>• {getProdutoNome(produtoId)}</div>
-                        ))}
-                        {lista.produtos.length > 5 && (
-                          <div className="text-xs italic">
-                            ... e mais {lista.produtos.length - 5} produto(s)
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDuplicate(lista)}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(lista)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDeleteLista(lista)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+        {loading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : filteredListas.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <List className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma lista encontrada</h3>
+              <p className="text-muted-foreground mb-4">
+                {searchTerm ? 'Tente uma busca diferente' : 'Crie sua primeira lista de produtos'}
+              </p>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          filteredListas.map((lista) => (
+            <Card key={lista.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <List className="w-5 h-5 text-primary" />
+                      <h3 className="font-semibold text-lg">{lista.nome}</h3>
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground mb-3">
+                      <strong>Produtos:</strong> {lista.produtos.length} itens
+                    </div>
+
+                    {lista.produtos.length > 0 && (
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium">Produtos inclusos:</h4>
+                        <div className="text-sm text-muted-foreground max-h-20 overflow-y-auto">
+                          {lista.produtos.slice(0, 5).map(produtoId => (
+                            <div key={produtoId}>• {getProdutoNome(produtoId)}</div>
+                          ))}
+                          {lista.produtos.length > 5 && (
+                            <div className="text-xs italic">
+                              ... e mais {lista.produtos.length - 5} produto(s)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDuplicate(lista)}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(lista)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteLista(lista)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
