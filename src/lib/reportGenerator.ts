@@ -217,6 +217,30 @@ export const generatePDF = (data: RelatorioData) => {
       0: { cellWidth: 20 },
       1: { cellWidth: 50 },
       2: { cellWidth: 25 }
+    },
+    didDrawCell: (data) => {
+      // Aplicar cores aos símbolos + e -
+      if (data.section === 'body' && data.column.index >= 3) {
+        const cellText = data.cell.text[0];
+        if (cellText && typeof cellText === 'string') {
+          if (cellText.includes(' +')) {
+            // Desenhar o + em azul
+            const plusIndex = cellText.indexOf(' +');
+            doc.setTextColor(0, 0, 255); // Azul
+            doc.setFontSize(8);
+            doc.text('+', data.cell.x + data.cell.width - 5, data.cell.y + data.cell.height / 2 + 2);
+          }
+          if (cellText.includes(' -')) {
+            // Desenhar o - em vermelho
+            const minusIndex = cellText.indexOf(' -');
+            doc.setTextColor(255, 0, 0); // Vermelho
+            doc.setFontSize(8);
+            doc.text('-', data.cell.x + data.cell.width - 5, data.cell.y + data.cell.height / 2 + 2);
+          }
+          // Resetar cor
+          doc.setTextColor(0, 0, 0);
+        }
+      }
     }
   });
 
