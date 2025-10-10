@@ -317,14 +317,35 @@ export const ListasPage = () => {
     return produtosDoDepartamento.length > 0 && produtosDoDepartamento.every(id => formData.produtos.includes(id));
   };
 
+  const isDepartamentoPartiallySelected = (departamentoId: string) => {
+    const produtosDoDepartamento = produtos.filter(p => {
+      const grupo = grupos.find(g => g.id === p.grupoId);
+      return grupo?.departamentoId === departamentoId;
+    }).map(p => p.id);
+    const selectedCount = produtosDoDepartamento.filter(id => formData.produtos.includes(id)).length;
+    return selectedCount > 0 && selectedCount < produtosDoDepartamento.length;
+  };
+
   const isGrupoFullySelected = (grupoId: string) => {
     const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
     return grupoProdutos.length > 0 && grupoProdutos.every(id => formData.produtos.includes(id));
   };
 
+  const isGrupoPartiallySelected = (grupoId: string) => {
+    const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
+    const selectedCount = grupoProdutos.filter(id => formData.produtos.includes(id)).length;
+    return selectedCount > 0 && selectedCount < grupoProdutos.length;
+  };
+
   const isSubgrupoFullySelected = (subgrupoId: string) => {
     const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
     return subgrupoProdutos.length > 0 && subgrupoProdutos.every(id => formData.produtos.includes(id));
+  };
+
+  const isSubgrupoPartiallySelected = (subgrupoId: string) => {
+    const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
+    const selectedCount = subgrupoProdutos.filter(id => formData.produtos.includes(id)).length;
+    return selectedCount > 0 && selectedCount < subgrupoProdutos.length;
   };
 
   const toggleDepartamentoExpansion = (departamentoId: string) => {
@@ -446,7 +467,11 @@ export const ListasPage = () => {
                             )}
                           </button>
                           <Checkbox
-                            checked={isDepartamentoFullySelected(deptData.departamento.id)}
+                            checked={
+                              isDepartamentoPartiallySelected(deptData.departamento.id) 
+                                ? "indeterminate" 
+                                : isDepartamentoFullySelected(deptData.departamento.id)
+                            }
                             onCheckedChange={() => toggleDepartamentoProdutos(deptData.departamento.id)}
                           />
                           <span className="font-semibold text-base">{deptData.departamento.nome}</span>
@@ -471,7 +496,11 @@ export const ListasPage = () => {
                                   )}
                                 </button>
                                 <Checkbox
-                                  checked={isGrupoFullySelected(grupoData.id)}
+                                  checked={
+                                    isGrupoPartiallySelected(grupoData.id)
+                                      ? "indeterminate"
+                                      : isGrupoFullySelected(grupoData.id)
+                                  }
                                   onCheckedChange={() => toggleGrupoProdutos(grupoData.id)}
                                 />
                                 <span className="font-medium">{grupoData.nome}</span>
@@ -496,7 +525,11 @@ export const ListasPage = () => {
                                         )}
                                       </button>
                                       <Checkbox
-                                        checked={isSubgrupoFullySelected(subgrupoData.id)}
+                                        checked={
+                                          isSubgrupoPartiallySelected(subgrupoData.id)
+                                            ? "indeterminate"
+                                            : isSubgrupoFullySelected(subgrupoData.id)
+                                        }
                                         onCheckedChange={() => toggleSubgrupoProdutos(subgrupoData.id)}
                                       />
                                       <span className="text-sm font-medium">{subgrupoData.nome}</span>
