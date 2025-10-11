@@ -222,6 +222,7 @@ export type Database = {
           created_at: string
           grupo_id: string
           id: string
+          mais_barato: boolean
           nome: string
           quantidade: string | null
           subgrupo_id: string
@@ -232,6 +233,7 @@ export type Database = {
           created_at?: string
           grupo_id: string
           id?: string
+          mais_barato?: boolean
           nome: string
           quantidade?: string | null
           subgrupo_id: string
@@ -242,6 +244,7 @@ export type Database = {
           created_at?: string
           grupo_id?: string
           id?: string
+          mais_barato?: boolean
           nome?: string
           quantidade?: string | null
           subgrupo_id?: string

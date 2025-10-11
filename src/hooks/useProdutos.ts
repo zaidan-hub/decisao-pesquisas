@@ -33,7 +33,8 @@ export const useProdutos = (subgrupoId?: string) => {
         grupoId: item.grupo_id,
         subgrupoId: item.subgrupo_id,
         unidadeMedida: item.unidade_medida,
-        quantidade: item.quantidade
+        quantidade: item.quantidade,
+        maisBarato: item.mais_barato || false
       }));
       
       setProdutos(mappedData);

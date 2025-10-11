@@ -49,7 +49,8 @@ export const ProdutosPage = () => {
     grupoId: '',
     subgrupoId: '',
     unidadeMedida: '',
-    quantidade: ''
+    quantidade: '',
+    maisBarato: false
   });
 
   // Filtered data
@@ -180,7 +181,8 @@ export const ProdutosPage = () => {
           codigo: editingProduto.codigo,
           subgrupo_id: editingProduto.subgrupoId,
           unidade_medida: editingProduto.unidadeMedida,
-          quantidade: editingProduto.quantidade
+          quantidade: editingProduto.quantidade,
+          mais_barato: editingProduto.maisBarato || false
         })
         .eq('id', editingProduto.id);
 
@@ -242,7 +244,8 @@ export const ProdutosPage = () => {
             grupo_id: newItem.grupoId,
             subgrupo_id: newItem.subgrupoId,
             unidade_medida: newItem.unidadeMedida,
-            quantidade: newItem.quantidade
+            quantidade: newItem.quantidade,
+            mais_barato: newItem.maisBarato
           });
         
         if (error) throw error;
@@ -258,7 +261,8 @@ export const ProdutosPage = () => {
         grupoId: '',
         subgrupoId: '',
         unidadeMedida: '',
-        quantidade: ''
+        quantidade: '',
+        maisBarato: false
       });
       
     } catch (error) {
@@ -614,6 +618,16 @@ export const ProdutosPage = () => {
                     />
                   </div>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="mais-barato"
+                    checked={newItem.maisBarato}
+                    onChange={(e) => setNewItem({ ...newItem, maisBarato: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="mais-barato" className="cursor-pointer">Mais barato</Label>
+                </div>
               </>
             )}
 
@@ -798,6 +812,16 @@ export const ProdutosPage = () => {
                   placeholder="Ex: ML"
                 />
               </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-mais-barato"
+                checked={editingProduto?.maisBarato || false}
+                onChange={(e) => setEditingProduto(editingProduto ? {...editingProduto, maisBarato: e.target.checked} : null)}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="edit-mais-barato" className="cursor-pointer">Mais barato</Label>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditingProduto(null)}>Cancelar</Button>

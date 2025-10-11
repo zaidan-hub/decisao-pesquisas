@@ -54,6 +54,7 @@ export interface Produto {
   subgrupoId: string;
   unidadeMedida: string;
   quantidade?: string;
+  maisBarato?: boolean;
 }
 
 export interface Pesquisador {
@@ -106,6 +107,7 @@ export interface Coleta {
   observacoesFinais?: ObservacaoFinal[]; // Observações adicionadas após finalização
   adminVisualizouObservacoes?: boolean; // Se admin já visualizou as observações
   fotos?: { [produtoId: string]: string[] }; // Fotos por produto
+  textosMaisBarato?: { [produtoId: string]: string }; // Textos adicionais para produtos mais barato
 }
 
 export interface ObservacaoFinal {

@@ -167,16 +167,26 @@ export const generatePDF = (data: RelatorioData) => {
           
           const row: any[] = [
             produto.codigo,
-            produto.nome,
+            produto.nome + (produto.maisBarato ? ' (+Barato)' : ''),
             qntd
           ];
 
           // Preços por supermercado (priorizar preços editados pelo admin)
           const precos: number[] = [];
+          const textosMaisBarato: string[] = [];
+          
           data.coletas.forEach(coleta => {
             const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+            const texto = coleta.textosMaisBarato?.[produto.id] || '';
             precos.push(preco);
-            row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+            textosMaisBarato.push(texto);
+            
+            // Se for produto mais barato e tiver texto, adicionar abaixo do preço
+            if (produto.maisBarato && texto && preco > 0) {
+              row.push(`R$ ${preco.toFixed(2)}\n${texto}`);
+            } else {
+              row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+            }
           });
 
           // Calcular máximo e mínimo (apenas preços > 0)
@@ -285,6 +295,7 @@ export const generateTXT = (data: RelatorioData) => {
       const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
       // Priorizar preços editados pelo admin
       const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      const textoMaisBarato = coleta.textosMaisBarato?.[produto.id] || '';
       
       if (preco > 0) {
         const dataFormatada = new Date(coleta.data)
@@ -301,7 +312,7 @@ export const generateTXT = (data: RelatorioData) => {
           preco.toFixed(2),
           produto.quantidade || '-',
           produto.unidadeMedida || '-',
-          produto.nome
+          produto.nome + (produto.maisBarato && textoMaisBarato ? ` (${textoMaisBarato})` : '')
         ].join('\t');
         
         lines.push(linha);

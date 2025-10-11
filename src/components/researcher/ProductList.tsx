@@ -15,7 +15,12 @@ import { useProdutos } from '@/hooks/useProdutos';
 interface ProductListProps {
   coleta: Coleta;
   onBack: () => void;
-  onUpdatePrecos: (precos: { [produtoId: string]: number }, observacoes: { [produtoId: string]: string }, fotos?: { [produtoId: string]: string[] }) => void;
+  onUpdatePrecos: (
+    precos: { [produtoId: string]: number }, 
+    observacoes: { [produtoId: string]: string }, 
+    fotos?: { [produtoId: string]: string[] },
+    textosMaisBarato?: { [produtoId: string]: string }
+  ) => void;
   onFinalizarColeta: () => void;
 }
 
@@ -24,6 +29,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(coleta.precos || {});
   const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
   const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>(coleta.fotos || {});
+  const [textosMaisBarato, setTextosMaisBarato] = useState<{ [produtoId: string]: string }>(coleta.textosMaisBarato || {});
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
@@ -78,7 +84,13 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     const precoNumerico = parseFloat(valor) || 0;
     const novosPrecos = { ...precos, [produtoId]: precoNumerico };
     setPrecos(novosPrecos);
-    onUpdatePrecos(novosPrecos, observacoes, fotos);
+    onUpdatePrecos(novosPrecos, observacoes, fotos, textosMaisBarato);
+  };
+
+  const handleTextoMaisBaratoChange = (produtoId: string, texto: string) => {
+    const novosTextos = { ...textosMaisBarato, [produtoId]: texto };
+    setTextosMaisBarato(novosTextos);
+    onUpdatePrecos(precos, observacoes, fotos, novosTextos);
   };
 
   const handleSaveObservation = () => {
@@ -93,7 +105,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     }
     
     setObservacoes(novasObservacoes);
-    onUpdatePrecos(precos, novasObservacoes, fotos);
+    onUpdatePrecos(precos, novasObservacoes, fotos, textosMaisBarato);
     
     setShowObservationDialog(false);
     setSelectedProductId('');
@@ -123,7 +135,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
             [produtoId]: [...(fotos[produtoId] || []), imageDataUrl]
           };
           setFotos(novasFotos);
-          onUpdatePrecos(precos, observacoes, novasFotos);
+          onUpdatePrecos(precos, observacoes, novasFotos, textosMaisBarato);
           
           toast({
             title: "Foto adicionada",
@@ -146,7 +158,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     }
     
     setFotos(novasFotos);
-    onUpdatePrecos(precos, observacoes, novasFotos);
+    onUpdatePrecos(precos, observacoes, novasFotos, textosMaisBarato);
     
     toast({
       title: "Foto removida",
@@ -248,6 +260,9 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                         <div className="flex items-center gap-3">
                           <div className="flex-1">
                             <h5 className="font-medium text-sm">{produto.nome}</h5>
+                            {produto.maisBarato && (
+                              <span className="text-xs text-blue-600 font-semibold">+ Barato</span>
+                            )}
                           </div>
                           
                           <div className="w-24">
@@ -283,6 +298,23 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                             </Button>
                           </div>
                         </div>
+                        
+                        {/* Campo de texto adicional para produtos "mais barato" */}
+                        {produto.maisBarato && (
+                          <div className="mt-3">
+                            <Label htmlFor={`texto-${produto.id}`} className="text-xs">
+                              Nome do produto pesquisado:
+                            </Label>
+                            <Input
+                              id={`texto-${produto.id}`}
+                              type="text"
+                              placeholder="Ex: carrijo"
+                              value={textosMaisBarato[produto.id] || ''}
+                              onChange={(e) => handleTextoMaisBaratoChange(produto.id, e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                        )}
                         
                         {/* Exibir fotos anexadas */}
                         {fotos[produto.id] && fotos[produto.id].length > 0 && (

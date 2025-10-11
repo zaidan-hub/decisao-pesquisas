@@ -61,12 +61,19 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
     onBack();
   };
 
-  const handleUpdatePrecos = (precos: { [produtoId: string]: number }, observacoes: { [produtoId: string]: string }, fotos?: { [produtoId: string]: string[] }) => {
+  const handleUpdatePrecos = (
+    precos: { [produtoId: string]: number }, 
+    observacoes: { [produtoId: string]: string }, 
+    fotos?: { [produtoId: string]: string[] },
+    textosMaisBarato?: { [produtoId: string]: string }
+  ) => {
     console.log('📸 Salvando fotos:', fotos);
+    console.log('💰 Salvando textos mais barato:', textosMaisBarato);
     onUpdateColeta(coleta.id, coleta.status, { 
       precos, 
       observacoesProdutos: observacoes,
-      fotos: fotos || {}
+      fotos: fotos || {},
+      textosMaisBarato: textosMaisBarato || {}
     });
   };
 
