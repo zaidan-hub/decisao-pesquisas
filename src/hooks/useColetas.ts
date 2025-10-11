@@ -35,7 +35,8 @@ export const useColetas = () => {
         observacoesProdutos: coleta.observacoes_produtos || {},
         observacoesFinais: coleta.observacoes_finais || [],
         adminVisualizouObservacoes: coleta.admin_visualizou_observacoes || false,
-        fotos: coleta.fotos || {}
+        fotos: coleta.fotos || {},
+        textosMaisBarato: coleta.textos_mais_barato || {}
       }));
 
       console.log('🔍 COLETAS CARREGADAS:', coletasFormatadas);
@@ -64,6 +65,7 @@ export const useColetas = () => {
         observacoes_finais: coletaData.observacoesFinais || [],
         admin_visualizou_observacoes: false,
         fotos: coletaData.fotos || {},
+        textos_mais_barato: coletaData.textosMaisBarato || {}
       };
 
       const { data, error } = await supabase.functions.invoke('admin-create-coleta', {
@@ -111,6 +113,7 @@ export const useColetas = () => {
       if (updates.observacoesFinais !== undefined) updateData.observacoes_finais = updates.observacoesFinais;
       if (updates.adminVisualizouObservacoes !== undefined) updateData.admin_visualizou_observacoes = updates.adminVisualizouObservacoes;
       if (updates.fotos !== undefined) updateData.fotos = updates.fotos;
+      if (updates.textosMaisBarato !== undefined) updateData.textos_mais_barato = updates.textosMaisBarato;
 
       const { data, error } = await supabase
         .from('coletas' as any)

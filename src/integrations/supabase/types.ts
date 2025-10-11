@@ -58,6 +58,7 @@ export type Database = {
           produtos: string[]
           status: string
           supermercado_id: string
+          textos_mais_barato: Json | null
           updated_at: string
         }
         Insert: {
@@ -76,6 +77,7 @@ export type Database = {
           produtos?: string[]
           status?: string
           supermercado_id: string
+          textos_mais_barato?: Json | null
           updated_at?: string
         }
         Update: {
@@ -94,6 +96,7 @@ export type Database = {
           produtos?: string[]
           status?: string
           supermercado_id?: string
+          textos_mais_barato?: Json | null
           updated_at?: string
         }
         Relationships: [

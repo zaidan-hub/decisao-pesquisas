@@ -86,6 +86,7 @@ serve(async (req) => {
       observacoes_finais: body.observacoes_finais ?? [],
       admin_visualizou_observacoes: body.admin_visualizou_observacoes ?? false,
       fotos: body.fotos ?? {},
+      textos_mais_barato: body.textos_mais_barato ?? {},
     };
 
     const { data, error } = await supabaseAdmin
