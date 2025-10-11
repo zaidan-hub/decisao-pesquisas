@@ -250,6 +250,8 @@ export const ListasPage = () => {
 
   // Build hierarchical structure grouped by departamento > grupo > subgrupo > produto
   const buildDepartamentoHierarchy = () => {
+    const searchLower = productSearchTerm.toLowerCase().trim();
+    
     const hierarchy: Array<{
       departamento: { id: string; nome: string };
       grupos: Array<{
@@ -269,23 +271,51 @@ export const ListasPage = () => {
     }> = [];
 
     departamentos.forEach(departamento => {
+      // Se houver busca, verificar se o departamento corresponde
+      const deptMatches = !searchLower || departamento.nome.toLowerCase().includes(searchLower);
+      
       const gruposNoDepartamento = grupos.filter(g => g.departamentoId === departamento.id);
       
       const gruposWithData = gruposNoDepartamento.map(grupo => {
+        // Se houver busca, verificar se o grupo corresponde
+        const grupoMatches = !searchLower || grupo.nome.toLowerCase().includes(searchLower);
+        
         const subgruposNoGrupo = subgrupos.filter(s => s.grupoId === grupo.id);
         const subgruposWithProducts = subgruposNoGrupo
-          .map(subgrupo => ({
-            id: subgrupo.id,
-            nome: subgrupo.nome,
-            produtos: produtos
-              .filter(p => p.subgrupoId === subgrupo.id)
+          .map(subgrupo => {
+            // Se houver busca, verificar se o subgrupo corresponde
+            const subgrupoMatches = !searchLower || subgrupo.nome.toLowerCase().includes(searchLower);
+            
+            // Filtrar produtos
+            const produtosFiltrados = produtos
+              .filter(p => {
+                if (p.subgrupoId !== subgrupo.id) return false;
+                
+                // Se não houver busca, mostrar todos
+                if (!searchLower) return true;
+                
+                // Se departamento, grupo ou subgrupo correspondem, mostrar todos os produtos
+                if (deptMatches || grupoMatches || subgrupoMatches) return true;
+                
+                // Senão, verificar se o produto corresponde
+                return (
+                  p.nome.toLowerCase().includes(searchLower) ||
+                  p.codigo.toLowerCase().includes(searchLower)
+                );
+              })
               .map(p => ({
                 id: p.id,
                 nome: p.nome,
                 codigo: p.codigo,
                 unidade: p.unidadeMedida
-              }))
-          }))
+              }));
+            
+            return {
+              id: subgrupo.id,
+              nome: subgrupo.nome,
+              produtos: produtosFiltrados
+            };
+          })
           .filter(sg => sg.produtos.length > 0);
 
         return {
