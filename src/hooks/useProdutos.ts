@@ -37,6 +37,12 @@ export const useProdutos = (subgrupoId?: string) => {
         maisBarato: item.mais_barato || false
       }));
       
+      // Log para debug de produtos "mais barato"
+      const produtosMaisBarato = mappedData.filter(p => p.maisBarato);
+      if (produtosMaisBarato.length > 0) {
+        console.log('📦 PRODUTOS MAIS BARATO CARREGADOS:', produtosMaisBarato.map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
+      }
+      
       setProdutos(mappedData);
     } catch (error) {
       console.error('Erro ao buscar produtos:', error);

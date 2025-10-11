@@ -42,16 +42,17 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
-    console.log('🔍 DEBUG PRODUTOS:', {
-      todosOsProdutos: produtos.length,
-      produtosDaColeta: coleta.produtos.length,
-      produtosIds: coleta.produtos
-    });
-
     const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
     
-    console.log('🔍 PRODUTOS FILTRADOS:', produtosFiltrados);
-    console.log('💰 PRODUTOS MAIS BARATO:', produtosFiltrados.filter(p => p.maisBarato));
+    console.log('🔍 PRODUTOS NA COLETA:', {
+      total: produtosFiltrados.length,
+      produtosComMaisBarato: produtosFiltrados.filter(p => p.maisBarato).length,
+      detalhes: produtosFiltrados.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        maisBarato: p.maisBarato
+      }))
+    });
     
     // Filtrar por busca
     const produtosComBusca = produtosFiltrados.filter(p =>
