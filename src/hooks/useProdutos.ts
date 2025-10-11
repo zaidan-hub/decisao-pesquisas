@@ -25,22 +25,29 @@ export const useProdutos = (subgrupoId?: string) => {
 
       if (error) throw error;
       
+      console.log('🔥 DADOS BRUTOS DO BANCO:', data?.slice(0, 2));
+      
       // Mapear os campos do banco para o tipo TypeScript
-      const mappedData = (data || []).map(item => ({
-        id: item.id,
-        codigo: item.codigo,
-        nome: item.nome,
-        grupoId: item.grupo_id,
-        subgrupoId: item.subgrupo_id,
-        unidadeMedida: item.unidade_medida,
-        quantidade: item.quantidade,
-        maisBarato: item.mais_barato || false
-      }));
+      const mappedData = (data || []).map(item => {
+        console.log('🔥 MAPEANDO ITEM:', { id: item.id, nome: item.nome, mais_barato: item.mais_barato });
+        return {
+          id: item.id,
+          codigo: item.codigo,
+          nome: item.nome,
+          grupoId: item.grupo_id,
+          subgrupoId: item.subgrupo_id,
+          unidadeMedida: item.unidade_medida,
+          quantidade: item.quantidade,
+          maisBarato: item.mais_barato || false
+        };
+      });
       
       // Log para debug de produtos "mais barato"
       const produtosMaisBarato = mappedData.filter(p => p.maisBarato);
+      console.log('📦 TOTAL DE PRODUTOS CARREGADOS:', mappedData.length);
+      console.log('📦 PRODUTOS MAIS BARATO:', produtosMaisBarato.length);
       if (produtosMaisBarato.length > 0) {
-        console.log('📦 PRODUTOS MAIS BARATO CARREGADOS:', produtosMaisBarato.map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
+        console.log('📦 LISTA MAIS BARATO:', produtosMaisBarato.map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
       }
       
       setProdutos(mappedData);
