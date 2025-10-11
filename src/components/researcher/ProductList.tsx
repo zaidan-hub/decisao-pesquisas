@@ -38,7 +38,15 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
-  const { produtos } = useProdutos();
+  const { produtos, loading: loadingProdutos } = useProdutos();
+
+  // Log para debug
+  console.log('🔍 ESTADO DOS PRODUTOS:', {
+    totalProdutos: produtos.length,
+    loadingProdutos,
+    produtosNaColeta: coleta.produtos.length,
+    produtosIds: coleta.produtos
+  });
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
@@ -206,6 +214,25 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
 
   const totalPreenchidos = Object.keys(precos).filter(id => precos[id] > 0).length;
   const totalProdutos = coleta.produtos.length;
+
+  // Se ainda estiver carregando produtos, mostrar loading
+  if (loadingProdutos) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h2 className="text-lg font-bold">Lista de Produtos</h2>
+              <p className="text-sm text-muted-foreground">Carregando produtos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
