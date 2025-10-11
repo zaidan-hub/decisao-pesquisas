@@ -51,6 +51,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
     
     console.log('🔍 PRODUTOS FILTRADOS:', produtosFiltrados);
+    console.log('💰 PRODUTOS MAIS BARATO:', produtosFiltrados.filter(p => p.maisBarato));
     
     // Filtrar por busca
     const produtosComBusca = produtosFiltrados.filter(p =>
