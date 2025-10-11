@@ -52,13 +52,19 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const produtosDaColeta = useMemo(() => {
     const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
     
+    // Log completo do primeiro produto para ver todos os campos
+    if (produtosFiltrados.length > 0) {
+      console.log('🔍 EXEMPLO DE PRODUTO COMPLETO:', produtosFiltrados[0]);
+    }
+    
     console.log('🔍 PRODUTOS NA COLETA:', {
       total: produtosFiltrados.length,
       produtosComMaisBarato: produtosFiltrados.filter(p => p.maisBarato).length,
       detalhes: produtosFiltrados.map(p => ({
         id: p.id,
         nome: p.nome,
-        maisBarato: p.maisBarato
+        maisBarato: p.maisBarato,
+        todasAsPropriedades: Object.keys(p)
       }))
     });
     
