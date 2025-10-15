@@ -309,17 +309,17 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 overflow-hidden min-h-0">
             {/* Departamentos */}
-            <Card className="flex flex-col">
-              <CardHeader className="pb-3">
+            <Card className="flex flex-col min-h-0">
+              <CardHeader className="pb-3 shrink-0">
                 <div className="flex items-center gap-2">
                   <Building2 className="w-5 h-5" />
                   <CardTitle className="text-base">Departamentos</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
-                <div className="space-y-2">
+              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden min-h-0">
+                <div className="space-y-2 shrink-0">
                   <Input
                     placeholder="Nome do departamento"
                     value={novoDepartamentoNome}
@@ -331,8 +331,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                     Adicionar
                   </Button>
                 </div>
-                <ScrollArea className="flex-1">
-                  <div className="space-y-2">
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="space-y-2 pr-4">
                     {customDepartamentos.map(dept => (
                       <div
                         key={dept.id}
@@ -364,8 +364,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
             </Card>
 
             {/* Grupos */}
-            <Card className="flex flex-col">
-              <CardHeader className="pb-3">
+            <Card className="flex flex-col min-h-0">
+              <CardHeader className="pb-3 shrink-0">
                 <div className="flex items-center gap-2">
                   <FolderOpen className="w-5 h-5" />
                   <CardTitle className="text-base">Grupos</CardTitle>
@@ -376,8 +376,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
-                <div className="space-y-2">
+              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden min-h-0">
+                <div className="space-y-2 shrink-0">
                   <Input
                     placeholder="Nome do grupo"
                     value={novoGrupoNome}
@@ -407,8 +407,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                     Adicionar
                   </Button>
                 </div>
-                <ScrollArea className="flex-1">
-                  <div className="space-y-2">
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="space-y-2 pr-4">
                     {gruposFiltrados.map(grupo => (
                       <div
                         key={grupo.id}
@@ -440,8 +440,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
             </Card>
 
             {/* Subgrupos */}
-            <Card className="flex flex-col">
-              <CardHeader className="pb-3">
+            <Card className="flex flex-col min-h-0">
+              <CardHeader className="pb-3 shrink-0">
                 <div className="flex items-center gap-2">
                   <Layers className="w-5 h-5" />
                   <CardTitle className="text-base">Subgrupos</CardTitle>
@@ -452,8 +452,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
-                <div className="space-y-2">
+              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden min-h-0">
+                <div className="space-y-2 shrink-0">
                   <Input
                     placeholder="Nome do subgrupo"
                     value={novoSubgrupoNome}
@@ -483,8 +483,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                     Adicionar
                   </Button>
                 </div>
-                <ScrollArea className="flex-1">
-                  <div className="space-y-2">
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="space-y-2 pr-4">
                     {subgruposFiltrados.map(subgrupo => (
                       <div
                         key={subgrupo.id}
@@ -516,8 +516,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
             </Card>
 
             {/* Produtos */}
-            <Card className="flex flex-col">
-              <CardHeader className="pb-3">
+            <Card className="flex flex-col min-h-0">
+              <CardHeader className="pb-3 shrink-0">
                 <div className="flex items-center gap-2">
                   <Package className="w-5 h-5" />
                   <CardTitle className="text-base">Produtos</CardTitle>
@@ -528,8 +528,8 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
-                <div className="relative">
+              <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden min-h-0">
+                <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Buscar produtos..."
@@ -541,11 +541,11 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                 
                 {selectedSubgrupo && (
                   <>
-                    <div className="text-xs font-medium text-muted-foreground">
+                    <div className="text-xs font-medium text-muted-foreground shrink-0">
                       Produtos alocados ({produtosNoSubgrupo.length})
                     </div>
-                    <ScrollArea className="max-h-32">
-                      <div className="space-y-1">
+                    <ScrollArea className="max-h-32 shrink-0">
+                      <div className="space-y-1 pr-4">
                         {produtosNoSubgrupo.map(pa => {
                           const produto = produtosReais.find(p => p.id === pa.produtoId);
                           if (!produto) return null;
@@ -572,11 +572,11 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                   </>
                 )}
                 
-                <div className="text-xs font-medium text-muted-foreground">
+                <div className="text-xs font-medium text-muted-foreground shrink-0">
                   Adicionar produtos
                 </div>
-                <ScrollArea className="flex-1">
-                  <div className="space-y-1">
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="space-y-1 pr-4">
                     {produtosDisponiveis.map(produto => (
                       <div
                         key={produto.id}
