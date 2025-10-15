@@ -474,6 +474,329 @@ export const generateProdutosNaoEncontradosPDF = (data: RelatorioData) => {
   doc.save(`${data.nomeCliente}_${data.data}_nao_encontrados.pdf`);
 };
 
+// Gera PDF de Comparativo da Concorrência
+export const generateComparativoConcorrenciaPDF = (
+  data: RelatorioData,
+  supermercadoReferenciaId: string
+) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Cabeçalho
+  doc.setFontSize(16);
+  doc.text('COMPARATIVO DA CONCORRÊNCIA', pageWidth / 2, 15, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text(data.nomeCliente, pageWidth / 2, 22, { align: 'center' });
+
+  // Informações das coletas
+  let yPos = 30;
+  doc.setFontSize(9);
+  
+  // Agrupar coletas por supermercado
+  const coletasPorSupermercado = new Map<string, { data: string, nome: string, coleta: Coleta }>();
+  data.coletas.forEach(coleta => {
+    const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+    if (supermercado) {
+      coletasPorSupermercado.set(supermercado.id, {
+        data: new Date(coleta.data).toLocaleDateString('pt-BR'),
+        nome: supermercado.nome,
+        coleta
+      });
+    }
+  });
+
+  // Verificar se todas as datas são iguais
+  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
+  const todasDataIguais = datas.every(d => d === datas[0]);
+
+  if (todasDataIguais && datas.length > 0) {
+    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
+    yPos += 5;
+  }
+  
+  doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
+  yPos += 10;
+
+  // Identificar supermercado de referência
+  const supermercadoRef = data.supermercados.find(s => s.id === supermercadoReferenciaId);
+  const coletaRef = coletasPorSupermercado.get(supermercadoReferenciaId)?.coleta;
+  
+  if (!supermercadoRef || !coletaRef) {
+    doc.text('Erro: Supermercado de referência não encontrado', 14, yPos);
+    doc.save(`${data.nomeCliente}_comparativo_concorrencia.pdf`);
+    return;
+  }
+
+  // Filtrar apenas coletas dos outros supermercados
+  const outrasColetas = Array.from(coletasPorSupermercado.values())
+    .filter(c => c.coleta.supermercadoId !== supermercadoReferenciaId);
+
+  // ===== TABELA 1 - FÍSICO =====
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FÍSICO', 14, yPos);
+  yPos += 5;
+  doc.setFont('helvetica', 'normal');
+
+  // Calcular dados da tabela físico
+  const dadosFisico = new Map<string, {
+    menorPreco: number,
+    maiorPreco: number,
+    precoIgual: number,
+    total: number
+  }>();
+
+  // Inicializar contadores para cada supermercado
+  outrasColetas.forEach(({ coleta, nome }) => {
+    dadosFisico.set(coleta.supermercadoId, {
+      menorPreco: 0,
+      maiorPreco: 0,
+      precoIgual: 0,
+      total: 0
+    });
+  });
+
+  // Para cada produto, comparar preços
+  data.produtos.forEach(produto => {
+    const precoRef = coletaRef.precosEditadosAdmin?.[produto.id] ?? coletaRef.precos?.[produto.id] ?? 0;
+    
+    if (precoRef > 0) {
+      outrasColetas.forEach(({ coleta }) => {
+        const precoConcorrente = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+        
+        if (precoConcorrente > 0) {
+          const dados = dadosFisico.get(coleta.supermercadoId)!;
+          dados.total++;
+          
+          if (precoConcorrente < precoRef) {
+            dados.menorPreco++;
+          } else if (precoConcorrente > precoRef) {
+            dados.maiorPreco++;
+          } else {
+            dados.precoIgual++;
+          }
+        }
+      });
+    }
+  });
+
+  // Calcular totais para o resumo
+  const resumoFisico = {
+    menorPreco: 0,
+    maiorPreco: 0,
+    precoIgual: 0,
+    total: 0,
+    menorPrecoPerc: 0,
+    maiorPrecoPerc: 0,
+    precoIgualPerc: 0,
+    totalPerc: 0
+  };
+
+  dadosFisico.forEach(dados => {
+    resumoFisico.menorPreco += dados.menorPreco;
+    resumoFisico.maiorPreco += dados.maiorPreco;
+    resumoFisico.precoIgual += dados.precoIgual;
+    resumoFisico.total += dados.total;
+  });
+
+  // Calcular percentuais do resumo
+  if (resumoFisico.total > 0) {
+    resumoFisico.menorPrecoPerc = (resumoFisico.menorPreco / resumoFisico.total) * 100;
+    resumoFisico.maiorPrecoPerc = (resumoFisico.maiorPreco / resumoFisico.total) * 100;
+    resumoFisico.precoIgualPerc = (resumoFisico.precoIgual / resumoFisico.total) * 100;
+    resumoFisico.totalPerc = 100;
+  }
+
+  // Construir tabela físico
+  const headersFisico = [''];
+  const supermercadosColunas: string[] = [];
+  
+  outrasColetas.forEach(({ nome }) => {
+    headersFisico.push(nome, '%');
+    supermercadosColunas.push(nome);
+  });
+  headersFisico.push('Resumo', '%');
+
+  const bodyFisico = [
+    ['Menor Pr.', 
+      ...outrasColetas.flatMap(({ coleta }) => {
+        const dados = dadosFisico.get(coleta.supermercadoId)!;
+        const perc = dados.total > 0 ? ((dados.menorPreco / dados.total) * 100).toFixed(1) : '0.0';
+        return [dados.menorPreco.toString(), perc + '%'];
+      }),
+      resumoFisico.menorPreco.toString(),
+      resumoFisico.menorPrecoPerc.toFixed(1) + '%'
+    ],
+    ['Maior Pr.', 
+      ...outrasColetas.flatMap(({ coleta }) => {
+        const dados = dadosFisico.get(coleta.supermercadoId)!;
+        const perc = dados.total > 0 ? ((dados.maiorPreco / dados.total) * 100).toFixed(1) : '0.0';
+        return [dados.maiorPreco.toString(), perc + '%'];
+      }),
+      resumoFisico.maiorPreco.toString(),
+      resumoFisico.maiorPrecoPerc.toFixed(1) + '%'
+    ],
+    ['Pr. Igual', 
+      ...outrasColetas.flatMap(({ coleta }) => {
+        const dados = dadosFisico.get(coleta.supermercadoId)!;
+        const perc = dados.total > 0 ? ((dados.precoIgual / dados.total) * 100).toFixed(1) : '0.0';
+        return [dados.precoIgual.toString(), perc + '%'];
+      }),
+      resumoFisico.precoIgual.toString(),
+      resumoFisico.precoIgualPerc.toFixed(1) + '%'
+    ],
+    ['Total', 
+      ...outrasColetas.flatMap(({ coleta }) => {
+        const dados = dadosFisico.get(coleta.supermercadoId)!;
+        return [dados.total.toString(), '100.0%'];
+      }),
+      resumoFisico.total.toString(),
+      '100.0%'
+    ]
+  ];
+
+  autoTable(doc, {
+    head: [headersFisico],
+    body: bodyFisico,
+    startY: yPos,
+    styles: { fontSize: 8, cellPadding: 2, halign: 'right' },
+    headStyles: { fillColor: [66, 66, 66], halign: 'center' },
+    columnStyles: {
+      0: { halign: 'left', fontStyle: 'bold' }
+    }
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  // ===== TABELA 2 - FINANCEIRO =====
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FINANCEIRO', 14, yPos);
+  yPos += 5;
+  doc.setFont('helvetica', 'normal');
+
+  // Calcular valores financeiros
+  const valoresFinanceiro = new Map<string, {
+    concorrencia: number,
+    referencia: number,
+    diferenca: number,
+    percConcorrencia: number,
+    percReferencia: number
+  }>();
+
+  outrasColetas.forEach(({ coleta }) => {
+    let totalConcorrencia = 0;
+    let totalReferencia = 0;
+    let count = 0;
+
+    data.produtos.forEach(produto => {
+      const precoRef = coletaRef.precosEditadosAdmin?.[produto.id] ?? coletaRef.precos?.[produto.id] ?? 0;
+      const precoConcorrente = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      
+      // Só contar produtos que existem em ambos
+      if (precoRef > 0 && precoConcorrente > 0) {
+        totalReferencia += precoRef;
+        totalConcorrencia += precoConcorrente;
+        count++;
+      }
+    });
+
+    const diferenca = totalConcorrencia - totalReferencia;
+    const percConcorrencia = 100;
+    const percReferencia = totalConcorrencia > 0 
+      ? (totalReferencia / totalConcorrencia) * 100 
+      : 0;
+
+    valoresFinanceiro.set(coleta.supermercadoId, {
+      concorrencia: totalConcorrencia,
+      referencia: totalReferencia,
+      diferenca,
+      percConcorrencia,
+      percReferencia
+    });
+  });
+
+  // Calcular resumo financeiro
+  const resumoFinanceiro = {
+    concorrencia: 0,
+    referencia: 0,
+    diferenca: 0,
+    percConcorrencia: 100,
+    percReferencia: 0
+  };
+
+  valoresFinanceiro.forEach(valores => {
+    resumoFinanceiro.concorrencia += valores.concorrencia;
+    resumoFinanceiro.referencia += valores.referencia;
+  });
+
+  resumoFinanceiro.diferenca = resumoFinanceiro.concorrencia - resumoFinanceiro.referencia;
+  resumoFinanceiro.percReferencia = resumoFinanceiro.concorrencia > 0
+    ? (resumoFinanceiro.referencia / resumoFinanceiro.concorrencia) * 100
+    : 0;
+
+  // Construir tabela financeiro
+  const headersFinanceiro = [''];
+  outrasColetas.forEach(({ nome }) => {
+    headersFinanceiro.push(nome, '%');
+  });
+  headersFinanceiro.push('Resumo', '%');
+
+  const bodyFinanceiro = [
+    ['Concorrência', 
+      ...outrasColetas.flatMap(({ coleta }) => {
+        const valores = valoresFinanceiro.get(coleta.supermercadoId)!;
+        return [
+          'R$ ' + valores.concorrencia.toFixed(2),
+          valores.percConcorrencia.toFixed(1) + '%'
+        ];
+      }),
+      'R$ ' + resumoFinanceiro.concorrencia.toFixed(2),
+      resumoFinanceiro.percConcorrencia.toFixed(1) + '%'
+    ],
+    [supermercadoRef.nome, 
+      ...outrasColetas.flatMap(({ coleta }) => {
+        const valores = valoresFinanceiro.get(coleta.supermercadoId)!;
+        return [
+          'R$ ' + valores.referencia.toFixed(2),
+          valores.percReferencia.toFixed(1) + '%'
+        ];
+      }),
+      'R$ ' + resumoFinanceiro.referencia.toFixed(2),
+      resumoFinanceiro.percReferencia.toFixed(1) + '%'
+    ],
+    ['Diferença', 
+      ...outrasColetas.flatMap(({ coleta }) => {
+        const valores = valoresFinanceiro.get(coleta.supermercadoId)!;
+        const percDiferenca = valores.concorrencia > 0 
+          ? ((valores.diferenca / valores.concorrencia) * 100).toFixed(1)
+          : '0.0';
+        return [
+          'R$ ' + valores.diferenca.toFixed(2),
+          percDiferenca + '%'
+        ];
+      }),
+      'R$ ' + resumoFinanceiro.diferenca.toFixed(2),
+      resumoFinanceiro.concorrencia > 0 
+        ? ((resumoFinanceiro.diferenca / resumoFinanceiro.concorrencia) * 100).toFixed(1) + '%'
+        : '0.0%'
+    ]
+  ];
+
+  autoTable(doc, {
+    head: [headersFinanceiro],
+    body: bodyFinanceiro,
+    startY: yPos,
+    styles: { fontSize: 8, cellPadding: 2, halign: 'right' },
+    headStyles: { fillColor: [66, 66, 66], halign: 'center' },
+    columnStyles: {
+      0: { halign: 'left', fontStyle: 'bold' }
+    }
+  });
+
+  doc.save(`${data.nomeCliente}_comparativo_concorrencia.pdf`);
+};
+
 // Gera TXT do relatório
 export const generateTXT = (data: RelatorioData) => {
   const lines: string[] = [];

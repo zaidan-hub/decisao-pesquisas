@@ -19,7 +19,7 @@ import { useListas } from '@/hooks/useListas';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
-import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF } from '@/lib/reportGenerator';
+import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF } from '@/lib/reportGenerator';
 
 export const RelatoriosPage = () => {
   const { produtos, loading: loadingProdutos } = useProdutos();
@@ -38,6 +38,11 @@ export const RelatoriosPage = () => {
   const [dataRelatorio, setDataRelatorio] = useState(new Date().toISOString().split('T')[0]);
   const [coletasSelecionadas, setColetasSelecionadas] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  
+  // Estados para comparativo de concorrência
+  const [showComparativoDialog, setShowComparativoDialog] = useState(false);
+  const [relatorioComparativo, setRelatorioComparativo] = useState<Relatorio | null>(null);
+  const [supermercadoRefSelecionado, setSupermercadoRefSelecionado] = useState('');
 
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
@@ -172,6 +177,47 @@ export const RelatoriosPage = () => {
       departamentos
     });
   }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
+
+  const handleOpenComparativo = useCallback((relatorio: Relatorio) => {
+    setRelatorioComparativo(relatorio);
+    setSupermercadoRefSelecionado('');
+    setShowComparativoDialog(true);
+  }, []);
+
+  const handleExportComparativo = useCallback(() => {
+    if (!relatorioComparativo || !supermercadoRefSelecionado) {
+      toast({
+        title: "Erro",
+        description: "Selecione um supermercado de referência",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const produtosRelatorio = produtos.filter(p => relatorioComparativo.produtos.includes(p.id));
+    const coletasRelatorio = coletas.filter(c => relatorioComparativo.coletas.includes(c.id));
+
+    generateComparativoConcorrenciaPDF(
+      {
+        nome: relatorioComparativo.nome,
+        nomeCliente: relatorioComparativo.nome_cliente,
+        data: relatorioComparativo.data,
+        produtos: produtosRelatorio,
+        coletas: coletasRelatorio,
+        supermercados,
+        grupos,
+        subgrupos,
+        departamentos
+      },
+      supermercadoRefSelecionado
+    );
+
+    setShowComparativoDialog(false);
+    toast({
+      title: "Sucesso",
+      description: "Relatório comparativo gerado com sucesso!"
+    });
+  }, [relatorioComparativo, supermercadoRefSelecionado, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
   return (
     <div className="space-y-6">
@@ -337,6 +383,15 @@ export const RelatoriosPage = () => {
                       Não Encontrados
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenComparativo(rel)}
+                      title="Comparativo da Concorrência"
+                    >
+                      <FileDown className="w-4 h-4 mr-1" />
+                      Comparativo
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeletingId(rel.id)}
@@ -377,6 +432,52 @@ export const RelatoriosPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Comparativo Concorrência Dialog */}
+      <Dialog open={showComparativoDialog} onOpenChange={setShowComparativoDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Comparativo da Concorrência</DialogTitle>
+            <DialogDescription>
+              Selecione o supermercado de referência para gerar o relatório comparativo
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Supermercado de Referência *</Label>
+              <Select value={supermercadoRefSelecionado} onValueChange={setSupermercadoRefSelecionado}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um supermercado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {relatorioComparativo && coletas
+                    .filter(c => relatorioComparativo.coletas.includes(c.id))
+                    .map(coleta => {
+                      const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
+                      return supermercado ? (
+                        <SelectItem key={supermercado.id} value={supermercado.id}>
+                          {supermercado.nome}
+                        </SelectItem>
+                      ) : null;
+                    })
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowComparativoDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleExportComparativo}>
+                <FileDown className="w-4 h-4 mr-2" />
+                Gerar PDF
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
