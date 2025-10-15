@@ -174,6 +174,7 @@ export const generatePDF = (data: RelatorioData) => {
           // Preços por supermercado (priorizar preços editados pelo admin)
           const precos: number[] = [];
           const textosMaisBarato: string[] = [];
+          let temTextoMaisBarato = false;
           
           data.coletas.forEach(coleta => {
             const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
@@ -181,12 +182,11 @@ export const generatePDF = (data: RelatorioData) => {
             precos.push(preco);
             textosMaisBarato.push(texto);
             
-            // Se for produto mais barato e tiver texto, adicionar abaixo do preço
             if (produto.maisBarato && texto && preco > 0) {
-              row.push(`R$ ${preco.toFixed(2)}\n${texto}`);
-            } else {
-              row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+              temTextoMaisBarato = true;
             }
+            
+            row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
           });
 
           // Calcular máximo e mínimo (apenas preços > 0)
@@ -215,6 +215,16 @@ export const generatePDF = (data: RelatorioData) => {
 
           tableData.push(row);
           currentRowIndex++;
+          
+          // Se for produto mais barato e tiver textos, adicionar linha com as marcas
+          if (temTextoMaisBarato) {
+            const marcasRow: any[] = ['', '', ''];
+            textosMaisBarato.forEach(texto => {
+              marcasRow.push(texto || '');
+            });
+            tableData.push(marcasRow);
+            currentRowIndex++;
+          }
         });
       });
     });
