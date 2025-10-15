@@ -268,11 +268,11 @@ export const generatePDF = (data: RelatorioData) => {
           const cellText = data.cell.text[0];
           
           if (cellText && cellText !== '-') {
-            // Calcular posição do símbolo após o preço
+            // Calcular posição do símbolo após o preço (centralizado verticalmente)
             doc.setFontSize(8);
             const textWidth = doc.getTextWidth(cellText);
             const symbolX = data.cell.x + textWidth + 2;
-            const symbolY = data.cell.y + (data.cell.height / 2) + (doc.getFontSize() / 3);
+            const symbolY = data.cell.y + (data.cell.height / 2) + 2.5; // Ajustado para centralizar verticalmente
             
             // Desenhar símbolos com cores
             if (symbol === '+ -' || symbol === '- +') {
