@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Lista } from '@/types';
-import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, Settings2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -18,6 +18,7 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useListas } from '@/hooks/useListas';
 import { supabase } from '@/integrations/supabase/client';
+import { HierarquiaCustomizadaDialog } from '@/components/admin/HierarquiaCustomizadaDialog';
 
 export const ListasPage = () => {
   // Buscar dados reais do banco
@@ -35,17 +36,20 @@ export const ListasPage = () => {
   const [expandedDepartamentos, setExpandedDepartamentos] = useState<Set<string>>(new Set());
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
   const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
+  const [showHierarquiaDialog, setShowHierarquiaDialog] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     nome: '',
-    produtos: [] as string[]
+    produtos: [] as string[],
+    hierarquiaCustomizada: undefined as Lista['hierarquiaCustomizada']
   });
 
   const resetForm = () => {
     setFormData({
       nome: '',
-      produtos: []
+      produtos: [],
+      hierarquiaCustomizada: undefined
     });
   };
 
@@ -62,10 +66,15 @@ export const ListasPage = () => {
     }
 
     try {
-      const listaData = {
+      const listaData: any = {
         nome: formData.nome,
         produtos: formData.produtos
       };
+      
+      // Adicionar hierarquia customizada se existir
+      if (formData.hierarquiaCustomizada) {
+        listaData.hierarquia_customizada = formData.hierarquiaCustomizada;
+      }
 
       if (editingLista) {
         const { error } = await supabase
@@ -109,7 +118,8 @@ export const ListasPage = () => {
     setEditingLista(lista);
     setFormData({
       nome: lista.nome,
-      produtos: [...lista.produtos]
+      produtos: [...lista.produtos],
+      hierarquiaCustomizada: lista.hierarquiaCustomizada
     });
     setShowForm(true);
   };
@@ -607,6 +617,29 @@ export const ListasPage = () => {
                 </div>
               </div>
 
+              {/* Botão para personalizar hierarquia */}
+              {formData.produtos.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Personalizar Hierarquia (Opcional)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowHierarquiaDialog(true)}
+                  >
+                    <Settings2 className="w-4 h-4 mr-2" />
+                    Customizar Nomes de Departamentos/Grupos/Subgrupos
+                  </Button>
+                  {formData.hierarquiaCustomizada && (
+                    <p className="text-xs text-muted-foreground">
+                      {Object.keys(formData.hierarquiaCustomizada.departamentos || {}).length + 
+                       Object.keys(formData.hierarquiaCustomizada.grupos || {}).length +
+                       Object.keys(formData.hierarquiaCustomizada.subgrupos || {}).length} personalização(ões) ativa(s)
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end space-x-2 pt-4">
                 <Button 
                   type="button" 
@@ -737,6 +770,24 @@ export const ListasPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Diálogo de Personalização de Hierarquia */}
+      <HierarquiaCustomizadaDialog
+        open={showHierarquiaDialog}
+        onOpenChange={setShowHierarquiaDialog}
+        produtosSelecionados={formData.produtos}
+        produtos={produtos}
+        departamentos={departamentos}
+        grupos={grupos}
+        subgrupos={subgrupos}
+        hierarquiaAtual={formData.hierarquiaCustomizada}
+        onSave={(hierarquia) => {
+          setFormData(prev => ({
+            ...prev,
+            hierarquiaCustomizada: hierarquia
+          }));
+        }}
+      />
     </div>
   );
 };

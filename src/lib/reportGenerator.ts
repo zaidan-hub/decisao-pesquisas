@@ -12,6 +12,11 @@ interface RelatorioData {
   grupos: Grupo[];
   subgrupos: Subgrupo[];
   departamentos: Departamento[];
+  hierarquiaCustomizada?: {
+    departamentos?: { [id: string]: string };
+    grupos?: { [id: string]: string };
+    subgrupos?: { [id: string]: string };
+  };
 }
 
 // Gera PDF do relatório
@@ -104,9 +109,20 @@ export const generatePDF = (data: RelatorioData) => {
       ? data.departamentos.find(d => d.id === grupo.departamentoId)
       : null;
     
-    const depKey = departamento?.nome || 'SEM DEPARTAMENTO';
-    const grupoKey = grupo?.nome || 'SEM GRUPO';
-    const subgrupoKey = subgrupo?.nome || 'SEM SUBGRUPO';
+    // Usar nomes customizados se disponíveis, senão usar os originais
+    const depNome = departamento 
+      ? (data.hierarquiaCustomizada?.departamentos?.[departamento.id] || departamento.nome)
+      : 'SEM DEPARTAMENTO';
+    const grupoNome = grupo
+      ? (data.hierarquiaCustomizada?.grupos?.[grupo.id] || grupo.nome)
+      : 'SEM GRUPO';
+    const subgrupoNome = subgrupo
+      ? (data.hierarquiaCustomizada?.subgrupos?.[subgrupo.id] || subgrupo.nome)
+      : 'SEM SUBGRUPO';
+    
+    const depKey = depNome;
+    const grupoKey = grupoNome;
+    const subgrupoKey = subgrupoNome;
     
     if (!hierarchy.has(depKey)) {
       hierarchy.set(depKey, new Map());

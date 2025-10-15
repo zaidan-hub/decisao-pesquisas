@@ -18,7 +18,14 @@ export const useListas = () => {
         .order('nome') as any;
 
       if (error) throw error;
-      setListas(data || []);
+      
+      // Mapear dados e converter hierarquia_customizada
+      const listasFormatadas = (data || []).map((lista: any) => ({
+        ...lista,
+        hierarquiaCustomizada: lista.hierarquia_customizada
+      }));
+      
+      setListas(listasFormatadas);
     } catch (error) {
       console.error('Erro ao buscar listas:', error);
     } finally {

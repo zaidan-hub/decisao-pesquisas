@@ -165,18 +165,21 @@ export type Database = {
       listas: {
         Row: {
           created_at: string
+          hierarquia_customizada: Json | null
           id: string
           nome: string
           produtos: string[] | null
         }
         Insert: {
           created_at?: string
+          hierarquia_customizada?: Json | null
           id?: string
           nome: string
           produtos?: string[] | null
         }
         Update: {
           created_at?: string
+          hierarquia_customizada?: Json | null
           id?: string
           nome?: string
           produtos?: string[] | null

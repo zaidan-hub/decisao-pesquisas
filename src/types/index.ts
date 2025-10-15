@@ -72,6 +72,11 @@ export interface Lista {
   id: string;
   nome: string;
   produtos: string[]; // Array de IDs dos produtos
+  hierarquiaCustomizada?: {
+    departamentos?: { [id: string]: string }; // ID do departamento -> nome customizado
+    grupos?: { [id: string]: string }; // ID do grupo -> nome customizado
+    subgrupos?: { [id: string]: string }; // ID do subgrupo -> nome customizado
+  };
 }
 
 export interface RelatorioPadrao {
@@ -88,6 +93,11 @@ export interface Relatorio {
   produtos: string[]; // Array de IDs dos produtos
   coletaIds: string[]; // Array de IDs das coletas consideradas
   createdAt: string;
+  hierarquiaCustomizada?: {
+    departamentos?: { [id: string]: string };
+    grupos?: { [id: string]: string };
+    subgrupos?: { [id: string]: string };
+  };
 }
 
 export interface Coleta {
