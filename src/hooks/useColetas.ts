@@ -14,9 +14,10 @@ export const useColetas = () => {
 
   const fetchColetas = async () => {
     try {
+      // Buscar apenas campos essenciais, sem fotos (otimizado para relatórios)
       const { data: rows, error } = await supabase
         .from('coletas')
-        .select('*')
+        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes, textos_mais_barato, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -35,7 +36,7 @@ export const useColetas = () => {
         observacoesProdutos: coleta.observacoes_produtos || {},
         observacoesFinais: coleta.observacoes_finais || [],
         adminVisualizouObservacoes: coleta.admin_visualizou_observacoes || false,
-        fotos: coleta.fotos || {},
+        fotos: {}, // Não buscar fotos para otimizar performance em relatórios
         textosMaisBarato: coleta.textos_mais_barato || {}
       }));
 
