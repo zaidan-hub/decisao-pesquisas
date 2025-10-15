@@ -19,7 +19,7 @@ import { useListas } from '@/hooks/useListas';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
-import { generatePDF, generateTXT } from '@/lib/reportGenerator';
+import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF } from '@/lib/reportGenerator';
 
 export const RelatoriosPage = () => {
   const { produtos, loading: loadingProdutos } = useProdutos();
@@ -136,6 +136,23 @@ export const RelatoriosPage = () => {
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
     generateTXT({
+      nome: relatorio.nome,
+      nomeCliente: relatorio.nome_cliente,
+      data: relatorio.data,
+      produtos: produtosRelatorio,
+      coletas: coletasRelatorio,
+      supermercados,
+      grupos,
+      subgrupos,
+      departamentos
+    });
+  }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
+
+  const handleExportProdutosNaoEncontrados = useCallback((relatorio: Relatorio) => {
+    const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
+    const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
+
+    generateProdutosNaoEncontradosPDF({
       nome: relatorio.nome,
       nomeCliente: relatorio.nome_cliente,
       data: relatorio.data,
@@ -301,6 +318,15 @@ export const RelatoriosPage = () => {
                     >
                       <FileDown className="w-4 h-4 mr-1" />
                       TXT
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleExportProdutosNaoEncontrados(rel)}
+                      title="Produtos Não Encontrados"
+                    >
+                      <FileDown className="w-4 h-4 mr-1" />
+                      Não Encontrados
                     </Button>
                     <Button
                       variant="ghost"
