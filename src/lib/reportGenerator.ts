@@ -16,6 +16,10 @@ interface RelatorioData {
 
 // Gera PDF do relatório
 export const generatePDF = (data: RelatorioData) => {
+  console.log('🔵 GERANDO PDF - Dados recebidos:', data);
+  console.log('🔵 Coletas:', data.coletas);
+  console.log('🔵 Produtos:', data.produtos);
+  
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -177,6 +181,12 @@ export const generatePDF = (data: RelatorioData) => {
           let temTextoMaisBarato = false;
           
           data.coletas.forEach(coleta => {
+            console.log(`🔵 Produto ${produto.nome} - Coleta ${coleta.id}:`, {
+              precosEditadosAdmin: coleta.precosEditadosAdmin,
+              precos: coleta.precos,
+              precoFinal: coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0
+            });
+            
             const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
             const texto = coleta.textosMaisBarato?.[produto.id] || '';
             precos.push(preco);

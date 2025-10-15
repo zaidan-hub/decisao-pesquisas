@@ -118,6 +118,12 @@ export const RelatoriosPage = () => {
     const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
+    console.log('🟢 EXPORTANDO PDF - Relatório:', relatorio);
+    console.log('🟢 Produtos do relatório:', produtosRelatorio);
+    console.log('🟢 Coletas do relatório:', coletasRelatorio);
+    console.log('🟢 IDs coletas esperadas:', relatorio.coletas);
+    console.log('🟢 Coletas completas disponíveis:', coletas);
+
     generatePDF({
       nome: relatorio.nome,
       nomeCliente: relatorio.nome_cliente,
