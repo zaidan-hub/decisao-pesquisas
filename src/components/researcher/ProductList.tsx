@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,11 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
-  const { produtos, loading: loadingProdutos } = useProdutos();
+  const { produtos, loading: loadingProdutos, refetch } = useProdutos();
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
