@@ -76,6 +76,11 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     });
   }, [coleta.produtos, searchTerm, produtos, grupos, subgrupos]);
 
+  // Debug: verificar quais produtos da coleta têm maisBarato = true
+  useEffect(() => {
+    const marked = produtosDaColeta.filter(p => p.maisBarato);
+    console.log('🔎 Produtos com maisBarato=true:', marked.map(p => ({ id: p.id, nome: p.nome })));
+  }, [produtosDaColeta]);
   const handlePrecoChange = (produtoId: string, valor: string) => {
     const precoNumerico = parseFloat(valor) || 0;
     const novosPrecos = { ...precos, [produtoId]: precoNumerico };
