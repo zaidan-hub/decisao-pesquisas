@@ -797,6 +797,184 @@ export const generateComparativoConcorrenciaPDF = (
   doc.save(`${data.nomeCliente}_comparativo_concorrencia.pdf`);
 };
 
+// Gera PDF de Estatísticas
+export const generateEstatisticasPDF = (
+  data: RelatorioData,
+  percentualMinimo: number
+) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Cabeçalho
+  doc.setFontSize(16);
+  doc.text('ESTATÍSTICAS', pageWidth / 2, 15, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text(data.nomeCliente, pageWidth / 2, 22, { align: 'center' });
+
+  // Informações das coletas
+  let yPos = 30;
+  doc.setFontSize(9);
+  
+  // Agrupar coletas por supermercado
+  const coletasPorSupermercado = new Map<string, { data: string, nome: string, coleta: Coleta }>();
+  data.coletas.forEach(coleta => {
+    const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+    if (supermercado) {
+      coletasPorSupermercado.set(supermercado.id, {
+        data: new Date(coleta.data).toLocaleDateString('pt-BR'),
+        nome: supermercado.nome,
+        coleta
+      });
+    }
+  });
+
+  // Verificar se todas as datas são iguais
+  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
+  const todasDataIguais = datas.every(d => d === datas[0]);
+
+  if (todasDataIguais && datas.length > 0) {
+    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
+    yPos += 5;
+    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
+  } else {
+    doc.text('Datas e Supermercados:', 14, yPos);
+    yPos += 5;
+    coletasPorSupermercado.forEach(({ data, nome }) => {
+      doc.text(`  • ${nome}: ${data}`, 14, yPos);
+      yPos += 5;
+    });
+  }
+
+  yPos += 5;
+
+  // Total de itens pesquisados
+  const totalItens = data.produtos.length;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Total de itens pesquisados: ${totalItens}`, 14, yPos);
+  yPos += 10;
+
+  // Estatísticas por supermercado
+  doc.setFontSize(10);
+  doc.text('Estatísticas por Supermercado:', 14, yPos);
+  yPos += 7;
+
+  const estatisticas: any[] = [];
+
+  coletasPorSupermercado.forEach(({ nome, coleta }) => {
+    let itensEncontrados = 0;
+    let menorPreco = 0;
+    let maiorPreco = 0;
+
+    data.produtos.forEach((produto) => {
+      const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      if (preco && preco > 0) {
+        itensEncontrados++;
+
+        // Verificar se é menor ou maior preço
+        const precosOutros: number[] = [];
+        data.coletas.forEach(outraColeta => {
+          if (outraColeta.id !== coleta.id) {
+            const precoOutro = outraColeta.precosEditadosAdmin?.[produto.id] ?? outraColeta.precos?.[produto.id] ?? 0;
+            if (precoOutro && precoOutro > 0) {
+              precosOutros.push(precoOutro);
+            }
+          }
+        });
+
+        if (precosOutros.length > 0) {
+          const menorOutros = Math.min(...precosOutros);
+          const maiorOutros = Math.max(...precosOutros);
+
+          if (preco < menorOutros) menorPreco++;
+          if (preco > maiorOutros) maiorPreco++;
+        }
+      }
+    });
+
+    estatisticas.push({
+      nome,
+      itensEncontrados,
+      menorPreco,
+      maiorPreco
+    });
+  });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  estatisticas.forEach((stat) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+    doc.text(`${stat.nome}:`, 14, yPos);
+    doc.text(`  Itens encontrados: ${stat.itensEncontrados}`, 14, yPos + 5);
+    doc.text(`  Menor preço: ${stat.menorPreco} vezes`, 14, yPos + 10);
+    doc.text(`  Maior preço: ${stat.maiorPreco} vezes`, 14, yPos + 15);
+    yPos += 22;
+  });
+
+  // Produtos com diferença superior ao percentual mínimo
+  yPos += 5;
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Produtos com diferença superior a ${percentualMinimo}%:`, 14, yPos);
+  yPos += 7;
+
+  const produtosComDiferenca: any[] = [];
+
+  data.produtos.forEach((produto) => {
+    const precos: number[] = [];
+
+    data.coletas.forEach(coleta => {
+      const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      if (preco && preco > 0) {
+        precos.push(preco);
+      }
+    });
+
+    if (precos.length >= 2) {
+      const menorPreco = Math.min(...precos);
+      const maiorPreco = Math.max(...precos);
+      const diferencaPercentual = ((maiorPreco - menorPreco) / menorPreco) * 100;
+
+      if (diferencaPercentual >= percentualMinimo) {
+        produtosComDiferenca.push({
+          nome: produto.nome,
+          menorPreco: menorPreco.toFixed(2),
+          maiorPreco: maiorPreco.toFixed(2),
+          diferenca: diferencaPercentual.toFixed(2)
+        });
+      }
+    }
+  });
+
+  if (produtosComDiferenca.length === 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Nenhum produto encontrado com essa diferença.', 14, yPos);
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    produtosComDiferenca.forEach((prod) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.text(`${prod.nome}:`, 14, yPos);
+      doc.text(`  Menor: R$ ${prod.menorPreco} | Maior: R$ ${prod.maiorPreco} | Diferença: ${prod.diferenca}%`, 14, yPos + 5);
+      yPos += 12;
+    });
+  }
+
+  doc.save(`${data.nomeCliente}_estatisticas.pdf`);
+};
+
 // Gera TXT do relatório
 export const generateTXT = (data: RelatorioData) => {
   const lines: string[] = [];

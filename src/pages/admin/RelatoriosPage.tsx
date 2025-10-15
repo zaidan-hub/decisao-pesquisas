@@ -19,7 +19,7 @@ import { useListas } from '@/hooks/useListas';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
-import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF } from '@/lib/reportGenerator';
+import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateEstatisticasPDF } from '@/lib/reportGenerator';
 
 export const RelatoriosPage = () => {
   const { produtos, loading: loadingProdutos } = useProdutos();
@@ -43,6 +43,11 @@ export const RelatoriosPage = () => {
   const [showComparativoDialog, setShowComparativoDialog] = useState(false);
   const [relatorioComparativo, setRelatorioComparativo] = useState<Relatorio | null>(null);
   const [supermercadoRefSelecionado, setSupermercadoRefSelecionado] = useState('');
+  
+  // Estados para estatísticas
+  const [showEstatisticasDialog, setShowEstatisticasDialog] = useState(false);
+  const [relatorioEstatisticas, setRelatorioEstatisticas] = useState<Relatorio | null>(null);
+  const [percentualMinimo, setPercentualMinimo] = useState('');
 
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
@@ -183,6 +188,57 @@ export const RelatoriosPage = () => {
     setSupermercadoRefSelecionado('');
     setShowComparativoDialog(true);
   }, []);
+
+  const handleOpenEstatisticas = useCallback((relatorio: Relatorio) => {
+    setRelatorioEstatisticas(relatorio);
+    setPercentualMinimo('');
+    setShowEstatisticasDialog(true);
+  }, []);
+
+  const handleExportEstatisticas = useCallback(() => {
+    if (!relatorioEstatisticas || !percentualMinimo) {
+      toast({
+        title: "Erro",
+        description: "Informe o valor percentual mínimo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const percentual = parseFloat(percentualMinimo);
+    if (isNaN(percentual) || percentual < 0) {
+      toast({
+        title: "Erro",
+        description: "Por favor, insira um valor percentual válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const produtosRelatorio = produtos.filter(p => relatorioEstatisticas.produtos.includes(p.id));
+    const coletasRelatorio = coletas.filter(c => relatorioEstatisticas.coletas.includes(c.id));
+
+    generateEstatisticasPDF(
+      {
+        nome: relatorioEstatisticas.nome,
+        nomeCliente: relatorioEstatisticas.nome_cliente,
+        data: relatorioEstatisticas.data,
+        produtos: produtosRelatorio,
+        coletas: coletasRelatorio,
+        supermercados,
+        grupos,
+        subgrupos,
+        departamentos
+      },
+      percentual
+    );
+
+    setShowEstatisticasDialog(false);
+    toast({
+      title: "Sucesso",
+      description: "Relatório de estatísticas gerado com sucesso!"
+    });
+  }, [relatorioEstatisticas, percentualMinimo, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
   const handleExportComparativo = useCallback(() => {
     if (!relatorioComparativo || !supermercadoRefSelecionado) {
@@ -392,6 +448,15 @@ export const RelatoriosPage = () => {
                       Comparativo
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenEstatisticas(rel)}
+                      title="Estatísticas"
+                    >
+                      <FileDown className="w-4 h-4 mr-1" />
+                      Estatísticas
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeletingId(rel.id)}
@@ -471,6 +536,43 @@ export const RelatoriosPage = () => {
                 Cancelar
               </Button>
               <Button onClick={handleExportComparativo}>
+                <FileDown className="w-4 h-4 mr-2" />
+                Gerar PDF
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Estatísticas Dialog */}
+      <Dialog open={showEstatisticasDialog} onOpenChange={setShowEstatisticasDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exportar Estatísticas</DialogTitle>
+            <DialogDescription>
+              Informe o valor percentual mínimo para comparação de diferença de preços.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="percentual-minimo">Qual o valor percentual mínimo que você quer comparar? *</Label>
+              <Input
+                id="percentual-minimo"
+                type="number"
+                placeholder="Ex: 10"
+                value={percentualMinimo}
+                onChange={(e) => setPercentualMinimo(e.target.value)}
+                min="0"
+                step="0.1"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEstatisticasDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleExportEstatisticas} disabled={!percentualMinimo}>
                 <FileDown className="w-4 h-4 mr-2" />
                 Gerar PDF
               </Button>
