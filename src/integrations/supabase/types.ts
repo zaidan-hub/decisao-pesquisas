@@ -44,6 +44,7 @@ export type Database = {
       coletas: {
         Row: {
           admin_visualizou_observacoes: boolean | null
+          alertas_variacao: Json | null
           ano: string | null
           created_at: string
           data: string
@@ -63,6 +64,7 @@ export type Database = {
         }
         Insert: {
           admin_visualizou_observacoes?: boolean | null
+          alertas_variacao?: Json | null
           ano?: string | null
           created_at?: string
           data: string
@@ -82,6 +84,7 @@ export type Database = {
         }
         Update: {
           admin_visualizou_observacoes?: boolean | null
+          alertas_variacao?: Json | null
           ano?: string | null
           created_at?: string
           data?: string

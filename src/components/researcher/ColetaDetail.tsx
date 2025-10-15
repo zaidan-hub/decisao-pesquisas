@@ -6,6 +6,7 @@ import { ArrowLeft, Play, CheckCircle } from 'lucide-react';
 import { Coleta, Supermercado } from '@/types';
 import { ProductList } from './ProductList';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ColetaDetailProps {
   coleta: Coleta;
@@ -49,7 +50,7 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
     });
   };
 
-  const handleFinalizarColeta = () => {
+  const handleFinalizarColeta = async () => {
     // Move para histórico
     onUpdateColeta(coleta.id, 'finalizada');
     setShowConfirmDialog(false);
@@ -58,6 +59,21 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
       title: "Coleta Finalizada",
       description: "A coleta foi movida para o histórico."
     });
+    
+    // Chamar edge function para verificar variações de preço
+    try {
+      const { data, error } = await supabase.functions.invoke('verificar-variacao-precos', {
+        body: { coleta_id: coleta.id }
+      });
+      
+      if (error) {
+        console.error('Erro ao verificar variações:', error);
+      } else {
+        console.log('✅ Verificação de variações concluída:', data);
+      }
+    } catch (error) {
+      console.error('Erro ao chamar verificação de variações:', error);
+    }
     
     // Volta para a lista
     onBack();

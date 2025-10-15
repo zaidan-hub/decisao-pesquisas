@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
+import { AlertaVariacaoPrecos } from '@/components/admin/AlertaVariacaoPrecos';
 
 interface AdminColetaViewProps {
   coleta: Coleta;
@@ -27,6 +28,10 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const [tempPrecos, setTempPrecos] = useState<{ [produtoId: string]: string }>({});
   const [fotosPorProduto, setFotosPorProduto] = useState<{ [produtoId: string]: string[] }>({});
   const [loadingFotos, setLoadingFotos] = useState<{ [produtoId: string]: boolean }>({});
+  const [alertasAtivos, setAlertasAtivos] = useState(coleta.alertasVariacao || []);
+  
+  // Refs para scroll até produtos
+  const produtoRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
@@ -134,7 +139,24 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
     });
 
     setPrecosEditados(novosPrecos);
-    onUpdateColeta(coleta.id, { precosEditadosAdmin: novosPrecos });
+    
+    // Remover alertas dos produtos que foram editados
+    const alertasAtualizados = alertasAtivos.filter(alerta => {
+      // Se o produto foi editado, remover o alerta
+      if (alerta.produto_id in novosPrecos) {
+        return false;
+      }
+      return true;
+    });
+    
+    setAlertasAtivos(alertasAtualizados);
+    
+    // Atualizar no banco
+    onUpdateColeta(coleta.id, { 
+      precosEditadosAdmin: novosPrecos,
+      alertasVariacao: alertasAtualizados
+    });
+    
     setIsEditing(false);
     setTempPrecos({});
     
@@ -142,6 +164,34 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
       title: "Preços atualizados",
       description: "Os preços foram editados com sucesso pelo administrador."
     });
+  };
+
+  // Função para rolar até um produto específico
+  const scrollToProduto = (produtoId: string) => {
+    const elemento = produtoRefs.current[produtoId];
+    if (elemento) {
+      elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Adicionar efeito visual temporário
+      elemento.classList.add('ring-2', 'ring-orange-500', 'ring-offset-2');
+      setTimeout(() => {
+        elemento.classList.remove('ring-2', 'ring-orange-500', 'ring-offset-2');
+      }, 2000);
+    }
+  };
+
+  // Função para descartar todos os alertas
+  const handleDismissAlertas = async () => {
+    const alertasVisualizados = alertasAtivos.map(a => ({ ...a, visualizado: true }));
+    setAlertasAtivos(alertasVisualizados);
+    
+    try {
+      await supabase
+        .from('coletas')
+        .update({ alertas_variacao: alertasVisualizados })
+        .eq('id', coleta.id);
+    } catch (error) {
+      console.error('Erro ao atualizar alertas:', error);
+    }
   };
 
   const handlePrecoChange = (produtoId: string, valor: string) => {
@@ -240,6 +290,16 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
         </div>
       </div>
 
+      {/* Alerta de Variação de Preços */}
+      {coleta.status === 'finalizada' && (
+        <AlertaVariacaoPrecos
+          alertas={alertasAtivos}
+          produtos={produtos}
+          onProdutoClick={scrollToProduto}
+          onDismiss={handleDismissAlertas}
+        />
+      )}
+
       {/* Coleta Info Card */}
       <Card>
         <CardHeader>
@@ -300,7 +360,11 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
                       const editado = foiEditadoPeloAdmin(produto.id);
                       
                       return (
-                        <div key={produto.id} className="border rounded-lg p-3">
+                        <div 
+                          key={produto.id} 
+                          ref={(el) => { produtoRefs.current[produto.id] = el; }}
+                          className="border rounded-lg p-3 transition-all"
+                        >
                           <div className="flex items-center gap-3">
                             <div className="flex-1">
                               <h5 className="font-medium text-sm">{produto.nome}</h5>

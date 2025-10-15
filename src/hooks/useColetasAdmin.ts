@@ -11,6 +11,7 @@ export interface ColetaAdmin {
   ano: string | null;
   status: 'não iniciada' | 'iniciada' | 'finalizada';
   produtosCount: number;
+  alertasCount?: number;
 }
 
 export const useColetasAdmin = () => {
@@ -21,10 +22,10 @@ export const useColetasAdmin = () => {
     try {
       setLoading(true);
       
-      // Buscar apenas campos essenciais (sem fotos, precos, observacoes)
+      // Buscar apenas campos essenciais (sem fotos, otimizado)
       const { data: rows, error } = await supabase
         .from('coletas')
-        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos')
+        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, alertas_variacao')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -37,7 +38,8 @@ export const useColetasAdmin = () => {
         numero: coleta.numero,
         ano: coleta.ano,
         status: coleta.status,
-        produtosCount: (coleta.produtos || []).length
+        produtosCount: (coleta.produtos || []).length,
+        alertasCount: (coleta.alertas_variacao || []).filter((a: any) => !a.visualizado).length
       }));
 
       setColetas(coletasFormatadas);

@@ -118,6 +118,17 @@ export interface Coleta {
   adminVisualizouObservacoes?: boolean; // Se admin já visualizou as observações
   fotos?: { [produtoId: string]: string[] }; // Fotos por produto
   textosMaisBarato?: { [produtoId: string]: string }; // Textos adicionais para produtos mais barato
+  alertasVariacao?: AlertaVariacao[]; // Alertas de variação significativa de preços
+}
+
+export interface AlertaVariacao {
+  produto_id: string;
+  preco_anterior: number;
+  preco_atual: number;
+  variacao_percentual: number;
+  coleta_anterior_id: string;
+  data_anterior: string;
+  visualizado: boolean;
 }
 
 export interface ObservacaoFinal {
