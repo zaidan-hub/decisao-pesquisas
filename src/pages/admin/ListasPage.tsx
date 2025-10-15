@@ -18,7 +18,7 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useListas } from '@/hooks/useListas';
 import { supabase } from '@/integrations/supabase/client';
-import { HierarquiaCustomizadaDialog } from '@/components/admin/HierarquiaCustomizadaDialog';
+import { CriarListaAlteradaDialog } from '@/components/admin/CriarListaAlteradaDialog';
 
 export const ListasPage = () => {
   // Buscar dados reais do banco
@@ -36,7 +36,7 @@ export const ListasPage = () => {
   const [expandedDepartamentos, setExpandedDepartamentos] = useState<Set<string>>(new Set());
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
   const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
-  const [showHierarquiaDialog, setShowHierarquiaDialog] = useState(false);
+  const [showListaAlterada, setShowListaAlterada] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -432,7 +432,13 @@ export const ListasPage = () => {
           <h2 className="text-2xl font-bold">Listas</h2>
         </div>
         
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowListaAlterada(true)} variant="outline">
+            <Plus className="w-4 h-4 mr-2" />
+            Criar Lista Alterada
+          </Button>
+          
+          <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" />
@@ -617,28 +623,9 @@ export const ListasPage = () => {
                 </div>
               </div>
 
-              {/* Botão para personalizar hierarquia */}
-              {formData.produtos.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Personalizar Hierarquia (Opcional)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setShowHierarquiaDialog(true)}
-                  >
-                    <Settings2 className="w-4 h-4 mr-2" />
-                    Customizar Nomes de Departamentos/Grupos/Subgrupos
-                  </Button>
-                  {formData.hierarquiaCustomizada && (
-                    <p className="text-xs text-muted-foreground">
-                      {Object.keys(formData.hierarquiaCustomizada.departamentos || {}).length + 
-                       Object.keys(formData.hierarquiaCustomizada.grupos || {}).length +
-                       Object.keys(formData.hierarquiaCustomizada.subgrupos || {}).length} personalização(ões) ativa(s)
-                    </p>
-                  )}
-                </div>
-              )}
+              <div className="text-sm text-muted-foreground">
+                Para criar listas com hierarquia customizada, use o botão "Criar Lista Alterada".
+              </div>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button 
@@ -659,6 +646,7 @@ export const ListasPage = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search */}
@@ -771,22 +759,11 @@ export const ListasPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Diálogo de Personalização de Hierarquia */}
-      <HierarquiaCustomizadaDialog
-        open={showHierarquiaDialog}
-        onOpenChange={setShowHierarquiaDialog}
-        produtosSelecionados={formData.produtos}
-        produtos={produtos}
-        departamentos={departamentos}
-        grupos={grupos}
-        subgrupos={subgrupos}
-        hierarquiaAtual={formData.hierarquiaCustomizada}
-        onSave={(hierarquia) => {
-          setFormData(prev => ({
-            ...prev,
-            hierarquiaCustomizada: hierarquia
-          }));
-        }}
+      {/* Diálogo de Criação de Lista Alterada */}
+      <CriarListaAlteradaDialog
+        open={showListaAlterada}
+        onOpenChange={setShowListaAlterada}
+        onSuccess={refetch}
       />
     </div>
   );
