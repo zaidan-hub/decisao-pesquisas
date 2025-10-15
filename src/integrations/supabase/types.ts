@@ -302,6 +302,7 @@ export type Database = {
           coletas: string[]
           created_at: string
           data: string
+          hierarquia_customizada: Json | null
           id: string
           nome: string
           nome_cliente: string
@@ -312,6 +313,7 @@ export type Database = {
           coletas?: string[]
           created_at?: string
           data: string
+          hierarquia_customizada?: Json | null
           id?: string
           nome: string
           nome_cliente: string
@@ -322,6 +324,7 @@ export type Database = {
           coletas?: string[]
           created_at?: string
           data?: string
+          hierarquia_customizada?: Json | null
           id?: string
           nome?: string
           nome_cliente?: string

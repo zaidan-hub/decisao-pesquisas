@@ -10,6 +10,11 @@ export interface Relatorio {
   coletas: string[];
   relatorio_padrao_id: string | null;
   created_at: string;
+  hierarquiaCustomizada?: {
+    departamentos?: { [id: string]: string };
+    grupos?: { [id: string]: string };
+    subgrupos?: { [id: string]: string };
+  };
 }
 
 export const useRelatorios = () => {
@@ -28,7 +33,14 @@ export const useRelatorios = () => {
         .order('created_at', { ascending: false }) as any;
 
       if (error) throw error;
-      setRelatorios(data || []);
+      
+      // Mapear hierarquia_customizada para hierarquiaCustomizada
+      const relatoriosFormatados = (data || []).map((rel: any) => ({
+        ...rel,
+        hierarquiaCustomizada: rel.hierarquia_customizada
+      }));
+      
+      setRelatorios(relatoriosFormatados);
     } catch (error) {
       console.error('Erro ao buscar relatórios:', error);
     } finally {
@@ -42,7 +54,12 @@ export const useRelatorios = () => {
     data: string,
     produtos: string[],
     coletas: string[],
-    relatorio_padrao_id?: string
+    relatorio_padrao_id?: string,
+    hierarquia_customizada?: {
+      departamentos?: { [id: string]: string };
+      grupos?: { [id: string]: string };
+      subgrupos?: { [id: string]: string };
+    }
   ) => {
     try {
       const { data: relatorioData, error } = await supabase
@@ -53,7 +70,8 @@ export const useRelatorios = () => {
           data,
           produtos,
           coletas,
-          relatorio_padrao_id: relatorio_padrao_id || null
+          relatorio_padrao_id: relatorio_padrao_id || null,
+          hierarquia_customizada: hierarquia_customizada || {}
         })
         .select()
         .single() as any;

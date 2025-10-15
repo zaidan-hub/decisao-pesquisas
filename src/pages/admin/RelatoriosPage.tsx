@@ -88,7 +88,8 @@ export const RelatoriosPage = () => {
       dataRelatorio,
       produtosLista,
       coletasSelecionadas,
-      undefined
+      undefined,
+      lista?.hierarquiaCustomizada // Passar hierarquia customizada da lista
     );
 
     if (error) {
@@ -133,7 +134,8 @@ export const RelatoriosPage = () => {
       supermercados,
       grupos,
       subgrupos,
-      departamentos
+      departamentos,
+      hierarquiaCustomizada: relatorio.hierarquiaCustomizada
     });
   }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
