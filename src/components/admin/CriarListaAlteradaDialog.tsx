@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +61,13 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
   const [novoSubgrupoGrupoId, setNovoSubgrupoGrupoId] = useState('');
   
   const [searchProdutos, setSearchProdutos] = useState('');
+  
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    type: 'departamento' | 'grupo' | 'subgrupo' | null;
+    id: string | null;
+    nome: string | null;
+  }>({ open: false, type: null, id: null, nome: null });
 
   const handleAddDepartamento = () => {
     if (!novoDepartamentoNome.trim()) {
@@ -145,6 +153,32 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
     toast.success('Produto adicionado');
   };
 
+  const confirmDelete = (type: 'departamento' | 'grupo' | 'subgrupo', id: string) => {
+    let nome = '';
+    if (type === 'departamento') {
+      nome = customDepartamentos.find(d => d.id === id)?.nome || '';
+    } else if (type === 'grupo') {
+      nome = customGrupos.find(g => g.id === id)?.nome || '';
+    } else if (type === 'subgrupo') {
+      nome = customSubgrupos.find(s => s.id === id)?.nome || '';
+    }
+    setDeleteConfirm({ open: true, type, id, nome });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteConfirm.id || !deleteConfirm.type) return;
+
+    if (deleteConfirm.type === 'departamento') {
+      handleRemoveDepartamento(deleteConfirm.id);
+    } else if (deleteConfirm.type === 'grupo') {
+      handleRemoveGrupo(deleteConfirm.id);
+    } else if (deleteConfirm.type === 'subgrupo') {
+      handleRemoveSubgrupo(deleteConfirm.id);
+    }
+
+    setDeleteConfirm({ open: false, type: null, id: null, nome: null });
+  };
+
   const handleRemoveDepartamento = (id: string) => {
     // Remover departamento e tudo que depende dele
     const gruposParaRemover = customGrupos.filter(g => g.departamentoId === id);
@@ -158,6 +192,7 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
     setProdutosAlocados(prev => prev.filter(p => !idsSubgruposParaRemover.includes(p.subgrupoId)));
     
     if (selectedDepartamento === id) setSelectedDepartamento(null);
+    toast.success('Departamento excluído');
   };
 
   const handleRemoveGrupo = (id: string) => {
@@ -169,6 +204,7 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
     setProdutosAlocados(prev => prev.filter(p => !idsSubgruposParaRemover.includes(p.subgrupoId)));
     
     if (selectedGrupo === id) setSelectedGrupo(null);
+    toast.success('Grupo excluído');
   };
 
   const handleRemoveSubgrupo = (id: string) => {
@@ -176,6 +212,7 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
     setProdutosAlocados(prev => prev.filter(p => p.subgrupoId !== id));
     
     if (selectedSubgrupo === id) setSelectedSubgrupo(null);
+    toast.success('Subgrupo excluído');
   };
 
   const handleRemoveProduto = (id: string) => {
@@ -350,7 +387,7 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRemoveDepartamento(dept.id);
+                            confirmDelete('departamento', dept.id);
                           }}
                           className="h-6 w-6 p-0"
                         >
@@ -426,7 +463,7 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRemoveGrupo(grupo.id);
+                            confirmDelete('grupo', grupo.id);
                           }}
                           className="h-6 w-6 p-0"
                         >
@@ -502,7 +539,7 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRemoveSubgrupo(subgrupo.id);
+                            confirmDelete('subgrupo', subgrupo.id);
                           }}
                           className="h-6 w-6 p-0"
                         >
@@ -609,6 +646,24 @@ export const CriarListaAlteradaDialog = ({ open, onOpenChange, onSuccess }: Cria
           </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => !open && setDeleteConfirm({ open: false, type: null, id: null, nome: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir {deleteConfirm.type === 'departamento' ? 'o departamento' : deleteConfirm.type === 'grupo' ? 'o grupo' : 'o subgrupo'} <strong>{deleteConfirm.nome}</strong>?
+              {deleteConfirm.type === 'departamento' && ' Todos os grupos, subgrupos e produtos relacionados também serão removidos.'}
+              {deleteConfirm.type === 'grupo' && ' Todos os subgrupos e produtos relacionados também serão removidos.'}
+              {deleteConfirm.type === 'subgrupo' && ' Todos os produtos relacionados também serão removidos.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
