@@ -314,12 +314,12 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                         {produto.maisBarato && (
                           <div className="mt-3">
                             <Label htmlFor={`texto-${produto.id}`} className="text-xs">
-                              Nome do produto pesquisado:
+                              Marca:
                             </Label>
                             <Input
                               id={`texto-${produto.id}`}
                               type="text"
-                              placeholder="Ex: carrijo"
+                              placeholder="Ex: Carrijo"
                               value={textosMaisBarato[produto.id] || ''}
                               onChange={(e) => handleTextoMaisBaratoChange(produto.id, e.target.value)}
                               className="mt-1"

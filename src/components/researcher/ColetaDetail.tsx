@@ -21,7 +21,9 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
   const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
 
   const formatDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('T')[0].split('-');
+    // Garantir que estamos trabalhando apenas com a parte da data (YYYY-MM-DD)
+    const datePart = dateString.includes('T') ? dateString.split('T')[0] : dateString;
+    const [year, month, day] = datePart.split('-');
     return `${day}/${month}/${year}`;
   };
 
