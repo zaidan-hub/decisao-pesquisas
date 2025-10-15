@@ -46,16 +46,23 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
+    console.log('🔍 INICIO - Todos os produtos:', produtos.length);
+    console.log('🔍 INICIO - Produtos com maisBarato:', produtos.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
+    
     const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
+    console.log('🔍 APÓS FILTRO ID - Produtos filtrados:', produtosFiltrados.length);
+    console.log('🔍 APÓS FILTRO ID - Com maisBarato:', produtosFiltrados.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
     
     // Filtrar por busca
     const produtosComBusca = produtosFiltrados.filter(p =>
       p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    console.log('🔍 APÓS BUSCA - Produtos com busca:', produtosComBusca.length);
+    console.log('🔍 APÓS BUSCA - Com maisBarato:', produtosComBusca.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
 
     // Ordenar por grupo > subgrupo > produto
-    return produtosComBusca.sort((a, b) => {
+    const sorted = produtosComBusca.sort((a, b) => {
       const grupoA = grupos.find(g => g.id === a.grupoId);
       const grupoB = grupos.find(g => g.id === b.grupoId);
       const subgrupoA = subgrupos.find(s => s.id === a.subgrupoId);
@@ -74,6 +81,12 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       // Comparar por produto
       return a.nome.localeCompare(b.nome);
     });
+    
+    console.log('🔍 APÓS SORT - Produtos ordenados:', sorted.length);
+    console.log('🔍 APÓS SORT - Com maisBarato:', sorted.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
+    console.log('🔍 FINAL - Primeiro produto completo:', sorted[0]);
+    
+    return sorted;
   }, [coleta.produtos, searchTerm, produtos, grupos, subgrupos]);
 
   // Debug: verificar quais produtos da coleta têm maisBarato = true
