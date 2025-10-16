@@ -322,6 +322,42 @@ export const ProdutosPage = () => {
     if (!itemToDelete) return;
     
     try {
+      // Verificar se há itens dependentes antes de deletar
+      if (itemToDelete.type === 'departamento') {
+        const { data: gruposDependentes } = await supabase
+          .from('grupos')
+          .select('id')
+          .eq('departamento_id', itemToDelete.item.id)
+          .limit(1);
+        
+        if (gruposDependentes && gruposDependentes.length > 0) {
+          toast.error('Não é possível deletar este departamento pois existem grupos vinculados a ele.');
+          return;
+        }
+      } else if (itemToDelete.type === 'grupo') {
+        const { data: subgruposDependentes } = await supabase
+          .from('subgrupos')
+          .select('id')
+          .eq('grupo_id', itemToDelete.item.id)
+          .limit(1);
+        
+        if (subgruposDependentes && subgruposDependentes.length > 0) {
+          toast.error('Não é possível deletar este grupo pois existem subgrupos vinculados a ele.');
+          return;
+        }
+      } else if (itemToDelete.type === 'subgrupo') {
+        const { data: produtosDependentes } = await supabase
+          .from('produtos')
+          .select('id')
+          .eq('subgrupo_id', itemToDelete.item.id)
+          .limit(1);
+        
+        if (produtosDependentes && produtosDependentes.length > 0) {
+          toast.error('Não é possível deletar este subgrupo pois existem produtos vinculados a ele.');
+          return;
+        }
+      }
+
       const config = {
         'departamento': { table: 'departamentos' as const, name: 'Departamento', refetch: refetchDepartamentos },
         'grupo': { table: 'grupos' as const, name: 'Grupo', refetch: refetchGrupos },
