@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Departamento, Grupo, Subgrupo, Produto } from '@/types';
-import { Search, Package, Layers, FolderOpen, Building2, Plus } from 'lucide-react';
+import { Search, Package, Layers, FolderOpen, Building2, Plus, Trash2 } from 'lucide-react';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -52,6 +53,9 @@ export const ProdutosPage = () => {
     quantidade: '',
     maisBarato: false
   });
+
+  // Estado para deletar produto
+  const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
 
   // Filtered data
   const filteredDepartamentos = departamentos.filter(d => 
@@ -310,6 +314,28 @@ export const ProdutosPage = () => {
     }
   };
 
+  // Handler para deletar produto
+  const handleDeleteProduto = async () => {
+    if (!produtoToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('produtos')
+        .delete()
+        .eq('id', produtoToDelete.id);
+
+      if (error) throw error;
+      
+      toast.success('Produto deletado com sucesso');
+      setProdutoToDelete(null);
+      refetchProdutos();
+    } catch (error: any) {
+      console.error('Erro ao deletar produto:', error);
+      const errorMessage = error?.message || 'Erro desconhecido ao deletar produto';
+      toast.error(`Erro ao deletar produto: ${errorMessage}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -528,12 +554,29 @@ export const ProdutosPage = () => {
               filteredProdutos.map(produto => (
                 <div
                   key={produto.id}
-                  onDoubleClick={() => setEditingProduto(produto)}
-                  className="p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
+                  className="p-3 rounded-lg border hover:bg-accent transition-colors group"
                 >
-                  <div className="font-medium">{produto.nome}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
+                  <div className="flex items-start justify-between gap-2">
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onDoubleClick={() => setEditingProduto(produto)}
+                    >
+                      <div className="font-medium">{produto.nome}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProdutoToDelete(produto);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               ))
@@ -869,6 +912,28 @@ export const ProdutosPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog de Confirmação de Delete */}
+      <AlertDialog open={!!produtoToDelete} onOpenChange={() => setProdutoToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar o produto "{produtoToDelete?.nome}"? 
+              Esta ação não poderá ser desfeita e o produto será removido permanentemente do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteProduto}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Deletar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
