@@ -200,6 +200,17 @@ export const ProdutosPage = () => {
   // Handler para adicionar novo item
   const handleAddItem = async () => {
     try {
+      // Validações
+      if (!newItem.codigo.trim()) {
+        toast.error('O código é obrigatório');
+        return;
+      }
+      
+      if (!newItem.nome.trim()) {
+        toast.error('O nome é obrigatório');
+        return;
+      }
+
       if (addCategory === 'departamento') {
         const { error } = await supabase
           .from('departamentos')
@@ -210,6 +221,11 @@ export const ProdutosPage = () => {
         toast.success('Departamento criado com sucesso');
         
       } else if (addCategory === 'grupo') {
+        if (!newItem.departamentoId) {
+          toast.error('Selecione um departamento');
+          return;
+        }
+        
         const { error } = await supabase
           .from('grupos')
           .insert({ 
@@ -223,6 +239,11 @@ export const ProdutosPage = () => {
         toast.success('Grupo criado com sucesso');
         
       } else if (addCategory === 'subgrupo') {
+        if (!newItem.grupoId) {
+          toast.error('Selecione um grupo');
+          return;
+        }
+        
         const { error } = await supabase
           .from('subgrupos')
           .insert({ 
@@ -236,15 +257,32 @@ export const ProdutosPage = () => {
         toast.success('Subgrupo criado com sucesso');
         
       } else if (addCategory === 'produto') {
+        if (!newItem.subgrupoId) {
+          toast.error('Selecione um subgrupo');
+          return;
+        }
+        
+        if (!newItem.unidadeMedida.trim()) {
+          toast.error('A unidade de medida é obrigatória');
+          return;
+        }
+        
+        // Buscar o grupo_id do subgrupo selecionado
+        const subgrupo = subgrupos.find(s => s.id === newItem.subgrupoId);
+        if (!subgrupo) {
+          toast.error('Subgrupo não encontrado');
+          return;
+        }
+        
         const { error } = await supabase
           .from('produtos')
           .insert({ 
             codigo: newItem.codigo, 
             nome: newItem.nome,
-            grupo_id: newItem.grupoId,
+            grupo_id: subgrupo.grupoId,
             subgrupo_id: newItem.subgrupoId,
             unidade_medida: newItem.unidadeMedida,
-            quantidade: newItem.quantidade,
+            quantidade: newItem.quantidade || null,
             mais_barato: newItem.maisBarato
           });
         
@@ -265,9 +303,10 @@ export const ProdutosPage = () => {
         maisBarato: false
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar item:', error);
-      toast.error('Erro ao criar item');
+      const errorMessage = error?.message || 'Erro desconhecido ao criar item';
+      toast.error(`Erro ao criar item: ${errorMessage}`);
     }
   };
 
