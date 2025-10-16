@@ -22,13 +22,15 @@ export const SupermercadosPage = () => {
   // Form state
   const [formData, setFormData] = useState({
     nome: '',
-    endereco: ''
+    endereco: '',
+    abreviacao: ''
   });
 
   const resetForm = () => {
     setFormData({
       nome: '',
-      endereco: ''
+      endereco: '',
+      abreviacao: ''
     });
   };
 
@@ -50,7 +52,8 @@ export const SupermercadosPage = () => {
           .from('supermercados' as any)
           .update({ 
             nome: formData.nome, 
-            endereco: formData.endereco 
+            endereco: formData.endereco,
+            abreviacao: formData.abreviacao || null
           })
           .eq('id', editingSupermercado.id) as any;
 
@@ -65,7 +68,8 @@ export const SupermercadosPage = () => {
           .from('supermercados' as any)
           .insert([{ 
             nome: formData.nome, 
-            endereco: formData.endereco 
+            endereco: formData.endereco,
+            abreviacao: formData.abreviacao || null
           }]) as any;
 
         if (error) throw error;
@@ -93,7 +97,8 @@ export const SupermercadosPage = () => {
     setEditingSupermercado(supermercado);
     setFormData({
       nome: supermercado.nome,
-      endereco: supermercado.endereco
+      endereco: supermercado.endereco,
+      abreviacao: supermercado.abreviacao || ''
     });
     setShowForm(true);
   };
@@ -162,6 +167,17 @@ export const SupermercadosPage = () => {
                   onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
                   placeholder="Nome do supermercado"
                   required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="abreviacao">Abreviação</Label>
+                <Input
+                  id="abreviacao"
+                  value={formData.abreviacao}
+                  onChange={(e) => setFormData(prev => ({ ...prev, abreviacao: e.target.value }))}
+                  placeholder="Abreviação para usar nas colunas"
+                  maxLength={20}
                 />
               </div>
 

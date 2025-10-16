@@ -256,12 +256,15 @@ export const generatePDF = (data: RelatorioData) => {
     });
   });
 
-  // Cabeçalhos da tabela
+  // Cabeçalhos da tabela (usar abreviação nas colunas)
   const headers = [
     'Código',
     'Produto',
     'Qntd',
-    ...Array.from(coletasPorSupermercado.values()).map(c => c.nome)
+    ...Array.from(coletasPorSupermercado.values()).map(c => {
+      const supermercado = data.supermercados.find(s => s.nome === c.nome);
+      return supermercado?.abreviacao || c.nome;
+    })
   ];
 
   autoTable(doc, {
@@ -607,13 +610,15 @@ export const generateComparativoConcorrenciaPDF = (
     resumoFisico.totalPerc = 100;
   }
 
-  // Construir tabela físico
+  // Construir tabela físico (usar abreviação nas colunas)
   const headersFisico = [''];
   const supermercadosColunas: string[] = [];
   
-  outrasColetas.forEach(({ nome }) => {
-    headersFisico.push(nome, '%');
-    supermercadosColunas.push(nome);
+  outrasColetas.forEach(({ nome, coleta }) => {
+    const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+    const nomeColuna = supermercado?.abreviacao || nome;
+    headersFisico.push(nomeColuna, '%');
+    supermercadosColunas.push(nomeColuna);
   });
   headersFisico.push('Resumo', '%');
 
@@ -735,10 +740,12 @@ export const generateComparativoConcorrenciaPDF = (
     ? (resumoFinanceiro.referencia / resumoFinanceiro.concorrencia) * 100
     : 0;
 
-  // Construir tabela financeiro
+  // Construir tabela financeiro (usar abreviação nas colunas)
   const headersFinanceiro = [''];
-  outrasColetas.forEach(({ nome }) => {
-    headersFinanceiro.push(nome, '%');
+  outrasColetas.forEach(({ nome, coleta }) => {
+    const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+    const nomeColuna = supermercado?.abreviacao || nome;
+    headersFinanceiro.push(nomeColuna, '%');
   });
   headersFinanceiro.push('Resumo', '%');
 

@@ -399,18 +399,21 @@ export type Database = {
       }
       supermercados: {
         Row: {
+          abreviacao: string | null
           created_at: string
           endereco: string
           id: string
           nome: string
         }
         Insert: {
+          abreviacao?: string | null
           created_at?: string
           endereco: string
           id?: string
           nome: string
         }
         Update: {
+          abreviacao?: string | null
           created_at?: string
           endereco?: string
           id?: string

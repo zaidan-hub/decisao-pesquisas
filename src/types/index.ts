@@ -17,6 +17,7 @@ export interface Supermercado {
   id: string;
   nome: string;
   endereco: string;
+  abreviacao?: string;
 }
 
 export interface Contato {
