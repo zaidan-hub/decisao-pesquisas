@@ -64,7 +64,7 @@ export const AdminDashboard = () => {
                   <Building2 className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="font-bold text-lg">Sistema Preços</h1>
+                  <h1 className="font-bold text-lg">Decisão Pesquisas</h1>
                   <p className="text-sm text-muted-foreground">Admin Panel</p>
                 </div>
               </div>

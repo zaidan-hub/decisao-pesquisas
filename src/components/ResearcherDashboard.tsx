@@ -15,7 +15,7 @@ export const ResearcherDashboard = () => {
       {/* Mobile Header */}
       <header className="bg-card border-b px-4 py-3 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold">Sistema Preços</h1>
+          <h1 className="text-lg font-bold">Decisão Pesquisas</h1>
           <p className="text-sm text-muted-foreground">Pesquisador</p>
         </div>
         <div className="flex items-center gap-2">
