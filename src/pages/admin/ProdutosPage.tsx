@@ -54,8 +54,11 @@ export const ProdutosPage = () => {
     maisBarato: false
   });
 
-  // Estado para deletar produto
-  const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
+  // Estados para deletar itens
+  const [itemToDelete, setItemToDelete] = useState<{
+    type: 'departamento' | 'grupo' | 'subgrupo' | 'produto';
+    item: Departamento | Grupo | Subgrupo | Produto;
+  } | null>(null);
 
   // Filtered data
   const filteredDepartamentos = departamentos.filter(d => 
@@ -314,25 +317,42 @@ export const ProdutosPage = () => {
     }
   };
 
-  // Handler para deletar produto
-  const handleDeleteProduto = async () => {
-    if (!produtoToDelete) return;
+  // Handler genérico para deletar itens
+  const handleDeleteItem = async () => {
+    if (!itemToDelete) return;
     
     try {
+      const config = {
+        'departamento': { table: 'departamentos' as const, name: 'Departamento', refetch: refetchDepartamentos },
+        'grupo': { table: 'grupos' as const, name: 'Grupo', refetch: refetchGrupos },
+        'subgrupo': { table: 'subgrupos' as const, name: 'Subgrupo', refetch: refetchSubgrupos },
+        'produto': { table: 'produtos' as const, name: 'Produto', refetch: refetchProdutos }
+      };
+
+      const { table, name, refetch } = config[itemToDelete.type];
+
       const { error } = await supabase
-        .from('produtos')
+        .from(table)
         .delete()
-        .eq('id', produtoToDelete.id);
+        .eq('id', itemToDelete.item.id);
 
       if (error) throw error;
       
-      toast.success('Produto deletado com sucesso');
-      setProdutoToDelete(null);
-      refetchProdutos();
+      toast.success(`${name} deletado com sucesso`);
+      setItemToDelete(null);
+      
+      // Fechar o dialog de edição
+      setEditingDepartamento(null);
+      setEditingGrupo(null);
+      setEditingSubgrupo(null);
+      setEditingProduto(null);
+      
+      // Refetch apropriado
+      refetch();
     } catch (error: any) {
-      console.error('Erro ao deletar produto:', error);
-      const errorMessage = error?.message || 'Erro desconhecido ao deletar produto';
-      toast.error(`Erro ao deletar produto: ${errorMessage}`);
+      console.error('Erro ao deletar item:', error);
+      const errorMessage = error?.message || 'Erro desconhecido ao deletar item';
+      toast.error(`Erro ao deletar item: ${errorMessage}`);
     }
   };
 
@@ -554,29 +574,12 @@ export const ProdutosPage = () => {
               filteredProdutos.map(produto => (
                 <div
                   key={produto.id}
-                  className="p-3 rounded-lg border hover:bg-accent transition-colors group"
+                  onDoubleClick={() => setEditingProduto(produto)}
+                  className="p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onDoubleClick={() => setEditingProduto(produto)}
-                    >
-                      <div className="font-medium">{produto.nome}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProdutoToDelete(produto);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                  <div className="font-medium">{produto.nome}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
                   </div>
                 </div>
               ))
@@ -742,9 +745,18 @@ export const ProdutosPage = () => {
                 onChange={(e) => setEditingDepartamento(editingDepartamento ? {...editingDepartamento, nome: e.target.value} : null)}
               />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditingDepartamento(null)}>Cancelar</Button>
-              <Button onClick={handleUpdateDepartamento}>Salvar</Button>
+            <div className="flex justify-between gap-2">
+              <Button 
+                variant="destructive" 
+                onClick={() => editingDepartamento && setItemToDelete({ type: 'departamento', item: editingDepartamento })}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditingDepartamento(null)}>Cancelar</Button>
+                <Button onClick={handleUpdateDepartamento}>Salvar</Button>
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -787,9 +799,18 @@ export const ProdutosPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditingGrupo(null)}>Cancelar</Button>
-              <Button onClick={handleUpdateGrupo}>Salvar</Button>
+            <div className="flex justify-between gap-2">
+              <Button 
+                variant="destructive" 
+                onClick={() => editingGrupo && setItemToDelete({ type: 'grupo', item: editingGrupo })}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditingGrupo(null)}>Cancelar</Button>
+                <Button onClick={handleUpdateGrupo}>Salvar</Button>
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -832,9 +853,18 @@ export const ProdutosPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditingSubgrupo(null)}>Cancelar</Button>
-              <Button onClick={handleUpdateSubgrupo}>Salvar</Button>
+            <div className="flex justify-between gap-2">
+              <Button 
+                variant="destructive" 
+                onClick={() => editingSubgrupo && setItemToDelete({ type: 'subgrupo', item: editingSubgrupo })}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditingSubgrupo(null)}>Cancelar</Button>
+                <Button onClick={handleUpdateSubgrupo}>Salvar</Button>
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -905,28 +935,40 @@ export const ProdutosPage = () => {
               />
               <Label htmlFor="edit-mais-barato" className="cursor-pointer">Mais barato</Label>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditingProduto(null)}>Cancelar</Button>
-              <Button onClick={handleUpdateProduto}>Salvar</Button>
+            <div className="flex justify-between gap-2">
+              <Button 
+                variant="destructive" 
+                onClick={() => editingProduto && setItemToDelete({ type: 'produto', item: editingProduto })}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditingProduto(null)}>Cancelar</Button>
+                <Button onClick={handleUpdateProduto}>Salvar</Button>
+              </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* AlertDialog de Confirmação de Delete */}
-      <AlertDialog open={!!produtoToDelete} onOpenChange={() => setProdutoToDelete(null)}>
+      <AlertDialog open={!!itemToDelete} onOpenChange={() => setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja deletar o produto "{produtoToDelete?.nome}"? 
-              Esta ação não poderá ser desfeita e o produto será removido permanentemente do sistema.
+              Tem certeza que deseja deletar {itemToDelete?.type === 'departamento' ? 'o departamento' : 
+                itemToDelete?.type === 'grupo' ? 'o grupo' : 
+                itemToDelete?.type === 'subgrupo' ? 'o subgrupo' : 
+                'o produto'} "{itemToDelete?.item.nome}"? 
+              Esta ação não poderá ser desfeita e o item será removido permanentemente do sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={handleDeleteProduto}
+              onClick={handleDeleteItem}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Deletar
