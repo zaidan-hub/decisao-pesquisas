@@ -233,6 +233,11 @@ export const SupermercadosPage = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="font-semibold text-lg">{supermercado.nome}</h3>
+                    {supermercado.abreviacao && (
+                      <span className="text-sm px-2 py-0.5 bg-primary/10 text-primary rounded">
+                        {supermercado.abreviacao}
+                      </span>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
