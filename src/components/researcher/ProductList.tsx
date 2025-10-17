@@ -22,16 +22,16 @@ interface ProductListProps {
     textosMaisBarato?: { [produtoId: string]: string }
   ) => void;
   onFinalizarColeta: () => void;
+  onOpenConfirmDialog: () => void;
 }
 
-export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinalizarColeta }: ProductListProps) => {
+export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinalizarColeta, onOpenConfirmDialog }: ProductListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(coleta.precos || {});
   const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
   const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>(coleta.fotos || {});
   const [textosMaisBarato, setTextosMaisBarato] = useState<{ [produtoId: string]: string }>(coleta.textosMaisBarato || {});
   const [showObservationDialog, setShowObservationDialog] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [tempObservacao, setTempObservacao] = useState('');
 
@@ -255,7 +255,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
         </div>
         
         <Button 
-          onClick={() => setShowConfirmDialog(true)}
+          onClick={onOpenConfirmDialog}
           disabled={totalPreenchidos === 0}
         >
           <CheckCircle className="w-4 h-4 mr-2" />
@@ -434,33 +434,6 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                 Salvar
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirm Finalize Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="mx-4">
-          <DialogHeader>
-            <DialogTitle>Finalizar Coleta</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja finalizar esta coleta? Você ainda poderá adicionar observações posteriormente.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowConfirmDialog(false)}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={() => {
-              setShowConfirmDialog(false);
-              onFinalizarColeta();
-            }}>
-              Sim, Finalizar
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

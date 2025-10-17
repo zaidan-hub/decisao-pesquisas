@@ -51,9 +51,11 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
   };
 
   const handleFinalizarColeta = async () => {
+    setShowConfirmDialog(false);
+    setShowProductList(false);
+    
     // Move para histórico
     onUpdateColeta(coleta.id, 'finalizada');
-    setShowConfirmDialog(false);
     
     toast({
       title: "Coleta Finalizada",
@@ -97,12 +99,39 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
 
   if (showProductList) {
     return (
-      <ProductList
-        coleta={coleta}
-        onBack={() => setShowProductList(false)}
-        onUpdatePrecos={handleUpdatePrecos}
-        onFinalizarColeta={() => setShowConfirmDialog(true)}
-      />
+      <>
+        <ProductList
+          coleta={coleta}
+          onBack={() => setShowProductList(false)}
+          onUpdatePrecos={handleUpdatePrecos}
+          onFinalizarColeta={handleFinalizarColeta}
+          onOpenConfirmDialog={() => setShowConfirmDialog(true)}
+        />
+        
+        {/* Dialog de confirmação */}
+        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+          <DialogContent className="mx-4">
+            <DialogHeader>
+              <DialogTitle>Finalizar Coleta</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja finalizar esta coleta? Você ainda poderá adicionar observações posteriormente.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowConfirmDialog(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleFinalizarColeta}>
+                Sim, Finalizar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
