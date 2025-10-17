@@ -38,10 +38,38 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [tempObservacao, setTempObservacao] = useState('');
   const [produtosPorGrupo, setProdutosPorGrupo] = useState<{ [grupoId: string]: Produto[] }>({});
   const [gruposCarregando, setGruposCarregando] = useState<{ [grupoId: string]: boolean }>({});
+  const [gruposComProdutos, setGruposComProdutos] = useState<string[]>([]);
 
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
+
+  // Buscar grupos que têm produtos nesta coleta
+  useEffect(() => {
+    const buscarGruposComProdutos = async () => {
+      if (!coleta.produtos.length) return;
+
+      try {
+        const chunks = chunkArray(coleta.produtos, 100);
+        const promises = chunks.map(async (ids) => {
+          const { data, error } = await supabase
+            .from('produtos')
+            .select('grupo_id')
+            .in('id', ids);
+          if (error) throw error;
+          return data || [];
+        });
+
+        const results = await Promise.all(promises);
+        const gruposIds = [...new Set(results.flat().map(item => item.grupo_id))];
+        setGruposComProdutos(gruposIds);
+      } catch (error) {
+        console.error('Erro ao buscar grupos:', error);
+      }
+    };
+
+    buscarGruposComProdutos();
+  }, [coleta.produtos]);
 
   // Helper para dividir em chunks e evitar URL muito grande nas queries
   const chunkArray = <T,>(arr: T[], size: number) => {
@@ -100,8 +128,11 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     }
   };
 
-  // Mostrar todos os grupos; ao expandir, carregamos os produtos
-  const gruposDaColeta = useMemo(() => grupos, [grupos]);
+  // Mostrar apenas grupos que têm produtos nesta coleta
+  const gruposDaColeta = useMemo(() => 
+    grupos.filter(g => gruposComProdutos.includes(g.id)), 
+    [grupos, gruposComProdutos]
+  );
 
 
   const handlePrecoChange = (produtoId: string, valor: string) => {
