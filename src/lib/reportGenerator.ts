@@ -96,7 +96,6 @@ export const generatePDF = (data: RelatorioData) => {
 
   // Criar estrutura hierárquica: Departamento -> Grupo -> Subgrupo -> Produtos
   const tableData: any[] = [];
-  const symbolsMap = new Map<number, Map<number, string>>(); // rowIndex -> colIndex -> symbol
   let currentRowIndex = 0;
   
   // Agrupar produtos por departamento, grupo e subgrupo
@@ -212,6 +211,7 @@ export const generatePDF = (data: RelatorioData) => {
               temTextoMaisBarato = true;
             }
             
+            // Adicionar preço sem símbolo por enquanto, será adicionado depois
             row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
           });
 
@@ -221,19 +221,22 @@ export const generatePDF = (data: RelatorioData) => {
             const maxPreco = Math.max(...precosValidos);
             const minPreco = Math.min(...precosValidos);
 
-            // Armazenar símbolos no mapa para desenhar coloridos depois
-            if (!symbolsMap.has(currentRowIndex)) {
-              symbolsMap.set(currentRowIndex, new Map());
-            }
-            
+            // Adicionar símbolos diretamente no texto da célula
             for (let i = 0; i < precos.length; i++) {
               if (precos[i] > 0) {
+                const cellIndex = 3 + i;
+                let symbol = '';
+                
                 if (precos[i] === maxPreco && precos[i] === minPreco) {
-                  symbolsMap.get(currentRowIndex)!.set(3 + i, '+ -');
+                  symbol = '+ -';
                 } else if (precos[i] === maxPreco) {
-                  symbolsMap.get(currentRowIndex)!.set(3 + i, '+');
+                  symbol = '+';
                 } else if (precos[i] === minPreco) {
-                  symbolsMap.get(currentRowIndex)!.set(3 + i, '-');
+                  symbol = '-';
+                }
+                
+                if (symbol) {
+                  row[cellIndex] = `R$ ${precos[i].toFixed(2)}${symbol}`;
                 }
               }
             }
@@ -277,43 +280,6 @@ export const generatePDF = (data: RelatorioData) => {
       0: { cellWidth: 20 },
       1: { cellWidth: 50 },
       2: { cellWidth: 25 }
-    },
-    didDrawCell: (data) => {
-      // Aplicar cores aos símbolos + e -
-      if (data.section === 'body' && data.column.index >= 3) {
-        const rowSymbols = symbolsMap.get(data.row.index);
-        if (rowSymbols && rowSymbols.has(data.column.index)) {
-          const symbol = rowSymbols.get(data.column.index)!;
-          const cellText = data.cell.text[0];
-          
-          if (cellText && cellText !== '-') {
-            // Calcular posição do símbolo após o preço (centralizado verticalmente)
-            doc.setFontSize(8);
-            const textWidth = doc.getTextWidth(cellText);
-            const symbolX = data.cell.x + textWidth + 2;
-            const symbolY = data.cell.y + (data.cell.height / 2) + 2.5; // Ajustado para centralizar verticalmente
-            
-            // Desenhar símbolos com cores
-            if (symbol === '+ -' || symbol === '- +') {
-              // Desenhar + em azul
-              doc.setTextColor(0, 0, 255);
-              doc.text('+', symbolX, symbolY);
-              // Desenhar - em vermelho
-              doc.setTextColor(255, 0, 0);
-              doc.text('-', symbolX + doc.getTextWidth('+') + 1, symbolY);
-            } else if (symbol === '+') {
-              doc.setTextColor(0, 0, 255); // Azul
-              doc.text('+', symbolX, symbolY);
-            } else if (symbol === '-') {
-              doc.setTextColor(255, 0, 0); // Vermelho
-              doc.text('-', symbolX, symbolY);
-            }
-            
-            // Resetar cor
-            doc.setTextColor(0, 0, 0);
-          }
-        }
-      }
     }
   });
 
