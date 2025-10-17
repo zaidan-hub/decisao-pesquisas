@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ArrowLeft, Search, MessageSquare, CheckCircle, Camera } from 'lucide-react';
 import { Coleta, Produto, Grupo, Subgrupo } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductListProps {
   coleta: Coleta;
@@ -34,49 +36,120 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [tempObservacao, setTempObservacao] = useState('');
+  const [produtosPorGrupo, setProdutosPorGrupo] = useState<{ [grupoId: string]: Produto[] }>({});
+  const [gruposCarregando, setGruposCarregando] = useState<{ [grupoId: string]: boolean }>({});
 
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
-  const { produtos, loading: loadingProdutos, refetch } = useProdutos(undefined, coleta.produtos);
 
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
-
-  // Produtos da coleta ordenados por grupo > subgrupo > produto
-  const produtosDaColeta = useMemo(() => {
-    // Produtos já vêm filtrados da query, não precisa filtrar novamente por coleta.produtos
+  // Identificar grupos únicos da coleta
+  const gruposDaColeta = useMemo(() => {
+    const gruposIds = new Set<string>();
     
-    // Filtrar apenas por busca
-    const produtosComBusca = produtos.filter(p =>
-      p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Ordenar por grupo > subgrupo > produto
-    const sorted = produtosComBusca.sort((a, b) => {
-      const grupoA = grupos.find(g => g.id === a.grupoId);
-      const grupoB = grupos.find(g => g.id === b.grupoId);
-      const subgrupoA = subgrupos.find(s => s.id === a.subgrupoId);
-      const subgrupoB = subgrupos.find(s => s.id === b.subgrupoId);
-      
-      // Comparar por grupo
-      if (grupoA?.nome !== grupoB?.nome) {
-        return (grupoA?.nome || '').localeCompare(grupoB?.nome || '');
-      }
-      
-      // Comparar por subgrupo
-      if (subgrupoA?.nome !== subgrupoB?.nome) {
-        return (subgrupoA?.nome || '').localeCompare(subgrupoB?.nome || '');
-      }
-      
-      // Comparar por produto
-      return a.nome.localeCompare(b.nome);
+    // Se houver busca, precisamos carregar todos os grupos para filtrar
+    if (searchTerm) {
+      return grupos;
+    }
+    
+    // Buscar produtos da coleta para identificar seus grupos
+    coleta.produtos.forEach(produtoId => {
+      Object.values(produtosPorGrupo).forEach(produtosGrupo => {
+        const produto = produtosGrupo.find(p => p.id === produtoId);
+        if (produto) {
+          gruposIds.add(produto.grupoId);
+        }
+      });
     });
     
-    return sorted;
-  }, [searchTerm, produtos, grupos, subgrupos]);
+    return grupos.filter(g => gruposIds.size === 0 || gruposIds.has(g.id));
+  }, [grupos, coleta.produtos, produtosPorGrupo, searchTerm]);
+
+  // Carregar produtos de um grupo específico
+  const carregarProdutosGrupo = async (grupoId: string) => {
+    if (produtosPorGrupo[grupoId] || gruposCarregando[grupoId]) {
+      return; // Já carregado ou carregando
+    }
+
+    setGruposCarregando(prev => ({ ...prev, [grupoId]: true }));
+
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('id, codigo, nome, grupo_id, subgrupo_id, unidade_medida, quantidade, mais_barato')
+        .eq('grupo_id', grupoId)
+        .in('id', coleta.produtos)
+        .order('nome');
+
+      if (error) throw error;
+
+      const mappedData = (data || []).map(item => ({
+        id: item.id,
+        codigo: item.codigo,
+        nome: item.nome,
+        grupoId: item.grupo_id,
+        subgrupoId: item.subgrupo_id,
+        unidadeMedida: item.unidade_medida,
+        quantidade: item.quantidade,
+        maisBarato: Boolean(item.mais_barato)
+      }));
+
+      setProdutosPorGrupo(prev => ({ ...prev, [grupoId]: mappedData }));
+    } catch (error) {
+      console.error('Erro ao carregar produtos do grupo:', error);
+      toast({
+        title: "Erro ao carregar produtos",
+        description: "Não foi possível carregar os produtos deste grupo.",
+        variant: "destructive"
+      });
+    } finally {
+      setGruposCarregando(prev => ({ ...prev, [grupoId]: false }));
+    }
+  };
+
+  // Buscar produtos quando há termo de busca
+  useEffect(() => {
+    if (searchTerm) {
+      const buscarProdutos = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('produtos')
+            .select('id, codigo, nome, grupo_id, subgrupo_id, unidade_medida, quantidade, mais_barato')
+            .in('id', coleta.produtos)
+            .or(`nome.ilike.%${searchTerm}%,codigo.ilike.%${searchTerm}%`)
+            .order('nome');
+
+          if (error) throw error;
+
+          const mappedData = (data || []).map(item => ({
+            id: item.id,
+            codigo: item.codigo,
+            nome: item.nome,
+            grupoId: item.grupo_id,
+            subgrupoId: item.subgrupo_id,
+            unidadeMedida: item.unidade_medida,
+            quantidade: item.quantidade,
+            maisBarato: Boolean(item.mais_barato)
+          }));
+
+          // Agrupar por grupo_id
+          const grouped: { [key: string]: Produto[] } = {};
+          mappedData.forEach(produto => {
+            if (!grouped[produto.grupoId]) {
+              grouped[produto.grupoId] = [];
+            }
+            grouped[produto.grupoId].push(produto);
+          });
+
+          setProdutosPorGrupo(grouped);
+        } catch (error) {
+          console.error('Erro ao buscar produtos:', error);
+        }
+      };
+
+      buscarProdutos();
+    }
+  }, [searchTerm, coleta.produtos]);
 
   const handlePrecoChange = (produtoId: string, valor: string) => {
     const precoNumerico = parseFloat(valor) || 0;
@@ -171,56 +244,37 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   };
 
   const getProdutoInfo = (produtoId: string) => {
-    const produto = produtos.find(p => p.id === produtoId);
+    // Buscar produto em todos os grupos carregados
+    let produto: Produto | undefined;
+    for (const produtosGrupo of Object.values(produtosPorGrupo)) {
+      produto = produtosGrupo.find(p => p.id === produtoId);
+      if (produto) break;
+    }
+    
     const grupo = grupos.find(g => g.id === produto?.grupoId);
     const subgrupo = subgrupos.find(s => s.id === produto?.subgrupoId);
     return { produto, grupo, subgrupo };
   };
 
-  // Agrupar produtos por grupo/subgrupo para exibição
-  const produtosAgrupados = useMemo(() => {
-    const gruposMap: { [key: string]: { [key: string]: Produto[] } } = {};
+  // Agrupar produtos por subgrupo dentro de cada grupo
+  const agruparPorSubgrupo = (produtos: Produto[]) => {
+    const subgruposMap: { [key: string]: Produto[] } = {};
     
-    produtosDaColeta.forEach(produto => {
-      const grupo = grupos.find(g => g.id === produto.grupoId);
+    produtos.forEach(produto => {
       const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
-      
-      const grupoNome = grupo?.nome || 'Sem Grupo';
       const subgrupoNome = subgrupo?.nome || 'Sem Subgrupo';
       
-      if (!gruposMap[grupoNome]) {
-        gruposMap[grupoNome] = {};
+      if (!subgruposMap[subgrupoNome]) {
+        subgruposMap[subgrupoNome] = [];
       }
-      if (!gruposMap[grupoNome][subgrupoNome]) {
-        gruposMap[grupoNome][subgrupoNome] = [];
-      }
-      gruposMap[grupoNome][subgrupoNome].push(produto);
+      subgruposMap[subgrupoNome].push(produto);
     });
     
-    return gruposMap;
-  }, [produtosDaColeta, grupos, subgrupos]);
+    return subgruposMap;
+  };
 
   const totalPreenchidos = Object.keys(precos).filter(id => precos[id] > 0).length;
   const totalProdutos = coleta.produtos.length;
-
-  // Se ainda estiver carregando produtos, mostrar loading
-  if (loadingProdutos) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h2 className="text-lg font-bold">Lista de Produtos</h2>
-              <p className="text-sm text-muted-foreground">Carregando produtos...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -258,128 +312,147 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
         />
       </div>
 
-      {/* Products by Group */}
-      <div className="space-y-4">
-        {Object.entries(produtosAgrupados).map(([grupoNome, subgrupos]) => (
-          <Card key={grupoNome}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">{grupoNome}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Object.entries(subgrupos).map(([subgrupoNome, produtos]) => (
-                <div key={subgrupoNome}>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-3">
-                    {subgrupoNome}
-                  </h4>
-                  <div className="space-y-3">
-                    {produtos.map((produto) => (
-                      <div key={produto.id} className="border rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <h5 className="font-medium text-sm">{produto.nome}</h5>
-                            {produto.maisBarato && (
-                              <span className="text-xs text-blue-600 font-semibold">+ Barato</span>
-                            )}
-                          </div>
-                          
-                          <div className="w-24">
-                            <Input
-                              id={`preco-${produto.id}`}
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="0,00"
-                              value={precos[produto.id] || ''}
-                              onChange={(e) => handlePrecoChange(produto.id, e.target.value)}
-                              className="text-center"
-                            />
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleFotoCapture(produto.id)}
-                              className={fotos[produto.id] && fotos[produto.id].length > 0 ? 'bg-blue-50 border-blue-200' : ''}
-                            >
-                              <Camera className="w-4 h-4" />
-                            </Button>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openObservationDialog(produto.id)}
-                              className={observacoes[produto.id] ? 'bg-yellow-50 border-yellow-200' : ''}
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        {/* Campo de texto adicional para produtos "mais barato" */}
-                        {produto.maisBarato && (
-                          <div className="mt-3">
-                            <Label htmlFor={`texto-${produto.id}`} className="text-xs">
-                              Marca:
-                            </Label>
-                            <Input
-                              id={`texto-${produto.id}`}
-                              type="text"
-                              placeholder="Ex: Carrijo"
-                              value={textosMaisBarato[produto.id] || ''}
-                              onChange={(e) => handleTextoMaisBaratoChange(produto.id, e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-                        )}
-                        
-                        {/* Exibir fotos anexadas */}
-                        {fotos[produto.id] && fotos[produto.id].length > 0 && (
-                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                            <p className="text-xs font-medium mb-2">Fotos anexadas:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {fotos[produto.id].map((foto, index) => (
-                                <div key={index} className="relative">
-                                  <img
-                                    src={foto}
-                                    alt={`Foto ${index + 1} do produto`}
-                                    className="w-16 h-16 object-cover rounded border cursor-pointer"
-                                    onClick={() => {
-                                      // Abrir foto em nova aba para visualização completa
-                                      const newWindow = window.open();
-                                      if (newWindow) {
-                                        newWindow.document.body.innerHTML = `<img src="${foto}" style="max-width:100%; max-height:100vh;" />`;
-                                      }
-                                    }}
+      {/* Products by Group - Accordion */}
+      <Accordion type="multiple" className="space-y-4">
+        {gruposDaColeta.map((grupo) => {
+          const produtosGrupo = produtosPorGrupo[grupo.id] || [];
+          const subgruposAgrupados = agruparPorSubgrupo(produtosGrupo);
+          const isCarregando = gruposCarregando[grupo.id];
+          
+          return (
+            <AccordionItem key={grupo.id} value={grupo.id} className="border rounded-lg">
+              <AccordionTrigger
+                className="px-4 hover:no-underline"
+                onClick={() => carregarProdutosGrupo(grupo.id)}
+              >
+                <div className="flex items-center justify-between w-full pr-4">
+                  <span className="font-semibold">{grupo.nome}</span>
+                  {isCarregando && (
+                    <span className="text-xs text-muted-foreground">Carregando...</span>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                {produtosGrupo.length === 0 && !isCarregando ? (
+                  <p className="text-sm text-muted-foreground">Nenhum produto neste grupo.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(subgruposAgrupados).map(([subgrupoNome, produtos]) => (
+                      <div key={subgrupoNome}>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-3">
+                          {subgrupoNome}
+                        </h4>
+                        <div className="space-y-3">
+                          {produtos.map((produto) => (
+                            <div key={produto.id} className="border rounded-lg p-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1">
+                                  <h5 className="font-medium text-sm">{produto.nome}</h5>
+                                  {produto.maisBarato && (
+                                    <span className="text-xs text-blue-600 font-semibold">+ Barato</span>
+                                  )}
+                                </div>
+                                
+                                <div className="w-24">
+                                  <Input
+                                    id={`preco-${produto.id}`}
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0,00"
+                                    value={precos[produto.id] || ''}
+                                    onChange={(e) => handlePrecoChange(produto.id, e.target.value)}
+                                    className="text-center"
                                   />
+                                </div>
+                                
+                                <div className="flex gap-2">
                                   <Button
-                                    variant="destructive"
+                                    variant="outline"
                                     size="sm"
-                                    className="absolute -top-1 -right-1 w-5 h-5 p-0 rounded-full text-xs"
-                                    onClick={() => handleRemoverFoto(produto.id, index)}
+                                    onClick={() => handleFotoCapture(produto.id)}
+                                    className={fotos[produto.id] && fotos[produto.id].length > 0 ? 'bg-blue-50 border-blue-200' : ''}
                                   >
-                                    ×
+                                    <Camera className="w-4 h-4" />
+                                  </Button>
+                                  
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openObservationDialog(produto.id)}
+                                    className={observacoes[produto.id] ? 'bg-yellow-50 border-yellow-200' : ''}
+                                  >
+                                    <MessageSquare className="w-4 h-4" />
                                   </Button>
                                 </div>
-                              ))}
+                              </div>
+                              
+                              {/* Campo de texto adicional para produtos "mais barato" */}
+                              {produto.maisBarato && (
+                                <div className="mt-3">
+                                  <Label htmlFor={`texto-${produto.id}`} className="text-xs">
+                                    Marca:
+                                  </Label>
+                                  <Input
+                                    id={`texto-${produto.id}`}
+                                    type="text"
+                                    placeholder="Ex: Carrijo"
+                                    value={textosMaisBarato[produto.id] || ''}
+                                    onChange={(e) => handleTextoMaisBaratoChange(produto.id, e.target.value)}
+                                    className="mt-1"
+                                  />
+                                </div>
+                              )}
+                              
+                              {/* Exibir fotos anexadas */}
+                              {fotos[produto.id] && fotos[produto.id].length > 0 && (
+                                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                                  <p className="text-xs font-medium mb-2">Fotos anexadas:</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {fotos[produto.id].map((foto, index) => (
+                                      <div key={index} className="relative">
+                                        <img
+                                          src={foto}
+                                          alt={`Foto ${index + 1} do produto`}
+                                          className="w-16 h-16 object-cover rounded border cursor-pointer"
+                                          onClick={() => {
+                                            const newWindow = window.open();
+                                            if (newWindow) {
+                                              newWindow.document.body.innerHTML = `<img src="${foto}" style="max-width:100%; max-height:100vh;" />`;
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          className="absolute -top-1 -right-1 w-5 h-5 p-0 rounded-full text-xs"
+                                          onClick={() => handleRemoverFoto(produto.id, index)}
+                                        >
+                                          ×
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {observacoes[produto.id] && (
+                                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                                  <strong>Observação:</strong> {observacoes[produto.id]}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
-                        
-                        {observacoes[produto.id] && (
-                          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                            <strong>Observação:</strong> {observacoes[produto.id]}
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
 
       {/* Observation Dialog */}
       <Dialog open={showObservationDialog} onOpenChange={setShowObservationDialog}>
