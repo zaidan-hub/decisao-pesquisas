@@ -210,7 +210,7 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
 
   // Buscar fotos sob demanda quando o Dialog for aberto
   const handleLoadFotos = async (produtoId: string) => {
-    if (fotosPorProduto[produtoId] || loadingFotos[produtoId]) {
+    if (fotosPorProduto[produtoId] !== undefined || loadingFotos[produtoId]) {
       return; // Já carregou ou está carregando
     }
 
