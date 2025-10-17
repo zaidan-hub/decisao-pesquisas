@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -6,36 +6,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ColetaDetail } from './ColetaDetail';
 import { Coleta, Supermercado } from '@/types';
 import { Calendar, Store, User, Package, ArrowRight, FileText } from 'lucide-react';
-import { useColetas } from '@/hooks/useColetas';
+import { useColetasPesquisador } from '@/hooks/useColetasPesquisador';
 import { useSupermercados } from '@/hooks/useSupermercados';
-import { usePesquisadores } from '@/hooks/usePesquisadores';
 
 export const ColetasTab = () => {
   const { user } = useAuth();
-  const { coletas, loading: loadingColetas, updateColeta } = useColetas();
+  const { coletasAtivas, loading: loadingColetas, updateColeta } = useColetasPesquisador(user?.email);
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
-  const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
 
-  // Filtrar coletas do pesquisador logado (não finalizadas) - otimizado com useMemo
-  const coletasPesquisador = useMemo(() => {
-    return coletas.filter(c => {
-      // Buscar o pesquisador pelo email do usuário logado
-      const pesquisador = pesquisadores.find(p => p.email.toLowerCase() === user?.email?.toLowerCase());
-      
-      console.log('🔍 DEBUG FILTRO:', {
-        userEmail: user?.email,
-        pesquisadorEncontrado: pesquisador,
-        coletaPesquisadorId: c.pesquisadorId,
-        coletaStatus: c.status,
-        match: pesquisador && c.pesquisadorId === pesquisador.id
-      });
-      
-      return pesquisador && c.pesquisadorId === pesquisador.id && c.status !== 'finalizada';
-    });
-  }, [coletas, pesquisadores, user?.email]);
-
-  const isLoading = loadingColetas || loadingSupermercados || loadingPesquisadores;
+  const isLoading = loadingColetas || loadingSupermercados;
 
   const getSupermercadoNome = (id: string) => {
     return supermercados.find(s => s.id === id)?.nome || 'N/A';
@@ -89,7 +69,7 @@ export const ColetasTab = () => {
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-40 w-full" />
         </div>
-      ) : coletasPesquisador.length === 0 ? (
+      ) : coletasAtivas.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -101,7 +81,7 @@ export const ColetasTab = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {coletasPesquisador.map((coleta) => (
+          {coletasAtivas.map((coleta) => (
             <Card 
               key={coleta.id}
               className="cursor-pointer hover:shadow-md transition-shadow"

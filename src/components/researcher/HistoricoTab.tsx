@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,27 +7,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Coleta, Supermercado, ObservacaoFinal } from '@/types';
 import { Calendar, Store, Package, MessageSquare, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useColetas } from '@/hooks/useColetas';
+import { useColetasPesquisador } from '@/hooks/useColetasPesquisador';
 import { useSupermercados } from '@/hooks/useSupermercados';
-import { usePesquisadores } from '@/hooks/usePesquisadores';
 
 export const HistoricoTab = () => {
   const { user } = useAuth();
-  const { coletas, updateColeta } = useColetas();
+  const { coletasFinalizadas, updateColeta } = useColetasPesquisador(user?.email);
   const { supermercados } = useSupermercados();
-  const { pesquisadores } = usePesquisadores();
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
   const [novaObservacao, setNovaObservacao] = useState('');
-
-  // Filtrar coletas finalizadas do pesquisador logado
-  const coletasFinalizadas = coletas.filter(c => {
-    // Extrair login do email (ex: henriette@sistema.local -> henriette)
-    const loginFromEmail = user?.email?.split('@')[0];
-    // Buscar o ID do pesquisador pelo login
-    const pesquisador = pesquisadores.find(p => p.login === loginFromEmail);
-    return pesquisador && c.pesquisadorId === pesquisador.id && c.status === 'finalizada';
-  });
 
   const getSupermercadoNome = (id: string) => {
     return supermercados.find(s => s.id === id)?.nome || 'N/A';
@@ -78,7 +67,8 @@ export const HistoricoTab = () => {
 
     toast({
       title: "Sucesso",
-      description: "Observação adicionada com sucesso!"
+      description: "Observação adicionada com sucesso!",
+      duration: 3000
     });
 
     setNovaObservacao('');
