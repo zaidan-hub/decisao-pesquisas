@@ -94,19 +94,18 @@ export const useColetasPesquisador = (userEmail: string | undefined) => {
       if (updates.fotos !== undefined) updateData.fotos = updates.fotos;
       if (updates.textosMaisBarato !== undefined) updateData.textos_mais_barato = updates.textosMaisBarato;
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('coletas')
         .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
 
       if (error) throw error;
+
+      // Update otimista: atualizar estado local sem refetch completo
+      setColetasAtivas(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+      setColetasFinalizadas(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
       
-      // Atualizar localmente de forma otimizada
-      await fetchColetasPesquisador();
-      
-      return { data, error: null };
+      return { data: null, error: null };
     } catch (error: any) {
       return { data: null, error: error.message };
     }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,9 @@ import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 
 interface ProductListProps {
   coleta: Coleta;
@@ -39,10 +41,28 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [produtosPorGrupo, setProdutosPorGrupo] = useState<{ [grupoId: string]: Produto[] }>({});
   const [gruposCarregando, setGruposCarregando] = useState<{ [grupoId: string]: boolean }>({});
   const [gruposComProdutos, setGruposComProdutos] = useState<string[]>([]);
+  const [produtosCache, setProdutosCache] = useState<{ [grupoId: string]: boolean }>({});
 
-  // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
+
+  // Auto-save com debounce
+  const autoSaveData = useMemo(() => ({
+    precos,
+    observacoes_produtos: observacoes,
+    fotos,
+    textos_mais_barato: textosMaisBarato
+  }), [precos, observacoes, fotos, textosMaisBarato]);
+
+  const handleAutoSave = useCallback(async (data: any) => {
+    await onUpdatePrecos(data.precos, data.observacoes_produtos, data.fotos, data.textos_mais_barato);
+  }, [onUpdatePrecos]);
+
+  const { isSaving, lastSaved } = useAutoSave({
+    data: autoSaveData,
+    onSave: handleAutoSave,
+    delay: 2000
+  });
 
   // Buscar grupos que têm produtos nesta coleta
   useEffect(() => {
@@ -78,9 +98,9 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     return chunks;
   };
 
-  // Carregar produtos de um grupo específico em chunks
-  const carregarProdutosGrupo = async (grupoId: string) => {
-    if (produtosPorGrupo[grupoId] || gruposCarregando[grupoId]) return;
+  // Carregar produtos de um grupo específico em chunks com cache
+  const carregarProdutosGrupo = useCallback(async (grupoId: string) => {
+    if (produtosCache[grupoId] || gruposCarregando[grupoId]) return;
 
     setGruposCarregando(prev => ({ ...prev, [grupoId]: true }));
 
@@ -116,6 +136,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       const unique = Object.values(uniqueMap).sort((a, b) => a.nome.localeCompare(b.nome));
 
       setProdutosPorGrupo(prev => ({ ...prev, [grupoId]: unique }));
+      setProdutosCache(prev => ({ ...prev, [grupoId]: true }));
     } catch (error) {
       console.error('Erro ao carregar produtos do grupo:', error);
       toast({
@@ -126,7 +147,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     } finally {
       setGruposCarregando(prev => ({ ...prev, [grupoId]: false }));
     }
-  };
+  }, [coleta.produtos, produtosCache, gruposCarregando]);
 
   // Mostrar apenas grupos que têm produtos nesta coleta
   const gruposDaColeta = useMemo(() => 
@@ -135,32 +156,27 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   );
 
 
-  const handlePrecoChange = (produtoId: string, valor: string) => {
+  const handlePrecoChange = useCallback((produtoId: string, valor: string) => {
     const precoNumerico = parseFloat(valor) || 0;
-    const novosPrecos = { ...precos, [produtoId]: precoNumerico };
-    setPrecos(novosPrecos);
-    onUpdatePrecos(novosPrecos, observacoes, fotos, textosMaisBarato);
-  };
+    setPrecos(prev => ({ ...prev, [produtoId]: precoNumerico }));
+  }, []);
 
-  const handleTextoMaisBaratoChange = (produtoId: string, texto: string) => {
-    const novosTextos = { ...textosMaisBarato, [produtoId]: texto };
-    setTextosMaisBarato(novosTextos);
-    onUpdatePrecos(precos, observacoes, fotos, novosTextos);
-  };
+  const handleTextoMaisBaratoChange = useCallback((produtoId: string, texto: string) => {
+    setTextosMaisBarato(prev => ({ ...prev, [produtoId]: texto }));
+  }, []);
 
-  const handleSaveObservation = () => {
-    const novasObservacoes = { 
-      ...observacoes, 
-      [selectedProductId]: tempObservacao.trim() 
-    };
+  const handleSaveObservation = useCallback(() => {
+    if (!selectedProductId) return;
     
-    if (!tempObservacao.trim()) {
-      // Remove observação se estiver vazia
-      delete novasObservacoes[selectedProductId];
+    if (tempObservacao.trim() === '') {
+      setObservacoes(prev => {
+        const newObs = { ...prev };
+        delete newObs[selectedProductId];
+        return newObs;
+      });
+    } else {
+      setObservacoes(prev => ({ ...prev, [selectedProductId]: tempObservacao }));
     }
-    
-    setObservacoes(novasObservacoes);
-    onUpdatePrecos(precos, novasObservacoes, fotos, textosMaisBarato);
     
     setShowObservationDialog(false);
     setSelectedProductId('');
@@ -170,14 +186,13 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       title: "Observação salva",
       description: "A observação do produto foi atualizada."
     });
-  };
+  }, [selectedProductId, tempObservacao]);
 
-  const handleFotoCapture = (produtoId: string) => {
-    // Criar input file temporário
+  const handleFotoCapture = useCallback((produtoId: string) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment'; // Para usar câmera traseira em dispositivos móveis
+    input.capture = 'environment';
     
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
@@ -185,12 +200,10 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
         const reader = new FileReader();
         reader.onload = (event) => {
           const imageDataUrl = event.target?.result as string;
-          const novasFotos = {
-            ...fotos,
-            [produtoId]: [...(fotos[produtoId] || []), imageDataUrl]
-          };
-          setFotos(novasFotos);
-          onUpdatePrecos(precos, observacoes, novasFotos, textosMaisBarato);
+          setFotos(prev => ({
+            ...prev,
+            [produtoId]: [...(prev[produtoId] || []), imageDataUrl]
+          }));
           
           toast({
             title: "Foto adicionada",
@@ -202,30 +215,31 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     };
     
     input.click();
-  };
+  }, []);
 
-  const handleRemoverFoto = (produtoId: string, fotoIndex: number) => {
-    const novasFotos = { ...fotos };
-    novasFotos[produtoId] = novasFotos[produtoId].filter((_, index) => index !== fotoIndex);
-    
-    if (novasFotos[produtoId].length === 0) {
-      delete novasFotos[produtoId];
-    }
-    
-    setFotos(novasFotos);
-    onUpdatePrecos(precos, observacoes, novasFotos, textosMaisBarato);
+  const handleRemoverFoto = useCallback((produtoId: string, fotoIndex: number) => {
+    setFotos(prev => {
+      const novasFotos = { ...prev };
+      novasFotos[produtoId] = novasFotos[produtoId].filter((_, index) => index !== fotoIndex);
+      
+      if (novasFotos[produtoId].length === 0) {
+        delete novasFotos[produtoId];
+      }
+      
+      return novasFotos;
+    });
     
     toast({
       title: "Foto removida",
       description: "A foto foi removida do produto."
     });
-  };
+  }, []);
 
-  const openObservationDialog = (produtoId: string) => {
+  const openObservationDialog = useCallback((produtoId: string) => {
     setSelectedProductId(produtoId);
     setTempObservacao(observacoes[produtoId] || '');
     setShowObservationDialog(true);
-  };
+  }, [observacoes]);
 
   const getProdutoInfo = (produtoId: string) => {
     // Buscar produto em todos os grupos carregados
@@ -274,6 +288,16 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
               {totalPreenchidos}/{totalProdutos} preenchidos
             </p>
           </div>
+          {isSaving && (
+            <Badge variant="secondary">
+              Salvando...
+            </Badge>
+          )}
+          {!isSaving && lastSaved && (
+            <Badge variant="outline">
+              Salvo
+            </Badge>
+          )}
         </div>
         
         <Button 
