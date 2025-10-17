@@ -36,79 +36,72 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [tempObservacao, setTempObservacao] = useState('');
-  const [todosProdutos, setTodosProdutos] = useState<Produto[]>([]);
-  const [carregandoProdutos, setCarregandoProdutos] = useState(true);
+  const [produtosPorGrupo, setProdutosPorGrupo] = useState<{ [grupoId: string]: Produto[] }>({});
+  const [gruposCarregando, setGruposCarregando] = useState<{ [grupoId: string]: boolean }>({});
 
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
 
-  // Carregar todos os produtos da coleta de uma vez
-  useEffect(() => {
-    const carregarTodosProdutos = async () => {
-      try {
-        setCarregandoProdutos(true);
+  // Helper para dividir em chunks e evitar URL muito grande nas queries
+  const chunkArray = <T,>(arr: T[], size: number) => {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+    return chunks;
+  };
+
+  // Carregar produtos de um grupo específico em chunks
+  const carregarProdutosGrupo = async (grupoId: string) => {
+    if (produtosPorGrupo[grupoId] || gruposCarregando[grupoId]) return;
+
+    setGruposCarregando(prev => ({ ...prev, [grupoId]: true }));
+
+    try {
+      const chunks = chunkArray(coleta.produtos, 100);
+      const promises = chunks.map(async (ids) => {
         const { data, error } = await supabase
           .from('produtos')
           .select('id, codigo, nome, grupo_id, subgrupo_id, unidade_medida, quantidade, mais_barato')
-          .in('id', coleta.produtos)
+          .eq('grupo_id', grupoId)
+          .in('id', ids)
           .order('nome');
-
         if (error) throw error;
+        return data || [];
+      });
 
-        const mappedData = (data || []).map(item => ({
-          id: item.id,
-          codigo: item.codigo,
-          nome: item.nome,
-          grupoId: item.grupo_id,
-          subgrupoId: item.subgrupo_id,
-          unidadeMedida: item.unidade_medida,
-          quantidade: item.quantidade,
-          maisBarato: Boolean(item.mais_barato)
-        }));
+      const results = await Promise.all(promises);
+      const flat = results.flat();
+      const mapped = flat.map(item => ({
+        id: item.id,
+        codigo: item.codigo,
+        nome: item.nome,
+        grupoId: item.grupo_id,
+        subgrupoId: item.subgrupo_id,
+        unidadeMedida: item.unidade_medida,
+        quantidade: item.quantidade,
+        maisBarato: Boolean(item.mais_barato)
+      }));
 
-        setTodosProdutos(mappedData);
-      } catch (error) {
-        console.error('Erro ao carregar produtos:', error);
-        toast({
-          title: "Erro ao carregar produtos",
-          description: "Não foi possível carregar os produtos da coleta.",
-          variant: "destructive"
-        });
-      } finally {
-        setCarregandoProdutos(false);
-      }
-    };
+      // Remover duplicados e ordenar por nome
+      const uniqueMap: Record<string, Produto> = {};
+      mapped.forEach(p => { uniqueMap[p.id] = p; });
+      const unique = Object.values(uniqueMap).sort((a, b) => a.nome.localeCompare(b.nome));
 
-    carregarTodosProdutos();
-  }, [coleta.produtos]);
+      setProdutosPorGrupo(prev => ({ ...prev, [grupoId]: unique }));
+    } catch (error) {
+      console.error('Erro ao carregar produtos do grupo:', error);
+      toast({
+        title: "Erro ao carregar produtos",
+        description: "Não foi possível carregar os produtos deste grupo.",
+        variant: "destructive"
+      });
+    } finally {
+      setGruposCarregando(prev => ({ ...prev, [grupoId]: false }));
+    }
+  };
 
-  // Agrupar produtos por grupo
-  const produtosPorGrupo = useMemo(() => {
-    const grupos: { [grupoId: string]: Produto[] } = {};
-    
-    const produtosFiltrados = searchTerm
-      ? todosProdutos.filter(p => 
-          p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : todosProdutos;
-    
-    produtosFiltrados.forEach(produto => {
-      if (!grupos[produto.grupoId]) {
-        grupos[produto.grupoId] = [];
-      }
-      grupos[produto.grupoId].push(produto);
-    });
-    
-    return grupos;
-  }, [todosProdutos, searchTerm]);
-
-  // Identificar grupos únicos da coleta
-  const gruposDaColeta = useMemo(() => {
-    const gruposIds = Object.keys(produtosPorGrupo);
-    return grupos.filter(g => gruposIds.includes(g.id));
-  }, [grupos, produtosPorGrupo]);
+  // Mostrar todos os grupos; ao expandir, carregamos os produtos
+  const gruposDaColeta = useMemo(() => grupos, [grupos]);
 
 
   const handlePrecoChange = (produtoId: string, valor: string) => {
@@ -204,7 +197,13 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   };
 
   const getProdutoInfo = (produtoId: string) => {
-    const produto = todosProdutos.find(p => p.id === produtoId);
+    // Buscar produto em todos os grupos carregados
+    let produto: Produto | undefined;
+    for (const produtosGrupo of Object.values(produtosPorGrupo)) {
+      produto = produtosGrupo.find(p => p.id === produtoId);
+      if (produto) break;
+    }
+    
     const grupo = grupos.find(g => g.id === produto?.grupoId);
     const subgrupo = subgrupos.find(s => s.id === produto?.subgrupoId);
     return { produto, grupo, subgrupo };
@@ -267,30 +266,35 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       </div>
 
       {/* Products by Group - Accordion */}
-      {carregandoProdutos ? (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Carregando produtos...</p>
-        </div>
-      ) : (
-        <Accordion type="multiple" className="space-y-4">
-          {gruposDaColeta.map((grupo) => {
-            const produtosGrupo = produtosPorGrupo[grupo.id] || [];
-            const subgruposAgrupados = agruparPorSubgrupo(produtosGrupo);
-            
-            return (
-              <AccordionItem key={grupo.id} value={grupo.id} className="border rounded-lg">
-                <AccordionTrigger className="px-4 hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-4">
-                    <span className="font-semibold">{grupo.nome}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {produtosGrupo.length} {produtosGrupo.length === 1 ? 'produto' : 'produtos'}
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  {produtosGrupo.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum produto neste grupo.</p>
-                  ) : (
+      <Accordion type="multiple" className="space-y-4">
+        {gruposDaColeta.map((grupo) => {
+          const produtosGrupo = produtosPorGrupo[grupo.id] || [];
+          const produtosFiltrados = searchTerm
+            ? produtosGrupo.filter(p =>
+                p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+            : produtosGrupo;
+          const subgruposAgrupados = agruparPorSubgrupo(produtosFiltrados);
+          const isCarregando = gruposCarregando[grupo.id];
+          
+          return (
+            <AccordionItem key={grupo.id} value={grupo.id} className="border rounded-lg">
+              <AccordionTrigger
+                className="px-4 hover:no-underline"
+                onClick={() => carregarProdutosGrupo(grupo.id)}
+              >
+                <div className="flex items-center justify-between w-full pr-4">
+                  <span className="font-semibold">{grupo.nome}</span>
+                  {isCarregando && (
+                    <span className="text-xs text-muted-foreground">Carregando...</span>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                {produtosFiltrados.length === 0 && !isCarregando ? (
+                  <p className="text-sm text-muted-foreground">Nenhum produto neste grupo.</p>
+                ) : (
                   <div className="space-y-4">
                     {Object.entries(subgruposAgrupados).map(([subgrupoNome, produtos]) => (
                       <div key={subgrupoNome}>
@@ -402,13 +406,12 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                       </div>
                     ))}
                   </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            );
-          })}
-        </Accordion>
-      )}
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
 
       {/* Observation Dialog */}
       <Dialog open={showObservationDialog} onOpenChange={setShowObservationDialog}>
