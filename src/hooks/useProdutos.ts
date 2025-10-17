@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Produto } from '@/types';
 
-export const useProdutos = (subgrupoId?: string) => {
+export const useProdutos = (subgrupoId?: string, produtoIds?: string[]) => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProdutos();
-  }, [subgrupoId]);
+  }, [subgrupoId, produtoIds]);
 
   const fetchProdutos = async () => {
     try {
@@ -19,6 +19,11 @@ export const useProdutos = (subgrupoId?: string) => {
 
       if (subgrupoId) {
         query = query.eq('subgrupo_id', subgrupoId);
+      }
+      
+      // Se produtoIds fornecidos, buscar apenas esses produtos específicos
+      if (produtoIds && produtoIds.length > 0) {
+        query = query.in('id', produtoIds);
       }
 
       const { data, error } = await query;

@@ -38,7 +38,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   // Buscar dados reais do banco
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
-  const { produtos, loading: loadingProdutos, refetch } = useProdutos();
+  const { produtos, loading: loadingProdutos, refetch } = useProdutos(undefined, coleta.produtos);
 
   useEffect(() => {
     refetch();
@@ -46,20 +46,13 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
 
   // Produtos da coleta ordenados por grupo > subgrupo > produto
   const produtosDaColeta = useMemo(() => {
-    console.log('🔍 INICIO - Todos os produtos:', produtos.length);
-    console.log('🔍 INICIO - Produtos com maisBarato:', produtos.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
+    // Produtos já vêm filtrados da query, não precisa filtrar novamente por coleta.produtos
     
-    const produtosFiltrados = produtos.filter(p => coleta.produtos.includes(p.id));
-    console.log('🔍 APÓS FILTRO ID - Produtos filtrados:', produtosFiltrados.length);
-    console.log('🔍 APÓS FILTRO ID - Com maisBarato:', produtosFiltrados.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
-    
-    // Filtrar por busca
-    const produtosComBusca = produtosFiltrados.filter(p =>
+    // Filtrar apenas por busca
+    const produtosComBusca = produtos.filter(p =>
       p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    console.log('🔍 APÓS BUSCA - Produtos com busca:', produtosComBusca.length);
-    console.log('🔍 APÓS BUSCA - Com maisBarato:', produtosComBusca.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
 
     // Ordenar por grupo > subgrupo > produto
     const sorted = produtosComBusca.sort((a, b) => {
@@ -82,18 +75,9 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       return a.nome.localeCompare(b.nome);
     });
     
-    console.log('🔍 APÓS SORT - Produtos ordenados:', sorted.length);
-    console.log('🔍 APÓS SORT - Com maisBarato:', sorted.filter(p => p.maisBarato).map(p => ({ id: p.id, nome: p.nome, maisBarato: p.maisBarato })));
-    console.log('🔍 FINAL - Primeiro produto completo:', sorted[0]);
-    
     return sorted;
-  }, [coleta.produtos, searchTerm, produtos, grupos, subgrupos]);
+  }, [searchTerm, produtos, grupos, subgrupos]);
 
-  // Debug: verificar quais produtos da coleta têm maisBarato = true
-  useEffect(() => {
-    const marked = produtosDaColeta.filter(p => p.maisBarato);
-    console.log('🔎 Produtos com maisBarato=true:', marked.map(p => ({ id: p.id, nome: p.nome })));
-  }, [produtosDaColeta]);
   const handlePrecoChange = (produtoId: string, valor: string) => {
     const precoNumerico = parseFloat(valor) || 0;
     const novosPrecos = { ...precos, [produtoId]: precoNumerico };
