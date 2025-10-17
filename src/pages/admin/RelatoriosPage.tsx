@@ -21,6 +21,12 @@ import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
 import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateEstatisticasPDF } from '@/lib/reportGenerator';
 
+// Função helper para formatar datas sem problemas de timezone
+const formatDate = (dateString: string) => {
+  const [year, month, day] = dateString.split('T')[0].split('-');
+  return `${day}/${month}/${year}`;
+};
+
 export const RelatoriosPage = () => {
   const { produtos, loading: loadingProdutos } = useProdutos();
   const { grupos, loading: loadingGrupos } = useGrupos();
@@ -90,7 +96,7 @@ export const RelatoriosPage = () => {
 
     const lista = listas.find(l => l.id === listaSelecionada);
     const produtosLista = lista?.produtos || [];
-    const nomeRelatorioFinal = `${nomeCliente} - ${new Date(dataRelatorio).toLocaleDateString('pt-BR')}`;
+    const nomeRelatorioFinal = `${nomeCliente} - ${formatDate(dataRelatorio)}`;
 
     const { error } = await createRelatorio(
       nomeRelatorioFinal,
@@ -359,7 +365,7 @@ export const RelatoriosPage = () => {
                             }}
                           />
                           <span className="text-sm">
-                            {new Date(coleta.data).toLocaleDateString('pt-BR')} - {supermercado?.nome || 'N/A'}
+                            {formatDate(coleta.data)} - {supermercado?.nome || 'N/A'}
                           </span>
                         </div>
                       );
@@ -409,7 +415,7 @@ export const RelatoriosPage = () => {
                   <div>
                     <h4 className="font-medium">{rel.nome}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Cliente: {rel.nome_cliente} | Data: {new Date(rel.data).toLocaleDateString('pt-BR')} | {rel.produtos.length} produtos | {rel.coletas.length} coletas
+                      Cliente: {rel.nome_cliente} | Data: {formatDate(rel.data)} | {rel.produtos.length} produtos | {rel.coletas.length} coletas
                     </p>
                   </div>
                   <div className="flex gap-2">

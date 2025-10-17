@@ -6,6 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertaVariacao } from '@/types';
 import { Produto } from '@/types';
 
+// Função helper para formatar datas sem problemas de timezone
+const formatDate = (dateString: string) => {
+  const [year, month, day] = dateString.split('T')[0].split('-');
+  return `${day}/${month}/${year}`;
+};
+
 interface AlertaVariacaoPrecosProps {
   alertas: AlertaVariacao[];
   produtos: Produto[];
@@ -131,7 +137,7 @@ export const AlertaVariacaoPrecos = ({
               </div>
               
               <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
-                Data da última coleta: {new Date(alertasAtivos[0].data_anterior).toLocaleDateString('pt-BR')}
+                Data da última coleta: {formatDate(alertasAtivos[0].data_anterior)}
               </p>
             </div>
           )}

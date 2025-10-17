@@ -12,6 +12,12 @@ import { toast } from '@/hooks/use-toast';
 import { useClientes } from '@/hooks/useClientes';
 import { supabase } from '@/integrations/supabase/client';
 
+// Função helper para formatar datas sem problemas de timezone
+const formatDate = (dateString: string) => {
+  const [year, month, day] = dateString.split('T')[0].split('-');
+  return `${day}/${month}/${year}`;
+};
+
 export const ClientesPage = () => {
   const { clientes, loading, refetch } = useClientes();
 
@@ -330,7 +336,7 @@ export const ClientesPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
                     {cliente.dataInicioContrato && (
                       <div>
-                        <strong>Contrato:</strong> {new Date(cliente.dataInicioContrato).toLocaleDateString('pt-BR')}
+                        <strong>Contrato:</strong> {formatDate(cliente.dataInicioContrato)}
                       </div>
                     )}
                     <div>
