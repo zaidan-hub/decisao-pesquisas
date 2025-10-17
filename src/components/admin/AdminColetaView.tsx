@@ -29,6 +29,7 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const [fotosPorProduto, setFotosPorProduto] = useState<{ [produtoId: string]: string[] }>({});
   const [loadingFotos, setLoadingFotos] = useState<{ [produtoId: string]: boolean }>({});
   const [alertasAtivos, setAlertasAtivos] = useState(coleta.alertasVariacao || []);
+  const [produtosComFotos, setProdutosComFotos] = useState<Set<string>>(new Set());
   
   // Refs para scroll até produtos
   const produtoRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -39,6 +40,32 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const { produtos } = useProdutos();
 
   const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
+
+  // Carregar informação de existência de fotos
+  useEffect(() => {
+    const carregarInfoFotos = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('coletas')
+          .select('fotos')
+          .eq('id', coleta.id)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data?.fotos) {
+          const idsComFotos = Object.keys(data.fotos).filter(
+            id => data.fotos[id] && data.fotos[id].length > 0
+          );
+          setProdutosComFotos(new Set(idsComFotos));
+        }
+      } catch (error) {
+        console.error('Erro ao verificar fotos:', error);
+      }
+    };
+    
+    carregarInfoFotos();
+  }, [coleta.id]);
 
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split('T')[0].split('-');
@@ -403,46 +430,52 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
                             
                             {!isEditing && (
                               <div className="flex gap-2">
-                                <Dialog onOpenChange={(open) => {
-                                  if (open) {
-                                    handleLoadFotos(produto.id);
-                                  }
-                                }}>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="bg-blue-50 border-blue-200 hover:bg-blue-100"
-                                    >
-                                      <Camera className="w-4 h-4" />
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                      <DialogTitle>Fotos - {produto.nome}</DialogTitle>
-                                    </DialogHeader>
-                                    {loadingFotos[produto.id] ? (
-                                      <div className="flex justify-center items-center py-12">
-                                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                      </div>
-                                    ) : fotosPorProduto[produto.id]?.length > 0 ? (
-                                      <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
-                                        {fotosPorProduto[produto.id].map((foto, index) => (
-                                          <img
-                                            key={index}
-                                            src={foto}
-                                            alt={`Foto ${index + 1} de ${produto.nome}`}
-                                            className="w-full h-auto rounded-lg border"
-                                          />
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="text-center py-8 text-muted-foreground">
-                                        Nenhuma foto disponível
-                                      </div>
-                                    )}
-                                  </DialogContent>
-                                </Dialog>
+                                {produtosComFotos.has(produto.id) && (
+                                  <Dialog onOpenChange={(open) => {
+                                    if (open) {
+                                      handleLoadFotos(produto.id);
+                                    }
+                                  }}>
+                                    <DialogTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="bg-blue-50 border-blue-200 hover:bg-blue-100 relative"
+                                      >
+                                        <Camera className="w-4 h-4" />
+                                        <span 
+                                          className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" 
+                                          title="Tem fotos"
+                                        />
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-3xl">
+                                      <DialogHeader>
+                                        <DialogTitle>Fotos - {produto.nome}</DialogTitle>
+                                      </DialogHeader>
+                                      {loadingFotos[produto.id] ? (
+                                        <div className="flex justify-center items-center py-12">
+                                          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                        </div>
+                                      ) : fotosPorProduto[produto.id]?.length > 0 ? (
+                                        <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+                                          {fotosPorProduto[produto.id].map((foto, index) => (
+                                            <img
+                                              key={index}
+                                              src={foto}
+                                              alt={`Foto ${index + 1} de ${produto.nome}`}
+                                              className="w-full h-auto rounded-lg border"
+                                            />
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                          Nenhuma foto disponível
+                                        </div>
+                                      )}
+                                    </DialogContent>
+                                  </Dialog>
+                                )}
                                 
                                 {coleta.observacoesProdutos?.[produto.id] && (
                                   <div className="bg-yellow-50 border border-yellow-200 rounded px-2 py-1 flex items-center gap-1">
