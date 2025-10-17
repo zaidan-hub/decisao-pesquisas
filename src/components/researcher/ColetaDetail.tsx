@@ -46,23 +46,27 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
     setShowProductList(true);
     toast({
       title: "Coleta Iniciada",
-      description: "Você pode agora inserir os preços dos produtos."
+      description: "Você pode agora inserir os preços dos produtos.",
+      duration: 3000
     });
   };
 
   const handleFinalizarColeta = async () => {
     setShowConfirmDialog(false);
-    setShowProductList(false);
     
     // Move para histórico
     onUpdateColeta(coleta.id, 'finalizada');
     
     toast({
       title: "Coleta Finalizada",
-      description: "A coleta foi movida para o histórico."
+      description: "A coleta foi movida para o histórico.",
+      duration: 3000
     });
     
-    // Chamar edge function para verificar variações de preço
+    // Volta para a lista imediatamente
+    onBack();
+    
+    // Chamar edge function para verificar variações de preço em background
     try {
       const { data, error } = await supabase.functions.invoke('verificar-variacao-precos', {
         body: { coleta_id: coleta.id }
@@ -76,9 +80,6 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
     } catch (error) {
       console.error('Erro ao chamar verificação de variações:', error);
     }
-    
-    // Volta para a lista
-    onBack();
   };
 
   const handleUpdatePrecos = (
