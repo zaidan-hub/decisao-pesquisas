@@ -96,6 +96,7 @@ export const generatePDF = (data: RelatorioData) => {
 
   // Criar estrutura hierárquica: Departamento -> Grupo -> Subgrupo -> Produtos
   const tableData: any[] = [];
+  const symbolsMap = new Map<number, Map<number, string>>(); // rowIndex -> colIndex -> symbol
   let currentRowIndex = 0;
   
   // Agrupar produtos por departamento, grupo e subgrupo
@@ -211,7 +212,6 @@ export const generatePDF = (data: RelatorioData) => {
               temTextoMaisBarato = true;
             }
             
-            // Adicionar preço sem símbolo por enquanto, será adicionado depois
             row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
           });
 
@@ -221,22 +221,19 @@ export const generatePDF = (data: RelatorioData) => {
             const maxPreco = Math.max(...precosValidos);
             const minPreco = Math.min(...precosValidos);
 
-            // Adicionar símbolos diretamente no texto da célula
+            // Armazenar símbolos no mapa para desenhar coloridos depois
+            if (!symbolsMap.has(currentRowIndex)) {
+              symbolsMap.set(currentRowIndex, new Map());
+            }
+            
             for (let i = 0; i < precos.length; i++) {
               if (precos[i] > 0) {
-                const cellIndex = 3 + i;
-                let symbol = '';
-                
                 if (precos[i] === maxPreco && precos[i] === minPreco) {
-                  symbol = '+ -';
+                  symbolsMap.get(currentRowIndex)!.set(3 + i, '+ -');
                 } else if (precos[i] === maxPreco) {
-                  symbol = '+';
+                  symbolsMap.get(currentRowIndex)!.set(3 + i, '+');
                 } else if (precos[i] === minPreco) {
-                  symbol = '-';
-                }
-                
-                if (symbol) {
-                  row[cellIndex] = `R$ ${precos[i].toFixed(2)}${symbol}`;
+                  symbolsMap.get(currentRowIndex)!.set(3 + i, '-');
                 }
               }
             }
@@ -270,16 +267,61 @@ export const generatePDF = (data: RelatorioData) => {
     })
   ];
 
+  // Configurar alinhamento das colunas de preço
+  const columnStyles: any = {
+    0: { cellWidth: 20 },
+    1: { cellWidth: 50 },
+    2: { cellWidth: 25 }
+  };
+  for (let i = 3; i < headers.length; i++) {
+    columnStyles[i] = { halign: 'right' };
+  }
+
   autoTable(doc, {
     head: [headers],
     body: tableData,
     startY: yPos,
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [66, 66, 66] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 50 },
-      2: { cellWidth: 25 }
+    columnStyles,
+    didDrawCell: (data) => {
+      // Aplicar cores aos símbolos + e -
+      if (data.section !== 'body' || data.column.index < 3) return;
+      
+      const rowSymbols = symbolsMap.get(data.row.index);
+      const symbol = rowSymbols?.get(data.column.index);
+      const cellText = data.cell.text?.[0];
+      
+      if (!symbol || !cellText || cellText === '-') return;
+
+      const fontSize = data.cell.styles.fontSize || 8;
+      doc.setFontSize(fontSize);
+
+      const textWidth = doc.getTextWidth(cellText);
+      const cellPadding = data.cell.styles.cellPadding;
+      const paddingRight = typeof cellPadding === 'number'
+        ? cellPadding
+        : (typeof cellPadding === 'object' && !Array.isArray(cellPadding) && cellPadding.right !== undefined
+            ? cellPadding.right
+            : 2);
+
+      const textStartX = data.cell.x + data.cell.width - paddingRight - textWidth;
+      const symbolX = textStartX + textWidth + 0.8;
+      const symbolY = data.cell.y + (data.cell.height / 2) + fontSize * 0.35;
+
+      // Desenhar símbolos com cores
+      if (symbol.includes('+')) {
+        doc.setTextColor(0, 0, 255); // Azul
+        doc.text('+', symbolX, symbolY);
+      }
+      if (symbol.includes('-')) {
+        const plusWidth = symbol.includes('+') ? doc.getTextWidth('+') + 1 : 0;
+        doc.setTextColor(255, 0, 0); // Vermelho
+        doc.text('-', symbolX + plusWidth, symbolY);
+      }
+      
+      // Resetar cor para preto
+      doc.setTextColor(0, 0, 0);
     }
   });
 
