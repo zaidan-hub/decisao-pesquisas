@@ -297,61 +297,60 @@ export const ListasPage = () => {
     const newItems = [...visualizacaoItems];
     
     // Encontrar todos os produtos deste subgrupo
-    const produtosDoSubgrupo = newItems
+    const blocoAtual = newItems
       .map((item, idx) => ({ item, idx }))
       .filter(({ item }) => item.parentId === subgrupoId);
     
-    if (produtosDoSubgrupo.length === 0) return;
+    if (blocoAtual.length === 0) return;
     
-    const primeiroIdx = produtosDoSubgrupo[0].idx;
-    const ultimoIdx = produtosDoSubgrupo[produtosDoSubgrupo.length - 1].idx;
+    const primeiroIdx = blocoAtual[0].idx;
+    const ultimoIdx = blocoAtual[blocoAtual.length - 1].idx;
     
-    // Verificar se há itens adjacentes de outro subgrupo para trocar
+    // Identificar bloco adjacente
+    let blocoAdjacente;
     if (direcao === 'up' && primeiroIdx > 0) {
-      // Encontrar o subgrupo anterior
       const itemAnterior = newItems[primeiroIdx - 1];
       const subgrupoAnteriorId = itemAnterior.parentId;
       
-      if (subgrupoAnteriorId === subgrupoId) return; // Já está no topo dentro do grupo
+      if (subgrupoAnteriorId === subgrupoId) return;
       
-      // Encontrar todos os produtos do subgrupo anterior
-      const produtosSubgrupoAnterior = newItems
+      blocoAdjacente = newItems
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => item.parentId === subgrupoAnteriorId);
-      
-      if (produtosSubgrupoAnterior.length === 0) return;
-      
-      const primeiroIdxAnterior = produtosSubgrupoAnterior[0].idx;
-      
-      // Remover produtos do subgrupo atual e reinseri-los antes do subgrupo anterior
-      const produtosMovendo = produtosDoSubgrupo.map(({ item }) => item);
-      newItems.splice(primeiroIdx, produtosDoSubgrupo.length);
-      newItems.splice(primeiroIdxAnterior, 0, ...produtosMovendo);
-      
-      setVisualizacaoItems(newItems);
     } else if (direcao === 'down' && ultimoIdx < newItems.length - 1) {
-      // Encontrar o subgrupo seguinte
       const itemSeguinte = newItems[ultimoIdx + 1];
       const subgrupoSegId = itemSeguinte.parentId;
       
       if (subgrupoSegId === subgrupoId) return;
       
-      // Encontrar todos os produtos do subgrupo seguinte
-      const produtosSubgrupoSeguinte = newItems
+      blocoAdjacente = newItems
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => item.parentId === subgrupoSegId);
-      
-      if (produtosSubgrupoSeguinte.length === 0) return;
-      
-      const ultimoIdxSeguinte = produtosSubgrupoSeguinte[produtosSubgrupoSeguinte.length - 1].idx;
-      
-      // Remover produtos do subgrupo seguinte e reinseri-los antes do subgrupo atual
-      const produtosMovendoSeguinte = produtosSubgrupoSeguinte.map(({ item }) => item);
-      newItems.splice(produtosSubgrupoSeguinte[0].idx, produtosSubgrupoSeguinte.length);
-      newItems.splice(primeiroIdx, 0, ...produtosMovendoSeguinte);
-      
-      setVisualizacaoItems(newItems);
     }
+    
+    if (!blocoAdjacente || blocoAdjacente.length === 0) return;
+    
+    // Reconstruir array com blocos trocados
+    const primeiroIdxAdjacente = blocoAdjacente[0].idx;
+    const ultimoIdxAdjacente = blocoAdjacente[blocoAdjacente.length - 1].idx;
+    
+    const inicio = Math.min(primeiroIdx, primeiroIdxAdjacente);
+    const fim = Math.max(ultimoIdx, ultimoIdxAdjacente);
+    
+    const antes = newItems.slice(0, inicio);
+    const depois = newItems.slice(fim + 1);
+    
+    const itemsAtual = blocoAtual.map(({ item }) => item);
+    const itemsAdjacente = blocoAdjacente.map(({ item }) => item);
+    
+    let novoArray;
+    if (direcao === 'up') {
+      novoArray = [...antes, ...itemsAtual, ...itemsAdjacente, ...depois];
+    } else {
+      novoArray = [...antes, ...itemsAdjacente, ...itemsAtual, ...depois];
+    }
+    
+    setVisualizacaoItems(novoArray);
   };
 
   const handleMoverGrupo = (grupoId: string, direcao: 'up' | 'down') => {
@@ -360,18 +359,19 @@ export const ListasPage = () => {
     // Encontrar todos os subgrupos deste grupo
     const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === grupoId).map(s => s.id);
     
-    // Encontrar todos os produtos destes subgrupos
-    const produtosDoGrupo = newItems
+    // Encontrar todos os produtos destes subgrupos (bloco atual)
+    const blocoAtual = newItems
       .map((item, idx) => ({ item, idx }))
       .filter(({ item }) => subgruposDoGrupo.includes(item.parentId || ''));
     
-    if (produtosDoGrupo.length === 0) return;
+    if (blocoAtual.length === 0) return;
     
-    const primeiroIdx = produtosDoGrupo[0].idx;
-    const ultimoIdx = produtosDoGrupo[produtosDoGrupo.length - 1].idx;
+    const primeiroIdx = blocoAtual[0].idx;
+    const ultimoIdx = blocoAtual[blocoAtual.length - 1].idx;
     
+    // Identificar bloco adjacente
+    let blocoAdjacente;
     if (direcao === 'up' && primeiroIdx > 0) {
-      // Encontrar o grupo anterior
       const itemAnterior = newItems[primeiroIdx - 1];
       const subgrupoAnteriorId = itemAnterior.parentId;
       const grupoAnterior = subgrupos.find(s => s.id === subgrupoAnteriorId);
@@ -382,22 +382,10 @@ export const ListasPage = () => {
       const subgruposGrupoAnterior = subgrupos.filter(s => s.grupoId === grupoAnterior.grupoId).map(s => s.id);
       
       // Encontrar todos os produtos do grupo anterior
-      const produtosGrupoAnterior = newItems
+      blocoAdjacente = newItems
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => subgruposGrupoAnterior.includes(item.parentId || ''));
-      
-      if (produtosGrupoAnterior.length === 0) return;
-      
-      const primeiroIdxAnterior = produtosGrupoAnterior[0].idx;
-      
-      // Mover
-      const produtosMovendo = produtosDoGrupo.map(({ item }) => item);
-      newItems.splice(primeiroIdx, produtosDoGrupo.length);
-      newItems.splice(primeiroIdxAnterior, 0, ...produtosMovendo);
-      
-      setVisualizacaoItems(newItems);
     } else if (direcao === 'down' && ultimoIdx < newItems.length - 1) {
-      // Encontrar o grupo seguinte
       const itemSeguinte = newItems[ultimoIdx + 1];
       const subgrupoSegId = itemSeguinte.parentId;
       const grupoSeguinte = subgrupos.find(s => s.id === subgrupoSegId);
@@ -408,19 +396,34 @@ export const ListasPage = () => {
       const subgruposGrupoSeguinte = subgrupos.filter(s => s.grupoId === grupoSeguinte.grupoId).map(s => s.id);
       
       // Encontrar todos os produtos do grupo seguinte
-      const produtosGrupoSeguinte = newItems
+      blocoAdjacente = newItems
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => subgruposGrupoSeguinte.includes(item.parentId || ''));
-      
-      if (produtosGrupoSeguinte.length === 0) return;
-      
-      // Mover grupo seguinte para antes do atual
-      const produtosMovendoSeguinte = produtosGrupoSeguinte.map(({ item }) => item);
-      newItems.splice(produtosGrupoSeguinte[0].idx, produtosGrupoSeguinte.length);
-      newItems.splice(primeiroIdx, 0, ...produtosMovendoSeguinte);
-      
-      setVisualizacaoItems(newItems);
     }
+    
+    if (!blocoAdjacente || blocoAdjacente.length === 0) return;
+    
+    // Reconstruir array com blocos trocados
+    const primeiroIdxAdjacente = blocoAdjacente[0].idx;
+    const ultimoIdxAdjacente = blocoAdjacente[blocoAdjacente.length - 1].idx;
+    
+    const inicio = Math.min(primeiroIdx, primeiroIdxAdjacente);
+    const fim = Math.max(ultimoIdx, ultimoIdxAdjacente);
+    
+    const antes = newItems.slice(0, inicio);
+    const depois = newItems.slice(fim + 1);
+    
+    const itemsAtual = blocoAtual.map(({ item }) => item);
+    const itemsAdjacente = blocoAdjacente.map(({ item }) => item);
+    
+    let novoArray;
+    if (direcao === 'up') {
+      novoArray = [...antes, ...itemsAtual, ...itemsAdjacente, ...depois];
+    } else {
+      novoArray = [...antes, ...itemsAdjacente, ...itemsAtual, ...depois];
+    }
+    
+    setVisualizacaoItems(novoArray);
   };
 
   const handleMoverDepartamento = (departamentoId: string, direcao: 'up' | 'down') => {
@@ -434,18 +437,19 @@ export const ListasPage = () => {
       .filter(s => gruposDoDepartamento.includes(s.grupoId))
       .map(s => s.id);
     
-    // Encontrar todos os produtos destes subgrupos
-    const produtosDoDepartamento = newItems
+    // Encontrar todos os produtos destes subgrupos (bloco atual)
+    const blocoAtual = newItems
       .map((item, idx) => ({ item, idx }))
       .filter(({ item }) => subgruposDoDepartamento.includes(item.parentId || ''));
     
-    if (produtosDoDepartamento.length === 0) return;
+    if (blocoAtual.length === 0) return;
     
-    const primeiroIdx = produtosDoDepartamento[0].idx;
-    const ultimoIdx = produtosDoDepartamento[produtosDoDepartamento.length - 1].idx;
+    const primeiroIdx = blocoAtual[0].idx;
+    const ultimoIdx = blocoAtual[blocoAtual.length - 1].idx;
     
+    // Identificar bloco adjacente
+    let blocoAdjacente;
     if (direcao === 'up' && primeiroIdx > 0) {
-      // Encontrar o departamento anterior
       const itemAnterior = newItems[primeiroIdx - 1];
       const subgrupoAnteriorId = itemAnterior.parentId;
       const grupoAnterior = subgrupos.find(s => s.id === subgrupoAnteriorId);
@@ -462,22 +466,10 @@ export const ListasPage = () => {
         .map(s => s.id);
       
       // Encontrar todos os produtos do departamento anterior
-      const produtosDeptAnterior = newItems
+      blocoAdjacente = newItems
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => subgruposDeptAnterior.includes(item.parentId || ''));
-      
-      if (produtosDeptAnterior.length === 0) return;
-      
-      const primeiroIdxAnterior = produtosDeptAnterior[0].idx;
-      
-      // Mover
-      const produtosMovendo = produtosDoDepartamento.map(({ item }) => item);
-      newItems.splice(primeiroIdx, produtosDoDepartamento.length);
-      newItems.splice(primeiroIdxAnterior, 0, ...produtosMovendo);
-      
-      setVisualizacaoItems(newItems);
     } else if (direcao === 'down' && ultimoIdx < newItems.length - 1) {
-      // Encontrar o departamento seguinte
       const itemSeguinte = newItems[ultimoIdx + 1];
       const subgrupoSegId = itemSeguinte.parentId;
       const grupoSeguinte = subgrupos.find(s => s.id === subgrupoSegId);
@@ -494,19 +486,34 @@ export const ListasPage = () => {
         .map(s => s.id);
       
       // Encontrar todos os produtos do departamento seguinte
-      const produtosDeptSeguinte = newItems
+      blocoAdjacente = newItems
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => subgruposDeptSeguinte.includes(item.parentId || ''));
-      
-      if (produtosDeptSeguinte.length === 0) return;
-      
-      // Mover departamento seguinte para antes do atual
-      const produtosMovendoSeguinte = produtosDeptSeguinte.map(({ item }) => item);
-      newItems.splice(produtosDeptSeguinte[0].idx, produtosDeptSeguinte.length);
-      newItems.splice(primeiroIdx, 0, ...produtosMovendoSeguinte);
-      
-      setVisualizacaoItems(newItems);
     }
+    
+    if (!blocoAdjacente || blocoAdjacente.length === 0) return;
+    
+    // Reconstruir array com blocos trocados
+    const primeiroIdxAdjacente = blocoAdjacente[0].idx;
+    const ultimoIdxAdjacente = blocoAdjacente[blocoAdjacente.length - 1].idx;
+    
+    const inicio = Math.min(primeiroIdx, primeiroIdxAdjacente);
+    const fim = Math.max(ultimoIdx, ultimoIdxAdjacente);
+    
+    const antes = newItems.slice(0, inicio);
+    const depois = newItems.slice(fim + 1);
+    
+    const itemsAtual = blocoAtual.map(({ item }) => item);
+    const itemsAdjacente = blocoAdjacente.map(({ item }) => item);
+    
+    let novoArray;
+    if (direcao === 'up') {
+      novoArray = [...antes, ...itemsAtual, ...itemsAdjacente, ...depois];
+    } else {
+      novoArray = [...antes, ...itemsAdjacente, ...itemsAtual, ...depois];
+    }
+    
+    setVisualizacaoItems(novoArray);
   };
 
   const handleRemoverItem = (index: number) => {
