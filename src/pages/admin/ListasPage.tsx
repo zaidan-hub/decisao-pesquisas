@@ -293,6 +293,146 @@ export const ListasPage = () => {
     }
   };
 
+  const handleMoverSubgrupo = (subgrupoId: string, direcao: 'up' | 'down') => {
+    const newItems = [...visualizacaoItems];
+    const indicesDoSubgrupo = newItems
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.parentId === subgrupoId)
+      .map(({ index }) => index);
+    
+    if (indicesDoSubgrupo.length === 0) return;
+    
+    const primeiroIndice = Math.min(...indicesDoSubgrupo);
+    const ultimoIndice = Math.max(...indicesDoSubgrupo);
+    
+    if (direcao === 'up' && primeiroIndice > 0) {
+      const prevItem = newItems[primeiroIndice - 1];
+      if (prevItem.parentId !== subgrupoId) {
+        const itemsDoSubgrupo = indicesDoSubgrupo.map(i => newItems[i]);
+        newItems.splice(primeiroIndice, indicesDoSubgrupo.length);
+        newItems.splice(primeiroIndice - 1, 0, ...itemsDoSubgrupo);
+        setVisualizacaoItems(newItems);
+      }
+    } else if (direcao === 'down' && ultimoIndice < newItems.length - 1) {
+      const nextItem = newItems[ultimoIndice + 1];
+      if (nextItem.parentId !== subgrupoId) {
+        const itemsDoSubgrupo = indicesDoSubgrupo.map(i => newItems[i]);
+        newItems.splice(primeiroIndice, indicesDoSubgrupo.length);
+        newItems.splice(primeiroIndice + 1, 0, ...itemsDoSubgrupo);
+        setVisualizacaoItems(newItems);
+      }
+    }
+  };
+
+  const handleMoverGrupo = (grupoId: string, direcao: 'up' | 'down') => {
+    const newItems = [...visualizacaoItems];
+    const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === grupoId).map(s => s.id);
+    const indicesDoGrupo = newItems
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => subgruposDoGrupo.includes(item.parentId || ''))
+      .map(({ index }) => index);
+    
+    if (indicesDoGrupo.length === 0) return;
+    
+    const primeiroIndice = Math.min(...indicesDoGrupo);
+    const ultimoIndice = Math.max(...indicesDoGrupo);
+    
+    if (direcao === 'up' && primeiroIndice > 0) {
+      const prevItem = newItems[primeiroIndice - 1];
+      if (!subgruposDoGrupo.includes(prevItem.parentId || '')) {
+        const itemsDoGrupo = indicesDoGrupo.map(i => newItems[i]);
+        newItems.splice(primeiroIndice, indicesDoGrupo.length);
+        
+        let targetIndex = primeiroIndice - 1;
+        while (targetIndex > 0 && newItems[targetIndex - 1].parentId === prevItem.parentId) {
+          targetIndex--;
+        }
+        
+        newItems.splice(targetIndex, 0, ...itemsDoGrupo);
+        setVisualizacaoItems(newItems);
+      }
+    } else if (direcao === 'down' && ultimoIndice < newItems.length - 1) {
+      const nextItem = newItems[ultimoIndice + 1];
+      if (!subgruposDoGrupo.includes(nextItem.parentId || '')) {
+        const itemsDoGrupo = indicesDoGrupo.map(i => newItems[i]);
+        newItems.splice(primeiroIndice, indicesDoGrupo.length);
+        
+        let targetIndex = primeiroIndice;
+        while (targetIndex < newItems.length && newItems[targetIndex].parentId === nextItem.parentId) {
+          targetIndex++;
+        }
+        
+        newItems.splice(targetIndex, 0, ...itemsDoGrupo);
+        setVisualizacaoItems(newItems);
+      }
+    }
+  };
+
+  const handleMoverDepartamento = (departamentoId: string, direcao: 'up' | 'down') => {
+    const newItems = [...visualizacaoItems];
+    const gruposDoDepartamento = grupos.filter(g => g.departamentoId === departamentoId).map(g => g.id);
+    const subgruposDoDepartamento = subgrupos.filter(s => gruposDoDepartamento.includes(s.grupoId)).map(s => s.id);
+    const indicesDoDepartamento = newItems
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => subgruposDoDepartamento.includes(item.parentId || ''))
+      .map(({ index }) => index);
+    
+    if (indicesDoDepartamento.length === 0) return;
+    
+    const primeiroIndice = Math.min(...indicesDoDepartamento);
+    const ultimoIndice = Math.max(...indicesDoDepartamento);
+    
+    if (direcao === 'up' && primeiroIndice > 0) {
+      const prevItem = newItems[primeiroIndice - 1];
+      if (!subgruposDoDepartamento.includes(prevItem.parentId || '')) {
+        const itemsDoDepartamento = indicesDoDepartamento.map(i => newItems[i]);
+        newItems.splice(primeiroIndice, indicesDoDepartamento.length);
+        
+        let targetIndex = primeiroIndice - 1;
+        const prevSubgrupoId = prevItem.parentId;
+        const prevGrupoId = subgrupos.find(s => s.id === prevSubgrupoId)?.grupoId;
+        const prevDeptId = grupos.find(g => g.id === prevGrupoId)?.departamentoId;
+        
+        while (targetIndex > 0) {
+          const checkItem = newItems[targetIndex - 1];
+          const checkSubgrupoId = checkItem.parentId;
+          const checkGrupoId = subgrupos.find(s => s.id === checkSubgrupoId)?.grupoId;
+          const checkDeptId = grupos.find(g => g.id === checkGrupoId)?.departamentoId;
+          
+          if (checkDeptId !== prevDeptId) break;
+          targetIndex--;
+        }
+        
+        newItems.splice(targetIndex, 0, ...itemsDoDepartamento);
+        setVisualizacaoItems(newItems);
+      }
+    } else if (direcao === 'down' && ultimoIndice < newItems.length - 1) {
+      const nextItem = newItems[ultimoIndice + 1];
+      if (!subgruposDoDepartamento.includes(nextItem.parentId || '')) {
+        const itemsDoDepartamento = indicesDoDepartamento.map(i => newItems[i]);
+        newItems.splice(primeiroIndice, indicesDoDepartamento.length);
+        
+        let targetIndex = primeiroIndice;
+        const nextSubgrupoId = nextItem.parentId;
+        const nextGrupoId = subgrupos.find(s => s.id === nextSubgrupoId)?.grupoId;
+        const nextDeptId = grupos.find(g => g.id === nextGrupoId)?.departamentoId;
+        
+        while (targetIndex < newItems.length) {
+          const checkItem = newItems[targetIndex];
+          const checkSubgrupoId = checkItem.parentId;
+          const checkGrupoId = subgrupos.find(s => s.id === checkSubgrupoId)?.grupoId;
+          const checkDeptId = grupos.find(g => g.id === checkGrupoId)?.departamentoId;
+          
+          if (checkDeptId !== nextDeptId) break;
+          targetIndex++;
+        }
+        
+        newItems.splice(targetIndex, 0, ...itemsDoDepartamento);
+        setVisualizacaoItems(newItems);
+      }
+    }
+  };
+
   const handleRemoverItem = (index: number) => {
     setVisualizacaoItems(prev => prev.filter((_, i) => i !== index));
   };
@@ -632,20 +772,54 @@ export const ListasPage = () => {
                             const dept = departamentos.find(d => d.id === deptId);
                             if (!dept) return null;
                             
+                            const allDeptIds = Array.from(hierarquia.keys());
+                            const deptIndex = allDeptIds.indexOf(deptId);
+                            const canMoveUpDept = deptIndex > 0;
+                            const canMoveDownDept = deptIndex < allDeptIds.length - 1;
+                            
                             return (
                               <div key={deptId} className="border rounded-md">
-                                <div 
-                                  className="flex items-center gap-2 p-2 bg-muted cursor-pointer hover:bg-muted/80"
-                                  onClick={() => {
-                                    setExpandedVisualizacaoDepts(prev => {
-                                      const newSet = new Set(prev);
-                                      newSet.has(deptId) ? newSet.delete(deptId) : newSet.add(deptId);
-                                      return newSet;
-                                    });
-                                  }}
-                                >
-                                  {expandedVisualizacaoDepts.has(deptId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                  <span className="font-semibold">{dept.nome}</span>
+                                <div className="flex items-center gap-2 p-2 bg-muted">
+                                  <button
+                                    type="button"
+                                    className="p-0 hover:bg-muted/80 rounded cursor-pointer"
+                                    onClick={() => {
+                                      setExpandedVisualizacaoDepts(prev => {
+                                        const newSet = new Set(prev);
+                                        newSet.has(deptId) ? newSet.delete(deptId) : newSet.add(deptId);
+                                        return newSet;
+                                      });
+                                    }}
+                                  >
+                                    {expandedVisualizacaoDepts.has(deptId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  </button>
+                                  <span className="font-semibold flex-1">{dept.nome}</span>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoverDepartamento(deptId, 'up');
+                                      }}
+                                      disabled={!canMoveUpDept}
+                                    >
+                                      <ArrowUp className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoverDepartamento(deptId, 'down');
+                                      }}
+                                      disabled={!canMoveDownDept}
+                                    >
+                                      <ArrowDown className="w-3 h-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                                 
                                 {expandedVisualizacaoDepts.has(deptId) && (
@@ -654,20 +828,54 @@ export const ListasPage = () => {
                                       const grupo = grupos.find(g => g.id === grupoId);
                                       if (!grupo) return null;
                                       
+                                      const allGrupoIds = Array.from(gruposMap.keys());
+                                      const grupoIndex = allGrupoIds.indexOf(grupoId);
+                                      const canMoveUpGrupo = grupoIndex > 0;
+                                      const canMoveDownGrupo = grupoIndex < allGrupoIds.length - 1;
+                                      
                                       return (
                                         <div key={grupoId} className="border rounded-md">
-                                          <div 
-                                            className="flex items-center gap-2 p-2 bg-muted/50 cursor-pointer hover:bg-muted/70"
-                                            onClick={() => {
-                                              setExpandedVisualizacaoGrupos(prev => {
-                                                const newSet = new Set(prev);
-                                                newSet.has(grupoId) ? newSet.delete(grupoId) : newSet.add(grupoId);
-                                                return newSet;
-                                              });
-                                            }}
-                                          >
-                                            {expandedVisualizacaoGrupos.has(grupoId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                            <span className="font-medium">{grupo.nome}</span>
+                                          <div className="flex items-center gap-2 p-2 bg-muted/50">
+                                            <button
+                                              type="button"
+                                              className="p-0 hover:bg-muted/70 rounded cursor-pointer"
+                                              onClick={() => {
+                                                setExpandedVisualizacaoGrupos(prev => {
+                                                  const newSet = new Set(prev);
+                                                  newSet.has(grupoId) ? newSet.delete(grupoId) : newSet.add(grupoId);
+                                                  return newSet;
+                                                });
+                                              }}
+                                            >
+                                              {expandedVisualizacaoGrupos.has(grupoId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                            </button>
+                                            <span className="font-medium flex-1">{grupo.nome}</span>
+                                            <div className="flex gap-1">
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleMoverGrupo(grupoId, 'up');
+                                                }}
+                                                disabled={!canMoveUpGrupo}
+                                              >
+                                                <ArrowUp className="w-3 h-3" />
+                                              </Button>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleMoverGrupo(grupoId, 'down');
+                                                }}
+                                                disabled={!canMoveDownGrupo}
+                                              >
+                                                <ArrowDown className="w-3 h-3" />
+                                              </Button>
+                                            </div>
                                           </div>
                                           
                                           {expandedVisualizacaoGrupos.has(grupoId) && (
@@ -676,21 +884,55 @@ export const ListasPage = () => {
                                                 const subgrupo = subgrupos.find(s => s.id === subgrupoId);
                                                 if (!subgrupo) return null;
                                                 
+                                                const allSubgrupoIds = Array.from(subgruposMap.keys());
+                                                const subgrupoIndex = allSubgrupoIds.indexOf(subgrupoId);
+                                                const canMoveUpSubgrupo = subgrupoIndex > 0;
+                                                const canMoveDownSubgrupo = subgrupoIndex < allSubgrupoIds.length - 1;
+                                                
                                                 return (
                                                   <div key={subgrupoId} className="border rounded-md">
-                                                    <div 
-                                                      className="flex items-center gap-2 p-2 bg-muted/30 cursor-pointer hover:bg-muted/50"
-                                                      onClick={() => {
-                                                        setExpandedVisualizacaoSubgrupos(prev => {
-                                                          const newSet = new Set(prev);
-                                                          newSet.has(subgrupoId) ? newSet.delete(subgrupoId) : newSet.add(subgrupoId);
-                                                          return newSet;
-                                                        });
-                                                      }}
-                                                    >
-                                                      {expandedVisualizacaoSubgrupos.has(subgrupoId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                                      <span className="text-sm font-medium">{subgrupo.nome}</span>
+                                                    <div className="flex items-center gap-2 p-2 bg-muted/30">
+                                                      <button
+                                                        type="button"
+                                                        className="p-0 hover:bg-muted/50 rounded cursor-pointer"
+                                                        onClick={() => {
+                                                          setExpandedVisualizacaoSubgrupos(prev => {
+                                                            const newSet = new Set(prev);
+                                                            newSet.has(subgrupoId) ? newSet.delete(subgrupoId) : newSet.add(subgrupoId);
+                                                            return newSet;
+                                                          });
+                                                        }}
+                                                      >
+                                                        {expandedVisualizacaoSubgrupos.has(subgrupoId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                      </button>
+                                                      <span className="text-sm font-medium flex-1">{subgrupo.nome}</span>
                                                       <span className="text-xs text-muted-foreground">({indices.length})</span>
+                                                      <div className="flex gap-1">
+                                                        <Button
+                                                          type="button"
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleMoverSubgrupo(subgrupoId, 'up');
+                                                          }}
+                                                          disabled={!canMoveUpSubgrupo}
+                                                        >
+                                                          <ArrowUp className="w-3 h-3" />
+                                                        </Button>
+                                                        <Button
+                                                          type="button"
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleMoverSubgrupo(subgrupoId, 'down');
+                                                          }}
+                                                          disabled={!canMoveDownSubgrupo}
+                                                        >
+                                                          <ArrowDown className="w-3 h-3" />
+                                                        </Button>
+                                                      </div>
                                                     </div>
                                                     
                                                     {expandedVisualizacaoSubgrupos.has(subgrupoId) && (
