@@ -205,47 +205,6 @@ export const PesquisadoresPage = () => {
     }
   };
 
-  const createResearcherUsers = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Erro",
-          description: "Você precisa estar autenticado",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-researcher-users`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao criar usuários');
-      }
-
-      toast({
-        title: "Usuários criados",
-        description: "Os usuários Telma e Diana foram criados com sucesso!",
-      });
-
-      await refetch();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao criar usuários",
-        variant: "destructive"
-      });
-    }
-  };
-
   const filteredPesquisadores = pesquisadores
     .filter(p => 
       p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -267,10 +226,6 @@ export const PesquisadoresPage = () => {
         </div>
         
         <div className="flex gap-2">
-          <Button onClick={createResearcherUsers} variant="secondary">
-            <UserCheck className="w-4 h-4 mr-2" />
-            Criar Usuários (Telma & Diana)
-          </Button>
           <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
