@@ -3,14 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Lista } from '@/types';
-import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, Settings2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -18,10 +17,15 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useListas } from '@/hooks/useListas';
 import { supabase } from '@/integrations/supabase/client';
-import { CriarListaAlteradaDialog } from '@/components/admin/CriarListaAlteradaDialog';
+
+type VisualizacaoItem = {
+  tipo: 'departamento' | 'grupo' | 'subgrupo' | 'produto';
+  id: string;
+  nome: string;
+  parentId?: string;
+};
 
 export const ListasPage = () => {
-  // Buscar dados reais do banco
   const { departamentos } = useDepartamentos();
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
@@ -36,9 +40,9 @@ export const ListasPage = () => {
   const [expandedDepartamentos, setExpandedDepartamentos] = useState<Set<string>>(new Set());
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
   const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
-  const [showListaAlterada, setShowListaAlterada] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<string>('');
+  const [visualizacaoItems, setVisualizacaoItems] = useState<VisualizacaoItem[]>([]);
 
-  // Form state
   const [formData, setFormData] = useState({
     nome: '',
     produtos: [] as string[],
@@ -51,6 +55,8 @@ export const ListasPage = () => {
       produtos: [],
       hierarquiaCustomizada: undefined
     });
+    setSelectedItem('');
+    setVisualizacaoItems([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,12 +72,16 @@ export const ListasPage = () => {
     }
 
     try {
+      // Usar produtos da visualização
+      const produtosFinais = visualizacaoItems
+        .filter(item => item.tipo === 'produto')
+        .map(item => item.id);
+
       const listaData: any = {
         nome: formData.nome,
-        produtos: formData.produtos
+        produtos: produtosFinais
       };
       
-      // Adicionar hierarquia customizada se existir
       if (formData.hierarquiaCustomizada) {
         listaData.hierarquia_customizada = formData.hierarquiaCustomizada;
       }
@@ -121,6 +131,21 @@ export const ListasPage = () => {
       produtos: [...lista.produtos],
       hierarquiaCustomizada: lista.hierarquiaCustomizada
     });
+    
+    const items: VisualizacaoItem[] = lista.produtos.map(produtoId => {
+      const produto = produtos.find(p => p.id === produtoId);
+      if (produto) {
+        return {
+          tipo: 'produto' as const,
+          id: produto.id,
+          nome: produto.nome,
+          parentId: produto.subgrupoId
+        };
+      }
+      return null;
+    }).filter(Boolean) as VisualizacaoItem[];
+    
+    setVisualizacaoItems(items);
     setShowForm(true);
   };
 
@@ -177,77 +202,96 @@ export const ListasPage = () => {
     }
   };
 
-  const toggleProduto = (produtoId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      produtos: prev.produtos.includes(produtoId)
-        ? prev.produtos.filter(id => id !== produtoId)
-        : [...prev.produtos, produtoId]
-    }));
+  const handleAdicionarItem = () => {
+    if (!selectedItem) return;
+
+    const [tipo, id] = selectedItem.split(':');
+    
+    if (tipo === 'produto') {
+      const produto = produtos.find(p => p.id === id);
+      if (produto && !visualizacaoItems.some(i => i.id === id)) {
+        setVisualizacaoItems(prev => [...prev, {
+          tipo: 'produto',
+          id: produto.id,
+          nome: produto.nome,
+          parentId: produto.subgrupoId
+        }]);
+      }
+    } else if (tipo === 'subgrupo') {
+      const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === id);
+      
+      const novosItems: VisualizacaoItem[] = produtosDoSubgrupo
+        .filter(p => !visualizacaoItems.some(i => i.id === p.id))
+        .map(p => ({
+          tipo: 'produto' as const,
+          id: p.id,
+          nome: p.nome,
+          parentId: p.subgrupoId
+        }));
+      
+      if (novosItems.length > 0) {
+        setVisualizacaoItems(prev => [...prev, ...novosItems]);
+      }
+    } else if (tipo === 'grupo') {
+      const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === id);
+      const produtosDoGrupo = produtos.filter(p => subgruposDoGrupo.some(s => s.id === p.subgrupoId));
+      
+      const novosItems: VisualizacaoItem[] = produtosDoGrupo
+        .filter(p => !visualizacaoItems.some(i => i.id === p.id))
+        .map(p => ({
+          tipo: 'produto' as const,
+          id: p.id,
+          nome: p.nome,
+          parentId: p.subgrupoId
+        }));
+      
+      if (novosItems.length > 0) {
+        setVisualizacaoItems(prev => [...prev, ...novosItems]);
+      }
+    } else if (tipo === 'departamento') {
+      const produtosDoDepartamento = produtos.filter(p => {
+        const grupo = grupos.find(g => g.id === p.grupoId);
+        return grupo?.departamentoId === id;
+      });
+      
+      const novosItems: VisualizacaoItem[] = produtosDoDepartamento
+        .filter(p => !visualizacaoItems.some(i => i.id === p.id))
+        .map(p => ({
+          tipo: 'produto' as const,
+          id: p.id,
+          nome: p.nome,
+          parentId: p.subgrupoId
+        }));
+      
+      if (novosItems.length > 0) {
+        setVisualizacaoItems(prev => [...prev, ...novosItems]);
+      }
+    }
+    
+    setSelectedItem('');
   };
 
-  const toggleAllProdutos = () => {
-    const allIds = produtos.map(p => p.id);
-    setFormData(prev => ({
-      ...prev,
-      produtos: prev.produtos.length === allIds.length ? [] : allIds
-    }));
-  };
-
-  const toggleDepartamentoProdutos = (departamentoId: string) => {
-    const gruposDoDepartamento = grupos.filter(g => g.departamentoId === departamentoId);
-    const produtosDoDepartamento = produtos.filter(p => {
-      const grupo = grupos.find(g => g.id === p.grupoId);
-      return grupo?.departamentoId === departamentoId;
-    }).map(p => p.id);
+  const handleMoverItem = (index: number, direcao: 'up' | 'down') => {
+    const newItems = [...visualizacaoItems];
+    const item = newItems[index];
     
-    const allSelected = produtosDoDepartamento.every(id => formData.produtos.includes(id));
-    
-    if (allSelected) {
-      setFormData(prev => ({
-        ...prev,
-        produtos: prev.produtos.filter(id => !produtosDoDepartamento.includes(id))
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        produtos: [...new Set([...prev.produtos, ...produtosDoDepartamento])]
-      }));
+    if (direcao === 'up' && index > 0) {
+      const prevItem = newItems[index - 1];
+      if (item.parentId === prevItem.parentId) {
+        [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+        setVisualizacaoItems(newItems);
+      }
+    } else if (direcao === 'down' && index < newItems.length - 1) {
+      const nextItem = newItems[index + 1];
+      if (item.parentId === nextItem.parentId) {
+        [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+        setVisualizacaoItems(newItems);
+      }
     }
   };
 
-  const toggleGrupoProdutos = (grupoId: string) => {
-    const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
-    const allSelected = grupoProdutos.every(id => formData.produtos.includes(id));
-    
-    if (allSelected) {
-      setFormData(prev => ({
-        ...prev,
-        produtos: prev.produtos.filter(id => !grupoProdutos.includes(id))
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        produtos: [...new Set([...prev.produtos, ...grupoProdutos])]
-      }));
-    }
-  };
-
-  const toggleSubgrupoProdutos = (subgrupoId: string) => {
-    const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
-    const allSelected = subgrupoProdutos.every(id => formData.produtos.includes(id));
-    
-    if (allSelected) {
-      setFormData(prev => ({
-        ...prev,
-        produtos: prev.produtos.filter(id => !subgrupoProdutos.includes(id))
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        produtos: [...new Set([...prev.produtos, ...subgrupoProdutos])]
-      }));
-    }
+  const handleRemoverItem = (index: number) => {
+    setVisualizacaoItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const filteredListas = listas
@@ -258,9 +302,9 @@ export const ListasPage = () => {
     return produtos.find(p => p.id === id)?.nome || 'N/A';
   };
 
-  // Build hierarchical structure grouped by departamento > grupo > subgrupo > produto
   const buildDepartamentoHierarchy = () => {
     const searchLower = productSearchTerm.toLowerCase().trim();
+    const produtosAdicionados = new Set(visualizacaoItems.map(i => i.id));
     
     const hierarchy: Array<{
       departamento: { id: string; nome: string };
@@ -281,33 +325,24 @@ export const ListasPage = () => {
     }> = [];
 
     departamentos.forEach(departamento => {
-      // Se houver busca, verificar se o departamento corresponde
       const deptMatches = !searchLower || departamento.nome.toLowerCase().includes(searchLower);
-      
       const gruposNoDepartamento = grupos.filter(g => g.departamentoId === departamento.id);
       
       const gruposWithData = gruposNoDepartamento.map(grupo => {
-        // Se houver busca, verificar se o grupo corresponde
         const grupoMatches = !searchLower || grupo.nome.toLowerCase().includes(searchLower);
-        
         const subgruposNoGrupo = subgrupos.filter(s => s.grupoId === grupo.id);
         const subgruposWithProducts = subgruposNoGrupo
           .map(subgrupo => {
-            // Se houver busca, verificar se o subgrupo corresponde
             const subgrupoMatches = !searchLower || subgrupo.nome.toLowerCase().includes(searchLower);
             
-            // Filtrar produtos
             const produtosFiltrados = produtos
               .filter(p => {
                 if (p.subgrupoId !== subgrupo.id) return false;
-                
-                // Se não houver busca, mostrar todos
+                if (produtosAdicionados.has(p.id)) return false;
                 if (!searchLower) return true;
                 
-                // Se departamento, grupo ou subgrupo correspondem, mostrar todos os produtos
                 if (deptMatches || grupoMatches || subgrupoMatches) return true;
                 
-                // Senão, verificar se o produto corresponde
                 return (
                   p.nome.toLowerCase().includes(searchLower) ||
                   p.codigo.toLowerCase().includes(searchLower)
@@ -348,46 +383,6 @@ export const ListasPage = () => {
 
   const departamentoHierarchy = buildDepartamentoHierarchy();
 
-  // Helper functions for selection
-  const isDepartamentoFullySelected = (departamentoId: string) => {
-    const produtosDoDepartamento = produtos.filter(p => {
-      const grupo = grupos.find(g => g.id === p.grupoId);
-      return grupo?.departamentoId === departamentoId;
-    }).map(p => p.id);
-    return produtosDoDepartamento.length > 0 && produtosDoDepartamento.every(id => formData.produtos.includes(id));
-  };
-
-  const isDepartamentoPartiallySelected = (departamentoId: string) => {
-    const produtosDoDepartamento = produtos.filter(p => {
-      const grupo = grupos.find(g => g.id === p.grupoId);
-      return grupo?.departamentoId === departamentoId;
-    }).map(p => p.id);
-    const selectedCount = produtosDoDepartamento.filter(id => formData.produtos.includes(id)).length;
-    return selectedCount > 0 && selectedCount < produtosDoDepartamento.length;
-  };
-
-  const isGrupoFullySelected = (grupoId: string) => {
-    const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
-    return grupoProdutos.length > 0 && grupoProdutos.every(id => formData.produtos.includes(id));
-  };
-
-  const isGrupoPartiallySelected = (grupoId: string) => {
-    const grupoProdutos = produtos.filter(p => p.grupoId === grupoId).map(p => p.id);
-    const selectedCount = grupoProdutos.filter(id => formData.produtos.includes(id)).length;
-    return selectedCount > 0 && selectedCount < grupoProdutos.length;
-  };
-
-  const isSubgrupoFullySelected = (subgrupoId: string) => {
-    const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
-    return subgrupoProdutos.length > 0 && subgrupoProdutos.every(id => formData.produtos.includes(id));
-  };
-
-  const isSubgrupoPartiallySelected = (subgrupoId: string) => {
-    const subgrupoProdutos = produtos.filter(p => p.subgrupoId === subgrupoId).map(p => p.id);
-    const selectedCount = subgrupoProdutos.filter(id => formData.produtos.includes(id)).length;
-    return selectedCount > 0 && selectedCount < subgrupoProdutos.length;
-  };
-
   const toggleDepartamentoExpansion = (departamentoId: string) => {
     setExpandedDepartamentos(prev => {
       const newSet = new Set(prev);
@@ -426,26 +421,19 @@ export const ListasPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Listas</h2>
         </div>
         
-        <div className="flex gap-2">
-          <Button onClick={() => setShowListaAlterada(true)} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Criar Lista Alterada
-          </Button>
-          
-          <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" />
               Nova Lista
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingLista ? 'Editar' : 'Nova'} Lista
@@ -467,164 +455,202 @@ export const ListasPage = () => {
                 />
               </div>
 
-              {/* Product Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Produtos da Lista</Label>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={toggleAllProdutos}
-                  >
-                    {formData.produtos.length === produtos.length ? 'Desmarcar Todos' : 'Marcar Todos'}
-                  </Button>
+              <div className="grid grid-cols-2 gap-6">
+                {/* Seleção de Produtos */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Selecionar Produtos</Label>
+                    {selectedItem && (
+                      <Button 
+                        type="button" 
+                        size="sm"
+                        onClick={handleAdicionarItem}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar produtos, departamentos, grupos ou subgrupos..."
+                      value={productSearchTerm}
+                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <ScrollArea className="border rounded-md h-[500px] p-4">
+                    <RadioGroup value={selectedItem} onValueChange={setSelectedItem}>
+                      {departamentoHierarchy.map((deptData) => {
+                        const isDeptExpanded = expandedDepartamentos.has(deptData.departamento.id);
+                        const hasProducts = deptData.grupos.some(g => g.subgrupos.some(s => s.produtos.length > 0));
+                        
+                        if (!hasProducts) return null;
+                        
+                        return (
+                          <div key={deptData.departamento.id} className="space-y-2">
+                            <div className="flex items-center gap-2 py-1">
+                              <button
+                                type="button"
+                                onClick={() => toggleDepartamentoExpansion(deptData.departamento.id)}
+                                className="p-0 hover:bg-muted rounded"
+                              >
+                                {isDeptExpanded ? (
+                                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                )}
+                              </button>
+                              <RadioGroupItem value={`departamento:${deptData.departamento.id}`} id={`dept-${deptData.departamento.id}`} />
+                              <Label htmlFor={`dept-${deptData.departamento.id}`} className="font-semibold text-base cursor-pointer">
+                                {deptData.departamento.nome}
+                              </Label>
+                            </div>
+
+                            {isDeptExpanded && deptData.grupos.map((grupoData) => {
+                              const isGrupoExpanded = expandedGrupos.has(grupoData.id);
+                              
+                              return (
+                                <div key={grupoData.id} className="ml-6 space-y-2">
+                                  <div className="flex items-center gap-2 py-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleGrupoExpansion(grupoData.id)}
+                                      className="p-0 hover:bg-muted rounded"
+                                    >
+                                      {isGrupoExpanded ? (
+                                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                      )}
+                                    </button>
+                                    <RadioGroupItem value={`grupo:${grupoData.id}`} id={`grupo-${grupoData.id}`} />
+                                    <Label htmlFor={`grupo-${grupoData.id}`} className="font-medium cursor-pointer">
+                                      {grupoData.nome}
+                                    </Label>
+                                  </div>
+
+                                  {isGrupoExpanded && grupoData.subgrupos.map((subgrupoData) => {
+                                    const isSubgrupoExpanded = expandedSubgrupos.has(subgrupoData.id);
+                                    
+                                    return (
+                                      <div key={subgrupoData.id} className="ml-6 space-y-1">
+                                        <div className="flex items-center gap-2 py-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleSubgrupoExpansion(subgrupoData.id)}
+                                            className="p-0 hover:bg-muted rounded"
+                                          >
+                                            {isSubgrupoExpanded ? (
+                                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                            ) : (
+                                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                            )}
+                                          </button>
+                                          <RadioGroupItem value={`subgrupo:${subgrupoData.id}`} id={`subgrupo-${subgrupoData.id}`} />
+                                          <Label htmlFor={`subgrupo-${subgrupoData.id}`} className="text-sm font-medium cursor-pointer">
+                                            {subgrupoData.nome}
+                                            <span className="text-xs text-muted-foreground ml-2">
+                                              ({subgrupoData.produtos.length} produtos)
+                                            </span>
+                                          </Label>
+                                        </div>
+
+                                        {isSubgrupoExpanded && (
+                                          <div className="ml-6 space-y-1">
+                                            {subgrupoData.produtos.map((produto) => (
+                                              <div key={produto.id} className="flex items-center gap-2 py-1">
+                                                <RadioGroupItem value={`produto:${produto.id}`} id={`produto-${produto.id}`} />
+                                                <Label 
+                                                  htmlFor={`produto-${produto.id}`} 
+                                                  className="text-sm cursor-pointer flex-1"
+                                                >
+                                                  <span>{produto.nome}</span>
+                                                  <span className="text-muted-foreground ml-2 text-xs">
+                                                    ({produto.codigo} - {produto.unidade})
+                                                  </span>
+                                                </Label>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </RadioGroup>
+                  </ScrollArea>
                 </div>
 
-                {/* Search Products */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar produtos, departamentos, grupos ou subgrupos..."
-                    value={productSearchTerm}
-                    onChange={(e) => setProductSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Hierarchical list with indentation */}
-                <div className="border rounded-md max-h-[500px] overflow-auto p-4 space-y-2">
-                  {departamentoHierarchy.map((deptData) => {
-                    const isDeptExpanded = expandedDepartamentos.has(deptData.departamento.id);
-                    
-                    return (
-                      <div key={deptData.departamento.id} className="space-y-2">
-                        {/* Departamento */}
-                        <div className="flex items-center gap-2 py-1">
-                          <button
-                            type="button"
-                            onClick={() => toggleDepartamentoExpansion(deptData.departamento.id)}
-                            className="p-0 hover:bg-muted rounded"
-                          >
-                            {isDeptExpanded ? (
-                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                            )}
-                          </button>
-                          <Checkbox
-                            checked={
-                              isDepartamentoPartiallySelected(deptData.departamento.id) 
-                                ? "indeterminate" 
-                                : isDepartamentoFullySelected(deptData.departamento.id)
-                            }
-                            onCheckedChange={() => toggleDepartamentoProdutos(deptData.departamento.id)}
-                          />
-                          <span className="font-semibold text-base">{deptData.departamento.nome}</span>
-                        </div>
-
-                        {/* Grupos */}
-                        {isDeptExpanded && deptData.grupos.map((grupoData) => {
-                          const isGrupoExpanded = expandedGrupos.has(grupoData.id);
+                {/* Visualização do Pesquisador */}
+                <div className="space-y-4">
+                  <Label>Visualização do Pesquisador</Label>
+                  <ScrollArea className="border rounded-md h-[500px] p-4">
+                    {visualizacaoItems.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        Nenhum produto adicionado
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {visualizacaoItems.map((item, index) => {
+                          const canMoveUp = index > 0 && visualizacaoItems[index - 1].parentId === item.parentId;
+                          const canMoveDown = index < visualizacaoItems.length - 1 && visualizacaoItems[index + 1].parentId === item.parentId;
+                          const subgrupo = subgrupos.find(s => s.id === item.parentId);
                           
                           return (
-                            <div key={grupoData.id} className="ml-6 space-y-2">
-                              <div className="flex items-center gap-2 py-1">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleGrupoExpansion(grupoData.id)}
-                                  className="p-0 hover:bg-muted rounded"
-                                >
-                                  {isGrupoExpanded ? (
-                                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                                  )}
-                                </button>
-                                <Checkbox
-                                  checked={
-                                    isGrupoPartiallySelected(grupoData.id)
-                                      ? "indeterminate"
-                                      : isGrupoFullySelected(grupoData.id)
-                                  }
-                                  onCheckedChange={() => toggleGrupoProdutos(grupoData.id)}
-                                />
-                                <span className="font-medium">{grupoData.nome}</span>
+                            <div key={`${item.tipo}-${item.id}-${index}`} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm">{item.nome}</div>
+                                {subgrupo && (
+                                  <div className="text-xs text-muted-foreground">{subgrupo.nome}</div>
+                                )}
                               </div>
-
-                              {/* Subgrupos */}
-                              {isGrupoExpanded && grupoData.subgrupos.map((subgrupoData) => {
-                                const isSubgrupoExpanded = expandedSubgrupos.has(subgrupoData.id);
-                                
-                                return (
-                                  <div key={subgrupoData.id} className="ml-6 space-y-1">
-                                    <div className="flex items-center gap-2 py-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleSubgrupoExpansion(subgrupoData.id)}
-                                        className="p-0 hover:bg-muted rounded"
-                                      >
-                                        {isSubgrupoExpanded ? (
-                                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                                        ) : (
-                                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                                        )}
-                                      </button>
-                                      <Checkbox
-                                        checked={
-                                          isSubgrupoPartiallySelected(subgrupoData.id)
-                                            ? "indeterminate"
-                                            : isSubgrupoFullySelected(subgrupoData.id)
-                                        }
-                                        onCheckedChange={() => toggleSubgrupoProdutos(subgrupoData.id)}
-                                      />
-                                      <span className="text-sm font-medium">{subgrupoData.nome}</span>
-                                      <span className="text-xs text-muted-foreground">
-                                        ({subgrupoData.produtos.length} produtos)
-                                      </span>
-                                    </div>
-
-                                    {/* Produtos */}
-                                    {isSubgrupoExpanded && (
-                                      <div className="ml-6 space-y-1">
-                                        {subgrupoData.produtos.map((produto) => (
-                                          <div key={produto.id} className="flex items-center gap-2 py-1">
-                                            <Checkbox
-                                              id={`produto-${produto.id}`}
-                                              checked={formData.produtos.includes(produto.id)}
-                                              onCheckedChange={() => toggleProduto(produto.id)}
-                                            />
-                                            <label 
-                                              htmlFor={`produto-${produto.id}`} 
-                                              className="text-sm cursor-pointer flex-1"
-                                            >
-                                              <span>{produto.nome}</span>
-                                              <span className="text-muted-foreground ml-2 text-xs">
-                                                ({produto.codigo} - {produto.unidade})
-                                              </span>
-                                            </label>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                              <div className="flex gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMoverItem(index, 'up')}
+                                  disabled={!canMoveUp}
+                                >
+                                  <ArrowUp className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMoverItem(index, 'down')}
+                                  disabled={!canMoveDown}
+                                >
+                                  <ArrowDown className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoverItem(index)}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           );
                         })}
                       </div>
-                    );
-                  })}
+                    )}
+                  </ScrollArea>
+                  <div className="text-sm text-muted-foreground">
+                    {visualizacaoItems.length} produto(s) na lista
+                  </div>
                 </div>
-
-                <div className="text-sm text-muted-foreground">
-                  {formData.produtos.length} produto(s) selecionado(s)
-                </div>
-              </div>
-
-              <div className="text-sm text-muted-foreground">
-                Para criar listas com hierarquia customizada, use o botão "Criar Lista Alterada".
               </div>
 
               <div className="flex justify-end space-x-2 pt-4">
@@ -646,10 +672,8 @@ export const ListasPage = () => {
             </form>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -660,7 +684,6 @@ export const ListasPage = () => {
         />
       </div>
 
-      {/* List */}
       <div className="grid gap-4">
         {loading ? (
           <div className="space-y-4">
@@ -740,7 +763,6 @@ export const ListasPage = () => {
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteLista} onOpenChange={() => setDeleteLista(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -758,13 +780,6 @@ export const ListasPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Diálogo de Criação de Lista Alterada */}
-      <CriarListaAlteradaDialog
-        open={showListaAlterada}
-        onOpenChange={setShowListaAlterada}
-        onSuccess={refetch}
-      />
     </div>
   );
 };
