@@ -205,6 +205,47 @@ export const PesquisadoresPage = () => {
     }
   };
 
+  const createResearcherUsers = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar autenticado",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-researcher-users`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao criar usuários');
+      }
+
+      toast({
+        title: "Usuários criados",
+        description: "Os usuários Telma e Diana foram criados com sucesso!",
+      });
+
+      await refetch();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao criar usuários",
+        variant: "destructive"
+      });
+    }
+  };
+
   const filteredPesquisadores = pesquisadores
     .filter(p => 
       p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -225,95 +266,101 @@ export const PesquisadoresPage = () => {
           <h2 className="text-2xl font-bold">Pesquisadores</h2>
         </div>
         
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Pesquisador
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPesquisador ? 'Editar' : 'Novo'} Pesquisador
-              </DialogTitle>
-              <DialogDescription>
-                Preencha as informações do pesquisador
-              </DialogDescription>
-            </DialogHeader>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="codigo">Código</Label>
-                <Input
-                  id="codigo"
-                  value={formData.codigo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))}
-                  placeholder="PES001"
-                />
-              </div>
+        <div className="flex gap-2">
+          <Button onClick={createResearcherUsers} variant="secondary">
+            <UserCheck className="w-4 h-4 mr-2" />
+            Criar Usuários (Telma & Diana)
+          </Button>
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Pesquisador
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingPesquisador ? 'Editar' : 'Novo'} Pesquisador
+                </DialogTitle>
+                <DialogDescription>
+                  Preencha as informações do pesquisador
+                </DialogDescription>
+              </DialogHeader>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="codigo">Código</Label>
+                  <Input
+                    id="codigo"
+                    value={formData.codigo}
+                    onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))}
+                    placeholder="PES001"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome *</Label>
-                <Input
-                  id="nome"
-                  value={formData.nome}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                  placeholder="Nome completo do pesquisador"
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nome">Nome *</Label>
+                  <Input
+                    id="nome"
+                    value={formData.nome}
+                    onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                    placeholder="Nome completo do pesquisador"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="email@exemplo.com"
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="email@exemplo.com"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone</Label>
-                <Input
-                  id="telefone"
-                  value={formData.telefone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="telefone">Telefone</Label>
+                  <Input
+                    id="telefone"
+                    value={formData.telefone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="ativo"
-                  checked={formData.ativo}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, ativo: checked }))}
-                />
-                <Label htmlFor="ativo">Pesquisador ativo</Label>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="ativo"
+                    checked={formData.ativo}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, ativo: checked }))}
+                  />
+                  <Label htmlFor="ativo">Pesquisador ativo</Label>
+                </div>
 
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingPesquisador(null);
-                    resetForm();
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingPesquisador ? 'Atualizar' : 'Cadastrar'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingPesquisador(null);
+                      resetForm();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    {editingPesquisador ? 'Atualizar' : 'Cadastrar'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search */}
