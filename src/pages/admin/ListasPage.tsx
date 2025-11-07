@@ -295,141 +295,217 @@ export const ListasPage = () => {
 
   const handleMoverSubgrupo = (subgrupoId: string, direcao: 'up' | 'down') => {
     const newItems = [...visualizacaoItems];
-    const indicesDoSubgrupo = newItems
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.parentId === subgrupoId)
-      .map(({ index }) => index);
     
-    if (indicesDoSubgrupo.length === 0) return;
+    // Encontrar todos os produtos deste subgrupo
+    const produtosDoSubgrupo = newItems
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.parentId === subgrupoId);
     
-    const primeiroIndice = Math.min(...indicesDoSubgrupo);
-    const ultimoIndice = Math.max(...indicesDoSubgrupo);
+    if (produtosDoSubgrupo.length === 0) return;
     
-    if (direcao === 'up' && primeiroIndice > 0) {
-      const prevItem = newItems[primeiroIndice - 1];
-      if (prevItem.parentId !== subgrupoId) {
-        const itemsDoSubgrupo = indicesDoSubgrupo.map(i => newItems[i]);
-        newItems.splice(primeiroIndice, indicesDoSubgrupo.length);
-        newItems.splice(primeiroIndice - 1, 0, ...itemsDoSubgrupo);
-        setVisualizacaoItems(newItems);
-      }
-    } else if (direcao === 'down' && ultimoIndice < newItems.length - 1) {
-      const nextItem = newItems[ultimoIndice + 1];
-      if (nextItem.parentId !== subgrupoId) {
-        const itemsDoSubgrupo = indicesDoSubgrupo.map(i => newItems[i]);
-        newItems.splice(primeiroIndice, indicesDoSubgrupo.length);
-        newItems.splice(primeiroIndice + 1, 0, ...itemsDoSubgrupo);
-        setVisualizacaoItems(newItems);
-      }
+    const primeiroIdx = produtosDoSubgrupo[0].idx;
+    const ultimoIdx = produtosDoSubgrupo[produtosDoSubgrupo.length - 1].idx;
+    
+    // Verificar se há itens adjacentes de outro subgrupo para trocar
+    if (direcao === 'up' && primeiroIdx > 0) {
+      // Encontrar o subgrupo anterior
+      const itemAnterior = newItems[primeiroIdx - 1];
+      const subgrupoAnteriorId = itemAnterior.parentId;
+      
+      if (subgrupoAnteriorId === subgrupoId) return; // Já está no topo dentro do grupo
+      
+      // Encontrar todos os produtos do subgrupo anterior
+      const produtosSubgrupoAnterior = newItems
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => item.parentId === subgrupoAnteriorId);
+      
+      if (produtosSubgrupoAnterior.length === 0) return;
+      
+      const primeiroIdxAnterior = produtosSubgrupoAnterior[0].idx;
+      
+      // Remover produtos do subgrupo atual e reinseri-los antes do subgrupo anterior
+      const produtosMovendo = produtosDoSubgrupo.map(({ item }) => item);
+      newItems.splice(primeiroIdx, produtosDoSubgrupo.length);
+      newItems.splice(primeiroIdxAnterior, 0, ...produtosMovendo);
+      
+      setVisualizacaoItems(newItems);
+    } else if (direcao === 'down' && ultimoIdx < newItems.length - 1) {
+      // Encontrar o subgrupo seguinte
+      const itemSeguinte = newItems[ultimoIdx + 1];
+      const subgrupoSegId = itemSeguinte.parentId;
+      
+      if (subgrupoSegId === subgrupoId) return;
+      
+      // Encontrar todos os produtos do subgrupo seguinte
+      const produtosSubgrupoSeguinte = newItems
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => item.parentId === subgrupoSegId);
+      
+      if (produtosSubgrupoSeguinte.length === 0) return;
+      
+      const ultimoIdxSeguinte = produtosSubgrupoSeguinte[produtosSubgrupoSeguinte.length - 1].idx;
+      
+      // Remover produtos do subgrupo seguinte e reinseri-los antes do subgrupo atual
+      const produtosMovendoSeguinte = produtosSubgrupoSeguinte.map(({ item }) => item);
+      newItems.splice(produtosSubgrupoSeguinte[0].idx, produtosSubgrupoSeguinte.length);
+      newItems.splice(primeiroIdx, 0, ...produtosMovendoSeguinte);
+      
+      setVisualizacaoItems(newItems);
     }
   };
 
   const handleMoverGrupo = (grupoId: string, direcao: 'up' | 'down') => {
     const newItems = [...visualizacaoItems];
+    
+    // Encontrar todos os subgrupos deste grupo
     const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === grupoId).map(s => s.id);
-    const indicesDoGrupo = newItems
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) => subgruposDoGrupo.includes(item.parentId || ''))
-      .map(({ index }) => index);
     
-    if (indicesDoGrupo.length === 0) return;
+    // Encontrar todos os produtos destes subgrupos
+    const produtosDoGrupo = newItems
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => subgruposDoGrupo.includes(item.parentId || ''));
     
-    const primeiroIndice = Math.min(...indicesDoGrupo);
-    const ultimoIndice = Math.max(...indicesDoGrupo);
+    if (produtosDoGrupo.length === 0) return;
     
-    if (direcao === 'up' && primeiroIndice > 0) {
-      const prevItem = newItems[primeiroIndice - 1];
-      if (!subgruposDoGrupo.includes(prevItem.parentId || '')) {
-        const itemsDoGrupo = indicesDoGrupo.map(i => newItems[i]);
-        newItems.splice(primeiroIndice, indicesDoGrupo.length);
-        
-        let targetIndex = primeiroIndice - 1;
-        while (targetIndex > 0 && newItems[targetIndex - 1].parentId === prevItem.parentId) {
-          targetIndex--;
-        }
-        
-        newItems.splice(targetIndex, 0, ...itemsDoGrupo);
-        setVisualizacaoItems(newItems);
-      }
-    } else if (direcao === 'down' && ultimoIndice < newItems.length - 1) {
-      const nextItem = newItems[ultimoIndice + 1];
-      if (!subgruposDoGrupo.includes(nextItem.parentId || '')) {
-        const itemsDoGrupo = indicesDoGrupo.map(i => newItems[i]);
-        newItems.splice(primeiroIndice, indicesDoGrupo.length);
-        
-        let targetIndex = primeiroIndice;
-        while (targetIndex < newItems.length && newItems[targetIndex].parentId === nextItem.parentId) {
-          targetIndex++;
-        }
-        
-        newItems.splice(targetIndex, 0, ...itemsDoGrupo);
-        setVisualizacaoItems(newItems);
-      }
+    const primeiroIdx = produtosDoGrupo[0].idx;
+    const ultimoIdx = produtosDoGrupo[produtosDoGrupo.length - 1].idx;
+    
+    if (direcao === 'up' && primeiroIdx > 0) {
+      // Encontrar o grupo anterior
+      const itemAnterior = newItems[primeiroIdx - 1];
+      const subgrupoAnteriorId = itemAnterior.parentId;
+      const grupoAnterior = subgrupos.find(s => s.id === subgrupoAnteriorId);
+      
+      if (!grupoAnterior || grupoAnterior.grupoId === grupoId) return;
+      
+      // Encontrar todos os subgrupos do grupo anterior
+      const subgruposGrupoAnterior = subgrupos.filter(s => s.grupoId === grupoAnterior.grupoId).map(s => s.id);
+      
+      // Encontrar todos os produtos do grupo anterior
+      const produtosGrupoAnterior = newItems
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => subgruposGrupoAnterior.includes(item.parentId || ''));
+      
+      if (produtosGrupoAnterior.length === 0) return;
+      
+      const primeiroIdxAnterior = produtosGrupoAnterior[0].idx;
+      
+      // Mover
+      const produtosMovendo = produtosDoGrupo.map(({ item }) => item);
+      newItems.splice(primeiroIdx, produtosDoGrupo.length);
+      newItems.splice(primeiroIdxAnterior, 0, ...produtosMovendo);
+      
+      setVisualizacaoItems(newItems);
+    } else if (direcao === 'down' && ultimoIdx < newItems.length - 1) {
+      // Encontrar o grupo seguinte
+      const itemSeguinte = newItems[ultimoIdx + 1];
+      const subgrupoSegId = itemSeguinte.parentId;
+      const grupoSeguinte = subgrupos.find(s => s.id === subgrupoSegId);
+      
+      if (!grupoSeguinte || grupoSeguinte.grupoId === grupoId) return;
+      
+      // Encontrar todos os subgrupos do grupo seguinte
+      const subgruposGrupoSeguinte = subgrupos.filter(s => s.grupoId === grupoSeguinte.grupoId).map(s => s.id);
+      
+      // Encontrar todos os produtos do grupo seguinte
+      const produtosGrupoSeguinte = newItems
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => subgruposGrupoSeguinte.includes(item.parentId || ''));
+      
+      if (produtosGrupoSeguinte.length === 0) return;
+      
+      // Mover grupo seguinte para antes do atual
+      const produtosMovendoSeguinte = produtosGrupoSeguinte.map(({ item }) => item);
+      newItems.splice(produtosGrupoSeguinte[0].idx, produtosGrupoSeguinte.length);
+      newItems.splice(primeiroIdx, 0, ...produtosMovendoSeguinte);
+      
+      setVisualizacaoItems(newItems);
     }
   };
 
   const handleMoverDepartamento = (departamentoId: string, direcao: 'up' | 'down') => {
     const newItems = [...visualizacaoItems];
+    
+    // Encontrar todos os grupos deste departamento
     const gruposDoDepartamento = grupos.filter(g => g.departamentoId === departamentoId).map(g => g.id);
-    const subgruposDoDepartamento = subgrupos.filter(s => gruposDoDepartamento.includes(s.grupoId)).map(s => s.id);
-    const indicesDoDepartamento = newItems
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) => subgruposDoDepartamento.includes(item.parentId || ''))
-      .map(({ index }) => index);
     
-    if (indicesDoDepartamento.length === 0) return;
+    // Encontrar todos os subgrupos destes grupos
+    const subgruposDoDepartamento = subgrupos
+      .filter(s => gruposDoDepartamento.includes(s.grupoId))
+      .map(s => s.id);
     
-    const primeiroIndice = Math.min(...indicesDoDepartamento);
-    const ultimoIndice = Math.max(...indicesDoDepartamento);
+    // Encontrar todos os produtos destes subgrupos
+    const produtosDoDepartamento = newItems
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => subgruposDoDepartamento.includes(item.parentId || ''));
     
-    if (direcao === 'up' && primeiroIndice > 0) {
-      const prevItem = newItems[primeiroIndice - 1];
-      if (!subgruposDoDepartamento.includes(prevItem.parentId || '')) {
-        const itemsDoDepartamento = indicesDoDepartamento.map(i => newItems[i]);
-        newItems.splice(primeiroIndice, indicesDoDepartamento.length);
-        
-        let targetIndex = primeiroIndice - 1;
-        const prevSubgrupoId = prevItem.parentId;
-        const prevGrupoId = subgrupos.find(s => s.id === prevSubgrupoId)?.grupoId;
-        const prevDeptId = grupos.find(g => g.id === prevGrupoId)?.departamentoId;
-        
-        while (targetIndex > 0) {
-          const checkItem = newItems[targetIndex - 1];
-          const checkSubgrupoId = checkItem.parentId;
-          const checkGrupoId = subgrupos.find(s => s.id === checkSubgrupoId)?.grupoId;
-          const checkDeptId = grupos.find(g => g.id === checkGrupoId)?.departamentoId;
-          
-          if (checkDeptId !== prevDeptId) break;
-          targetIndex--;
-        }
-        
-        newItems.splice(targetIndex, 0, ...itemsDoDepartamento);
-        setVisualizacaoItems(newItems);
-      }
-    } else if (direcao === 'down' && ultimoIndice < newItems.length - 1) {
-      const nextItem = newItems[ultimoIndice + 1];
-      if (!subgruposDoDepartamento.includes(nextItem.parentId || '')) {
-        const itemsDoDepartamento = indicesDoDepartamento.map(i => newItems[i]);
-        newItems.splice(primeiroIndice, indicesDoDepartamento.length);
-        
-        let targetIndex = primeiroIndice;
-        const nextSubgrupoId = nextItem.parentId;
-        const nextGrupoId = subgrupos.find(s => s.id === nextSubgrupoId)?.grupoId;
-        const nextDeptId = grupos.find(g => g.id === nextGrupoId)?.departamentoId;
-        
-        while (targetIndex < newItems.length) {
-          const checkItem = newItems[targetIndex];
-          const checkSubgrupoId = checkItem.parentId;
-          const checkGrupoId = subgrupos.find(s => s.id === checkSubgrupoId)?.grupoId;
-          const checkDeptId = grupos.find(g => g.id === checkGrupoId)?.departamentoId;
-          
-          if (checkDeptId !== nextDeptId) break;
-          targetIndex++;
-        }
-        
-        newItems.splice(targetIndex, 0, ...itemsDoDepartamento);
-        setVisualizacaoItems(newItems);
-      }
+    if (produtosDoDepartamento.length === 0) return;
+    
+    const primeiroIdx = produtosDoDepartamento[0].idx;
+    const ultimoIdx = produtosDoDepartamento[produtosDoDepartamento.length - 1].idx;
+    
+    if (direcao === 'up' && primeiroIdx > 0) {
+      // Encontrar o departamento anterior
+      const itemAnterior = newItems[primeiroIdx - 1];
+      const subgrupoAnteriorId = itemAnterior.parentId;
+      const grupoAnterior = subgrupos.find(s => s.id === subgrupoAnteriorId);
+      const deptAnterior = grupoAnterior ? grupos.find(g => g.id === grupoAnterior.grupoId) : null;
+      
+      if (!deptAnterior || deptAnterior.departamentoId === departamentoId) return;
+      
+      // Encontrar todos os grupos do departamento anterior
+      const gruposDeptAnterior = grupos.filter(g => g.departamentoId === deptAnterior.departamentoId).map(g => g.id);
+      
+      // Encontrar todos os subgrupos do departamento anterior
+      const subgruposDeptAnterior = subgrupos
+        .filter(s => gruposDeptAnterior.includes(s.grupoId))
+        .map(s => s.id);
+      
+      // Encontrar todos os produtos do departamento anterior
+      const produtosDeptAnterior = newItems
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => subgruposDeptAnterior.includes(item.parentId || ''));
+      
+      if (produtosDeptAnterior.length === 0) return;
+      
+      const primeiroIdxAnterior = produtosDeptAnterior[0].idx;
+      
+      // Mover
+      const produtosMovendo = produtosDoDepartamento.map(({ item }) => item);
+      newItems.splice(primeiroIdx, produtosDoDepartamento.length);
+      newItems.splice(primeiroIdxAnterior, 0, ...produtosMovendo);
+      
+      setVisualizacaoItems(newItems);
+    } else if (direcao === 'down' && ultimoIdx < newItems.length - 1) {
+      // Encontrar o departamento seguinte
+      const itemSeguinte = newItems[ultimoIdx + 1];
+      const subgrupoSegId = itemSeguinte.parentId;
+      const grupoSeguinte = subgrupos.find(s => s.id === subgrupoSegId);
+      const deptSeguinte = grupoSeguinte ? grupos.find(g => g.id === grupoSeguinte.grupoId) : null;
+      
+      if (!deptSeguinte || deptSeguinte.departamentoId === departamentoId) return;
+      
+      // Encontrar todos os grupos do departamento seguinte
+      const gruposDeptSeguinte = grupos.filter(g => g.departamentoId === deptSeguinte.departamentoId).map(g => g.id);
+      
+      // Encontrar todos os subgrupos do departamento seguinte
+      const subgruposDeptSeguinte = subgrupos
+        .filter(s => gruposDeptSeguinte.includes(s.grupoId))
+        .map(s => s.id);
+      
+      // Encontrar todos os produtos do departamento seguinte
+      const produtosDeptSeguinte = newItems
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => subgruposDeptSeguinte.includes(item.parentId || ''));
+      
+      if (produtosDeptSeguinte.length === 0) return;
+      
+      // Mover departamento seguinte para antes do atual
+      const produtosMovendoSeguinte = produtosDeptSeguinte.map(({ item }) => item);
+      newItems.splice(produtosDeptSeguinte[0].idx, produtosDeptSeguinte.length);
+      newItems.splice(primeiroIdx, 0, ...produtosMovendoSeguinte);
+      
+      setVisualizacaoItems(newItems);
     }
   };
 
