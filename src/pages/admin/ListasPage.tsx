@@ -42,6 +42,9 @@ export const ListasPage = () => {
   const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<string>('');
   const [visualizacaoItems, setVisualizacaoItems] = useState<VisualizacaoItem[]>([]);
+  const [expandedVisualizacaoDepts, setExpandedVisualizacaoDepts] = useState<Set<string>>(new Set());
+  const [expandedVisualizacaoGrupos, setExpandedVisualizacaoGrupos] = useState<Set<string>>(new Set());
+  const [expandedVisualizacaoSubgrupos, setExpandedVisualizacaoSubgrupos] = useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -600,50 +603,153 @@ export const ListasPage = () => {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {visualizacaoItems.map((item, index) => {
-                          const canMoveUp = index > 0 && visualizacaoItems[index - 1].parentId === item.parentId;
-                          const canMoveDown = index < visualizacaoItems.length - 1 && visualizacaoItems[index + 1].parentId === item.parentId;
-                          const subgrupo = subgrupos.find(s => s.id === item.parentId);
+                        {(() => {
+                          const hierarquia = new Map<string, Map<string, Map<string, number[]>>>();
                           
-                          return (
-                            <div key={`${item.tipo}-${item.id}-${index}`} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-                              <div className="flex-1">
-                                <div className="font-medium text-sm">{item.nome}</div>
-                                {subgrupo && (
-                                  <div className="text-xs text-muted-foreground">{subgrupo.nome}</div>
+                          visualizacaoItems.forEach((item, index) => {
+                            const produto = produtos.find(p => p.id === item.id);
+                            if (!produto) return;
+                            
+                            const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
+                            const grupo = grupos.find(g => g.id === produto.grupoId);
+                            const dept = departamentos.find(d => d.id === grupo?.departamentoId);
+                            
+                            if (!dept || !grupo || !subgrupo) return;
+                            
+                            if (!hierarquia.has(dept.id)) {
+                              hierarquia.set(dept.id, new Map());
+                            }
+                            if (!hierarquia.get(dept.id)!.has(grupo.id)) {
+                              hierarquia.get(dept.id)!.set(grupo.id, new Map());
+                            }
+                            if (!hierarquia.get(dept.id)!.get(grupo.id)!.has(subgrupo.id)) {
+                              hierarquia.get(dept.id)!.get(grupo.id)!.set(subgrupo.id, []);
+                            }
+                            hierarquia.get(dept.id)!.get(grupo.id)!.get(subgrupo.id)!.push(index);
+                          });
+                          
+                          return Array.from(hierarquia.entries()).map(([deptId, gruposMap]) => {
+                            const dept = departamentos.find(d => d.id === deptId);
+                            if (!dept) return null;
+                            
+                            return (
+                              <div key={deptId} className="border rounded-md">
+                                <div 
+                                  className="flex items-center gap-2 p-2 bg-muted cursor-pointer hover:bg-muted/80"
+                                  onClick={() => {
+                                    setExpandedVisualizacaoDepts(prev => {
+                                      const newSet = new Set(prev);
+                                      newSet.has(deptId) ? newSet.delete(deptId) : newSet.add(deptId);
+                                      return newSet;
+                                    });
+                                  }}
+                                >
+                                  {expandedVisualizacaoDepts.has(deptId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  <span className="font-semibold">{dept.nome}</span>
+                                </div>
+                                
+                                {expandedVisualizacaoDepts.has(deptId) && (
+                                  <div className="p-2 space-y-2">
+                                    {Array.from(gruposMap.entries()).map(([grupoId, subgruposMap]) => {
+                                      const grupo = grupos.find(g => g.id === grupoId);
+                                      if (!grupo) return null;
+                                      
+                                      return (
+                                        <div key={grupoId} className="border rounded-md">
+                                          <div 
+                                            className="flex items-center gap-2 p-2 bg-muted/50 cursor-pointer hover:bg-muted/70"
+                                            onClick={() => {
+                                              setExpandedVisualizacaoGrupos(prev => {
+                                                const newSet = new Set(prev);
+                                                newSet.has(grupoId) ? newSet.delete(grupoId) : newSet.add(grupoId);
+                                                return newSet;
+                                              });
+                                            }}
+                                          >
+                                            {expandedVisualizacaoGrupos.has(grupoId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                            <span className="font-medium">{grupo.nome}</span>
+                                          </div>
+                                          
+                                          {expandedVisualizacaoGrupos.has(grupoId) && (
+                                            <div className="p-2 space-y-2">
+                                              {Array.from(subgruposMap.entries()).map(([subgrupoId, indices]) => {
+                                                const subgrupo = subgrupos.find(s => s.id === subgrupoId);
+                                                if (!subgrupo) return null;
+                                                
+                                                return (
+                                                  <div key={subgrupoId} className="border rounded-md">
+                                                    <div 
+                                                      className="flex items-center gap-2 p-2 bg-muted/30 cursor-pointer hover:bg-muted/50"
+                                                      onClick={() => {
+                                                        setExpandedVisualizacaoSubgrupos(prev => {
+                                                          const newSet = new Set(prev);
+                                                          newSet.has(subgrupoId) ? newSet.delete(subgrupoId) : newSet.add(subgrupoId);
+                                                          return newSet;
+                                                        });
+                                                      }}
+                                                    >
+                                                      {expandedVisualizacaoSubgrupos.has(subgrupoId) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                      <span className="text-sm font-medium">{subgrupo.nome}</span>
+                                                      <span className="text-xs text-muted-foreground">({indices.length})</span>
+                                                    </div>
+                                                    
+                                                    {expandedVisualizacaoSubgrupos.has(subgrupoId) && (
+                                                      <div className="p-2 space-y-1">
+                                                        {indices.map(index => {
+                                                          const item = visualizacaoItems[index];
+                                                          const canMoveUp = index > 0 && visualizacaoItems[index - 1].parentId === item.parentId;
+                                                          const canMoveDown = index < visualizacaoItems.length - 1 && visualizacaoItems[index + 1].parentId === item.parentId;
+                                                          
+                                                          return (
+                                                            <div key={`${item.id}-${index}`} className="flex items-center gap-2 p-2 border rounded bg-background">
+                                                              <span className="flex-1 text-sm">{item.nome}</span>
+                                                              <div className="flex gap-1">
+                                                                <Button
+                                                                  type="button"
+                                                                  variant="ghost"
+                                                                  size="sm"
+                                                                  onClick={() => handleMoverItem(index, 'up')}
+                                                                  disabled={!canMoveUp}
+                                                                >
+                                                                  <ArrowUp className="w-3 h-3" />
+                                                                </Button>
+                                                                <Button
+                                                                  type="button"
+                                                                  variant="ghost"
+                                                                  size="sm"
+                                                                  onClick={() => handleMoverItem(index, 'down')}
+                                                                  disabled={!canMoveDown}
+                                                                >
+                                                                  <ArrowDown className="w-3 h-3" />
+                                                                </Button>
+                                                                <Button
+                                                                  type="button"
+                                                                  variant="ghost"
+                                                                  size="sm"
+                                                                  onClick={() => handleRemoverItem(index)}
+                                                                >
+                                                                  <X className="w-3 h-3" />
+                                                                </Button>
+                                                              </div>
+                                                            </div>
+                                                          );
+                                                        })}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 )}
                               </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMoverItem(index, 'up')}
-                                  disabled={!canMoveUp}
-                                >
-                                  <ArrowUp className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMoverItem(index, 'down')}
-                                  disabled={!canMoveDown}
-                                >
-                                  <ArrowDown className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRemoverItem(index)}
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          });
+                        })()}
                       </div>
                     )}
                   </ScrollArea>
