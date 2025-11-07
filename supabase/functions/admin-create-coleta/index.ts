@@ -87,6 +87,7 @@ serve(async (req) => {
       admin_visualizou_observacoes: body.admin_visualizou_observacoes ?? false,
       fotos: body.fotos ?? {},
       textos_mais_barato: body.textos_mais_barato ?? {},
+      hierarquia_customizada: body.hierarquia_customizada ?? {},
     };
 
     const { data, error } = await supabaseAdmin

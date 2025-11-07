@@ -36,7 +36,7 @@ export const useColetasPesquisador = (userEmail: string | undefined) => {
       // Buscar coletas do pesquisador (query otimizada)
       const { data: rows, error } = await supabase
         .from('coletas')
-        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes, textos_mais_barato, alertas_variacao, created_at')
+        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes, textos_mais_barato, alertas_variacao, hierarquia_customizada, created_at')
         .eq('pesquisador_id', pesquisador.id)
         .order('created_at', { ascending: false });
 
@@ -59,7 +59,8 @@ export const useColetasPesquisador = (userEmail: string | undefined) => {
         adminVisualizouObservacoes: coleta.admin_visualizou_observacoes || false,
         fotos: {},
         textosMaisBarato: coleta.textos_mais_barato || {},
-        alertasVariacao: coleta.alertas_variacao || []
+        alertasVariacao: coleta.alertas_variacao || [],
+        hierarquiaCustomizada: coleta.hierarquia_customizada || {}
       }));
 
       // Separar coletas ativas e finalizadas

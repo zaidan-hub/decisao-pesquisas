@@ -70,7 +70,9 @@ export const PesquisasPage = () => {
     // Buscar produtos da lista selecionada
     const lista = listas.find(l => l.id === formData.listaId);
     const produtosColeta = lista?.produtos || [];
+    const hierarquiaCustomizada = lista?.hierarquiaCustomizada || {};
     console.log('📦 PRODUTOS DA LISTA:', produtosColeta.length);
+    console.log('🔀 HIERARQUIA CUSTOMIZADA:', hierarquiaCustomizada);
 
     // Gerar número automaticamente baseado no total de coletas + 1
     const proximoNumero = String(coletasAdmin.length + 1).padStart(3, '0');
@@ -87,7 +89,8 @@ export const PesquisasPage = () => {
       precos: {},
       observacoesProdutos: {},
       observacoesFinais: [],
-      fotos: {}
+      fotos: {},
+      hierarquiaCustomizada: hierarquiaCustomizada
     };
 
     console.log('📝 NOVA COLETA:', novaColeta);
@@ -143,7 +146,7 @@ export const PesquisasPage = () => {
       
       const { data, error } = await supabase
         .from('coletas')
-        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes')
+        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, precos, precos_editados_admin, observacoes_produtos, observacoes_finais, admin_visualizou_observacoes, hierarquia_customizada')
         .eq('id', coletaId)
         .single();
 
@@ -192,7 +195,8 @@ export const PesquisasPage = () => {
         observacoesProdutos: (data.observacoes_produtos as any) || {},
         observacoesFinais: (data.observacoes_finais as any) || [],
         adminVisualizouObservacoes: data.admin_visualizou_observacoes || false,
-        fotos: {} // Fotos serão carregadas sob demanda
+        fotos: {}, // Fotos serão carregadas sob demanda
+        hierarquiaCustomizada: (data.hierarquia_customizada as any) || {}
       };
       
       await new Promise(resolve => setTimeout(resolve, 200));

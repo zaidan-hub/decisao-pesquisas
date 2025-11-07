@@ -80,14 +80,20 @@ export const ListasPage = () => {
         .filter(item => item.tipo === 'produto')
         .map(item => item.id);
 
+      // Criar hierarquia customizada baseada na ordem de visualização
+      const hierarquiaCustomizada = {
+        ordem: visualizacaoItems.map(item => ({
+          produtoId: item.id,
+          parentId: item.parentId,
+          tipo: item.tipo
+        }))
+      };
+
       const listaData: any = {
         nome: formData.nome,
-        produtos: produtosFinais
+        produtos: produtosFinais,
+        hierarquia_customizada: hierarquiaCustomizada
       };
-      
-      if (formData.hierarquiaCustomizada) {
-        listaData.hierarquia_customizada = formData.hierarquiaCustomizada;
-      }
 
       if (editingLista) {
         const { error } = await supabase

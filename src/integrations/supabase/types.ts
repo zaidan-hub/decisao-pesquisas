@@ -49,6 +49,7 @@ export type Database = {
           created_at: string
           data: string
           fotos: Json | null
+          hierarquia_customizada: Json | null
           id: string
           numero: string | null
           observacoes_finais: Json | null
@@ -69,6 +70,7 @@ export type Database = {
           created_at?: string
           data: string
           fotos?: Json | null
+          hierarquia_customizada?: Json | null
           id?: string
           numero?: string | null
           observacoes_finais?: Json | null
@@ -89,6 +91,7 @@ export type Database = {
           created_at?: string
           data?: string
           fotos?: Json | null
+          hierarquia_customizada?: Json | null
           id?: string
           numero?: string | null
           observacoes_finais?: Json | null
@@ -426,10 +429,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

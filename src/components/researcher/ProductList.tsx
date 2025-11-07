@@ -69,6 +69,21 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     const buscarGruposComProdutos = async () => {
       if (!coleta.produtos.length) return;
 
+      // Se houver hierarquia customizada, usar a ordem dela
+      if (coleta.hierarquiaCustomizada && Object.keys(coleta.hierarquiaCustomizada).length > 0) {
+        console.log('📋 Usando hierarquia customizada da lista');
+        // A hierarquia está no formato: { ordem: [...{ produtoId, parentId }...] }
+        const hierarquia = coleta.hierarquiaCustomizada as any;
+        if (hierarquia.ordem && Array.isArray(hierarquia.ordem)) {
+          const gruposIds = [...new Set(hierarquia.ordem.map((item: any) => {
+            // parentId é o subgrupo_id, precisa encontrar o grupo desse subgrupo
+            return item.grupoId;
+          }).filter(Boolean))] as string[];
+          setGruposComProdutos(gruposIds);
+          return;
+        }
+      }
+
       try {
         const chunks = chunkArray(coleta.produtos, 100);
         const promises = chunks.map(async (ids) => {
@@ -89,7 +104,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     };
 
     buscarGruposComProdutos();
-  }, [coleta.produtos]);
+  }, [coleta.produtos, coleta.hierarquiaCustomizada]);
 
   // Helper para dividir em chunks e evitar URL muito grande nas queries
   const chunkArray = <T,>(arr: T[], size: number) => {
@@ -130,10 +145,32 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
         maisBarato: Boolean(item.mais_barato)
       }));
 
-      // Remover duplicados e ordenar por nome
+      // Remover duplicados
       const uniqueMap: Record<string, Produto> = {};
       mapped.forEach(p => { uniqueMap[p.id] = p; });
-      const unique = Object.values(uniqueMap).sort((a, b) => a.nome.localeCompare(b.nome));
+      let unique = Object.values(uniqueMap);
+
+      // Se houver hierarquia customizada, ordenar de acordo com ela
+      if (coleta.hierarquiaCustomizada && Object.keys(coleta.hierarquiaCustomizada).length > 0) {
+        const hierarquia = coleta.hierarquiaCustomizada as any;
+        if (hierarquia.ordem && Array.isArray(hierarquia.ordem)) {
+          // Criar um mapa de ordem: produtoId -> índice
+          const ordemMap: Record<string, number> = {};
+          hierarquia.ordem.forEach((item: any, idx: number) => {
+            ordemMap[item.produtoId] = idx;
+          });
+          
+          // Ordenar produtos de acordo com a hierarquia
+          unique = unique.sort((a, b) => {
+            const ordemA = ordemMap[a.id] ?? 99999;
+            const ordemB = ordemMap[b.id] ?? 99999;
+            return ordemA - ordemB;
+          });
+        }
+      } else {
+        // Ordenação padrão por nome
+        unique = unique.sort((a, b) => a.nome.localeCompare(b.nome));
+      }
 
       setProdutosPorGrupo(prev => ({ ...prev, [grupoId]: unique }));
       setProdutosCache(prev => ({ ...prev, [grupoId]: true }));
@@ -147,7 +184,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     } finally {
       setGruposCarregando(prev => ({ ...prev, [grupoId]: false }));
     }
-  }, [coleta.produtos, produtosCache, gruposCarregando]);
+  }, [coleta.produtos, coleta.hierarquiaCustomizada, produtosCache, gruposCarregando]);
 
   // Mostrar apenas grupos que têm produtos nesta coleta
   const gruposDaColeta = useMemo(() => 

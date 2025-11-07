@@ -120,6 +120,11 @@ export interface Coleta {
   fotos?: { [produtoId: string]: string[] }; // Fotos por produto
   textosMaisBarato?: { [produtoId: string]: string }; // Textos adicionais para produtos mais barato
   alertasVariacao?: AlertaVariacao[]; // Alertas de variação significativa de preços
+  hierarquiaCustomizada?: {
+    departamentos?: { [id: string]: string };
+    grupos?: { [id: string]: string };
+    subgrupos?: { [id: string]: string };
+  };
 }
 
 export interface AlertaVariacao {

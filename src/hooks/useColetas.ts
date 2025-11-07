@@ -67,7 +67,8 @@ export const useColetas = () => {
         observacoes_finais: coletaData.observacoesFinais || [],
         admin_visualizou_observacoes: false,
         fotos: coletaData.fotos || {},
-        textos_mais_barato: coletaData.textosMaisBarato || {}
+        textos_mais_barato: coletaData.textosMaisBarato || {},
+        hierarquia_customizada: coletaData.hierarquiaCustomizada || {}
       };
 
       const { data, error } = await supabase.functions.invoke('admin-create-coleta', {
