@@ -45,6 +45,7 @@ export const ListasPage = () => {
   const [expandedVisualizacaoDepts, setExpandedVisualizacaoDepts] = useState<Set<string>>(new Set());
   const [expandedVisualizacaoGrupos, setExpandedVisualizacaoGrupos] = useState<Set<string>>(new Set());
   const [expandedVisualizacaoSubgrupos, setExpandedVisualizacaoSubgrupos] = useState<Set<string>>(new Set());
+  const [deleteCategory, setDeleteCategory] = useState<{ tipo: 'departamento' | 'grupo' | 'subgrupo'; id: string; nome: string } | null>(null);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -526,6 +527,29 @@ export const ListasPage = () => {
     setVisualizacaoItems(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleRemoverCategoria = () => {
+    if (!deleteCategory) return;
+
+    const { tipo, id } = deleteCategory;
+    
+    if (tipo === 'subgrupo') {
+      setVisualizacaoItems(prev => prev.filter(item => item.parentId !== id));
+    } else if (tipo === 'grupo') {
+      const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === id).map(s => s.id);
+      setVisualizacaoItems(prev => prev.filter(item => !subgruposDoGrupo.includes(item.parentId || '')));
+    } else if (tipo === 'departamento') {
+      const gruposDoDept = grupos.filter(g => g.departamentoId === id).map(g => g.id);
+      const subgruposDoDept = subgrupos.filter(s => gruposDoDept.includes(s.grupoId)).map(s => s.id);
+      setVisualizacaoItems(prev => prev.filter(item => !subgruposDoDept.includes(item.parentId || '')));
+    }
+    
+    setDeleteCategory(null);
+    toast({
+      title: "Removido",
+      description: `${deleteCategory.tipo.charAt(0).toUpperCase() + deleteCategory.tipo.slice(1)} e seus produtos foram removidos da lista.`
+    });
+  };
+
   const filteredListas = listas
     .filter(l => l.nome.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => a.nome.localeCompare(b.nome));
@@ -715,7 +739,16 @@ export const ListasPage = () => {
                   </div>
 
                   <ScrollArea className="border rounded-md h-[500px] p-4">
-                    <RadioGroup value={selectedItem} onValueChange={setSelectedItem}>
+                    <RadioGroup value={selectedItem} onValueChange={(value) => {
+                      setSelectedItem(value);
+                      // Auto-adicionar quando selecionar categoria
+                      const [tipo] = value.split(':');
+                      if (tipo === 'departamento' || tipo === 'grupo' || tipo === 'subgrupo') {
+                        setTimeout(() => {
+                          handleAdicionarItem();
+                        }, 100);
+                      }
+                    }}>
                       {departamentoHierarchy.map((deptData) => {
                         const isDeptExpanded = expandedDepartamentos.has(deptData.departamento.id);
                         const hasProducts = deptData.grupos.some(g => g.subgrupos.some(s => s.produtos.length > 0));
@@ -908,6 +941,17 @@ export const ListasPage = () => {
                                     >
                                       <ArrowDown className="w-3 h-3" />
                                     </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeleteCategory({ tipo: 'departamento', id: deptId, nome: dept.nome });
+                                      }}
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </Button>
                                   </div>
                                 </div>
                                 
@@ -963,6 +1007,17 @@ export const ListasPage = () => {
                                                 disabled={!canMoveDownGrupo}
                                               >
                                                 <ArrowDown className="w-3 h-3" />
+                                              </Button>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setDeleteCategory({ tipo: 'grupo', id: grupoId, nome: grupo.nome });
+                                                }}
+                                              >
+                                                <X className="w-3 h-3" />
                                               </Button>
                                             </div>
                                           </div>
@@ -1020,6 +1075,17 @@ export const ListasPage = () => {
                                                           disabled={!canMoveDownSubgrupo}
                                                         >
                                                           <ArrowDown className="w-3 h-3" />
+                                                        </Button>
+                                                        <Button
+                                                          type="button"
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDeleteCategory({ tipo: 'subgrupo', id: subgrupoId, nome: subgrupo.nome });
+                                                          }}
+                                                        >
+                                                          <X className="w-3 h-3" />
                                                         </Button>
                                                       </div>
                                                     </div>
@@ -1213,6 +1279,23 @@ export const ListasPage = () => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteCategory} onOpenChange={() => setDeleteCategory(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover {deleteCategory?.tipo}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover o {deleteCategory?.tipo} "{deleteCategory?.nome}" e todos os seus produtos da lista?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemoverCategoria}>
+              Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
