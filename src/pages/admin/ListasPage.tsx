@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,7 +40,7 @@ export const ListasPage = () => {
   const [expandedDepartamentos, setExpandedDepartamentos] = useState<Set<string>>(new Set());
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
   const [expandedSubgrupos, setExpandedSubgrupos] = useState<Set<string>>(new Set());
-  const [selectedItem, setSelectedItem] = useState<string>('');
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [visualizacaoItems, setVisualizacaoItems] = useState<VisualizacaoItem[]>([]);
   const [expandedVisualizacaoDepts, setExpandedVisualizacaoDepts] = useState<Set<string>>(new Set());
   const [expandedVisualizacaoGrupos, setExpandedVisualizacaoGrupos] = useState<Set<string>>(new Set());
@@ -59,7 +59,7 @@ export const ListasPage = () => {
       produtos: [],
       hierarquiaCustomizada: undefined
     });
-    setSelectedItem('');
+    setSelectedItems(new Set());
     setVisualizacaoItems([]);
   };
 
@@ -212,73 +212,105 @@ export const ListasPage = () => {
     }
   };
 
-  const handleAdicionarItem = () => {
-    if (!selectedItem) return;
-
-    const [tipo, id] = selectedItem.split(':');
+  const handleSelectItem = (tipo: string, id: string) => {
+    const itemKey = `${tipo}:${id}`;
+    const newSelected = new Set(selectedItems);
     
-    if (tipo === 'produto') {
-      const produto = produtos.find(p => p.id === id);
-      if (produto && !visualizacaoItems.some(i => i.id === id)) {
-        setVisualizacaoItems(prev => [...prev, {
-          tipo: 'produto',
-          id: produto.id,
-          nome: produto.nome,
-          parentId: produto.subgrupoId
-        }]);
+    if (newSelected.has(itemKey)) {
+      // Desmarcar - remover o item e todos seus subitens
+      newSelected.delete(itemKey);
+      
+      if (tipo === 'departamento') {
+        const gruposDoDept = grupos.filter(g => g.departamentoId === id);
+        gruposDoDept.forEach(grupo => {
+          newSelected.delete(`grupo:${grupo.id}`);
+          const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === grupo.id);
+          subgruposDoGrupo.forEach(subgrupo => {
+            newSelected.delete(`subgrupo:${subgrupo.id}`);
+            const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === subgrupo.id);
+            produtosDoSubgrupo.forEach(produto => {
+              newSelected.delete(`produto:${produto.id}`);
+            });
+          });
+        });
+      } else if (tipo === 'grupo') {
+        const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === id);
+        subgruposDoGrupo.forEach(subgrupo => {
+          newSelected.delete(`subgrupo:${subgrupo.id}`);
+          const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === subgrupo.id);
+          produtosDoSubgrupo.forEach(produto => {
+            newSelected.delete(`produto:${produto.id}`);
+          });
+        });
+      } else if (tipo === 'subgrupo') {
+        const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === id);
+        produtosDoSubgrupo.forEach(produto => {
+          newSelected.delete(`produto:${produto.id}`);
+        });
       }
-    } else if (tipo === 'subgrupo') {
-      const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === id);
+    } else {
+      // Marcar - adicionar o item e todos seus subitens
+      newSelected.add(itemKey);
       
-      const novosItems: VisualizacaoItem[] = produtosDoSubgrupo
-        .filter(p => !visualizacaoItems.some(i => i.id === p.id))
-        .map(p => ({
-          tipo: 'produto' as const,
-          id: p.id,
-          nome: p.nome,
-          parentId: p.subgrupoId
-        }));
-      
-      if (novosItems.length > 0) {
-        setVisualizacaoItems(prev => [...prev, ...novosItems]);
-      }
-    } else if (tipo === 'grupo') {
-      const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === id);
-      const produtosDoGrupo = produtos.filter(p => subgruposDoGrupo.some(s => s.id === p.subgrupoId));
-      
-      const novosItems: VisualizacaoItem[] = produtosDoGrupo
-        .filter(p => !visualizacaoItems.some(i => i.id === p.id))
-        .map(p => ({
-          tipo: 'produto' as const,
-          id: p.id,
-          nome: p.nome,
-          parentId: p.subgrupoId
-        }));
-      
-      if (novosItems.length > 0) {
-        setVisualizacaoItems(prev => [...prev, ...novosItems]);
-      }
-    } else if (tipo === 'departamento') {
-      const produtosDoDepartamento = produtos.filter(p => {
-        const grupo = grupos.find(g => g.id === p.grupoId);
-        return grupo?.departamentoId === id;
-      });
-      
-      const novosItems: VisualizacaoItem[] = produtosDoDepartamento
-        .filter(p => !visualizacaoItems.some(i => i.id === p.id))
-        .map(p => ({
-          tipo: 'produto' as const,
-          id: p.id,
-          nome: p.nome,
-          parentId: p.subgrupoId
-        }));
-      
-      if (novosItems.length > 0) {
-        setVisualizacaoItems(prev => [...prev, ...novosItems]);
+      if (tipo === 'departamento') {
+        const gruposDoDept = grupos.filter(g => g.departamentoId === id);
+        gruposDoDept.forEach(grupo => {
+          newSelected.add(`grupo:${grupo.id}`);
+          const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === grupo.id);
+          subgruposDoGrupo.forEach(subgrupo => {
+            newSelected.add(`subgrupo:${subgrupo.id}`);
+            const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === subgrupo.id);
+            produtosDoSubgrupo.forEach(produto => {
+              newSelected.add(`produto:${produto.id}`);
+            });
+          });
+        });
+      } else if (tipo === 'grupo') {
+        const subgruposDoGrupo = subgrupos.filter(s => s.grupoId === id);
+        subgruposDoGrupo.forEach(subgrupo => {
+          newSelected.add(`subgrupo:${subgrupo.id}`);
+          const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === subgrupo.id);
+          produtosDoSubgrupo.forEach(produto => {
+            newSelected.add(`produto:${produto.id}`);
+          });
+        });
+      } else if (tipo === 'subgrupo') {
+        const produtosDoSubgrupo = produtos.filter(p => p.subgrupoId === id);
+        produtosDoSubgrupo.forEach(produto => {
+          newSelected.add(`produto:${produto.id}`);
+        });
       }
     }
     
-    setSelectedItem('');
+    setSelectedItems(newSelected);
+  };
+
+  const handleAdicionarItem = () => {
+    if (selectedItems.size === 0) return;
+
+    const novosItems: VisualizacaoItem[] = [];
+    
+    selectedItems.forEach(itemKey => {
+      const [tipo, id] = itemKey.split(':');
+      
+      if (tipo === 'produto') {
+        const produto = produtos.find(p => p.id === id);
+        if (produto && !visualizacaoItems.some(i => i.id === id)) {
+          novosItems.push({
+            tipo: 'produto',
+            id: produto.id,
+            nome: produto.nome,
+            parentId: produto.subgrupoId
+          });
+        }
+      }
+    });
+    
+    if (novosItems.length > 0) {
+      setVisualizacaoItems(prev => [...prev, ...novosItems]);
+    }
+    
+    setSelectedItems(new Set());
   };
 
   const handleMoverItem = (index: number, direcao: 'up' | 'down') => {
@@ -716,14 +748,14 @@ export const ListasPage = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Selecionar Produtos</Label>
-                    {selectedItem && (
+                    {selectedItems.size > 0 && (
                       <Button 
                         type="button" 
                         size="sm"
                         onClick={handleAdicionarItem}
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        Adicionar
+                        Adicionar ({selectedItems.size})
                       </Button>
                     )}
                   </div>
@@ -739,16 +771,7 @@ export const ListasPage = () => {
                   </div>
 
                   <ScrollArea className="border rounded-md h-[500px] p-4">
-                    <RadioGroup value={selectedItem} onValueChange={(value) => {
-                      setSelectedItem(value);
-                      // Auto-adicionar quando selecionar categoria
-                      const [tipo] = value.split(':');
-                      if (tipo === 'departamento' || tipo === 'grupo' || tipo === 'subgrupo') {
-                        setTimeout(() => {
-                          handleAdicionarItem();
-                        }, 100);
-                      }
-                    }}>
+                    <div className="space-y-2">
                       {departamentoHierarchy.map((deptData) => {
                         const isDeptExpanded = expandedDepartamentos.has(deptData.departamento.id);
                         const hasProducts = deptData.grupos.some(g => g.subgrupos.some(s => s.produtos.length > 0));
@@ -769,7 +792,11 @@ export const ListasPage = () => {
                                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                                 )}
                               </button>
-                              <RadioGroupItem value={`departamento:${deptData.departamento.id}`} id={`dept-${deptData.departamento.id}`} />
+                              <Checkbox 
+                                checked={selectedItems.has(`departamento:${deptData.departamento.id}`)}
+                                onCheckedChange={() => handleSelectItem('departamento', deptData.departamento.id)}
+                                id={`dept-${deptData.departamento.id}`} 
+                              />
                               <Label htmlFor={`dept-${deptData.departamento.id}`} className="font-semibold text-base cursor-pointer">
                                 {deptData.departamento.nome}
                               </Label>
@@ -792,7 +819,11 @@ export const ListasPage = () => {
                                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                                       )}
                                     </button>
-                                    <RadioGroupItem value={`grupo:${grupoData.id}`} id={`grupo-${grupoData.id}`} />
+                                    <Checkbox 
+                                      checked={selectedItems.has(`grupo:${grupoData.id}`)}
+                                      onCheckedChange={() => handleSelectItem('grupo', grupoData.id)}
+                                      id={`grupo-${grupoData.id}`} 
+                                    />
                                     <Label htmlFor={`grupo-${grupoData.id}`} className="font-medium cursor-pointer">
                                       {grupoData.nome}
                                     </Label>
@@ -815,7 +846,11 @@ export const ListasPage = () => {
                                               <ChevronRight className="w-4 h-4 text-muted-foreground" />
                                             )}
                                           </button>
-                                          <RadioGroupItem value={`subgrupo:${subgrupoData.id}`} id={`subgrupo-${subgrupoData.id}`} />
+                                          <Checkbox 
+                                            checked={selectedItems.has(`subgrupo:${subgrupoData.id}`)}
+                                            onCheckedChange={() => handleSelectItem('subgrupo', subgrupoData.id)}
+                                            id={`subgrupo-${subgrupoData.id}`} 
+                                          />
                                           <Label htmlFor={`subgrupo-${subgrupoData.id}`} className="text-sm font-medium cursor-pointer">
                                             {subgrupoData.nome}
                                             <span className="text-xs text-muted-foreground ml-2">
@@ -828,7 +863,11 @@ export const ListasPage = () => {
                                           <div className="ml-6 space-y-1">
                                             {subgrupoData.produtos.map((produto) => (
                                               <div key={produto.id} className="flex items-center gap-2 py-1">
-                                                <RadioGroupItem value={`produto:${produto.id}`} id={`produto-${produto.id}`} />
+                                                <Checkbox 
+                                                  checked={selectedItems.has(`produto:${produto.id}`)}
+                                                  onCheckedChange={() => handleSelectItem('produto', produto.id)}
+                                                  id={`produto-${produto.id}`} 
+                                                />
                                                 <Label 
                                                   htmlFor={`produto-${produto.id}`} 
                                                   className="text-sm cursor-pointer flex-1"
@@ -851,7 +890,7 @@ export const ListasPage = () => {
                           </div>
                         );
                       })}
-                    </RadioGroup>
+                    </div>
                   </ScrollArea>
                 </div>
 
