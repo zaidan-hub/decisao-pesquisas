@@ -797,9 +797,9 @@ export const ListasPage = () => {
                                 onCheckedChange={() => handleSelectItem('departamento', deptData.departamento.id)}
                                 id={`dept-${deptData.departamento.id}`} 
                               />
-                              <Label htmlFor={`dept-${deptData.departamento.id}`} className="font-semibold text-base cursor-pointer">
-                                {deptData.departamento.nome}
-                              </Label>
+                                              <Label htmlFor={`dept-${deptData.departamento.id}`} className="font-semibold text-base cursor-pointer break-words" title={deptData.departamento.nome}>
+                                                {deptData.departamento.nome}
+                                              </Label>
                             </div>
 
                             {isDeptExpanded && deptData.grupos.map((grupoData) => {
@@ -824,9 +824,9 @@ export const ListasPage = () => {
                                       onCheckedChange={() => handleSelectItem('grupo', grupoData.id)}
                                       id={`grupo-${grupoData.id}`} 
                                     />
-                                    <Label htmlFor={`grupo-${grupoData.id}`} className="font-medium cursor-pointer">
-                                      {grupoData.nome}
-                                    </Label>
+                                                    <Label htmlFor={`grupo-${grupoData.id}`} className="font-medium cursor-pointer break-words" title={grupoData.nome}>
+                                                      {grupoData.nome}
+                                                    </Label>
                                   </div>
 
                                   {isGrupoExpanded && grupoData.subgrupos.map((subgrupoData) => {
@@ -851,12 +851,12 @@ export const ListasPage = () => {
                                             onCheckedChange={() => handleSelectItem('subgrupo', subgrupoData.id)}
                                             id={`subgrupo-${subgrupoData.id}`} 
                                           />
-                                          <Label htmlFor={`subgrupo-${subgrupoData.id}`} className="text-sm font-medium cursor-pointer">
-                                            {subgrupoData.nome}
-                                            <span className="text-xs text-muted-foreground ml-2">
-                                              ({subgrupoData.produtos.length} produtos)
-                                            </span>
-                                          </Label>
+                                                          <Label htmlFor={`subgrupo-${subgrupoData.id}`} className="text-sm font-medium cursor-pointer break-words" title={subgrupoData.nome}>
+                                                            {subgrupoData.nome}
+                                                            <span className="text-xs text-muted-foreground ml-2">
+                                                              ({subgrupoData.produtos.length} produtos)
+                                                            </span>
+                                                          </Label>
                                         </div>
 
                                         {isSubgrupoExpanded && (
@@ -870,9 +870,10 @@ export const ListasPage = () => {
                                                 />
                                                 <Label 
                                                   htmlFor={`produto-${produto.id}`} 
-                                                  className="text-sm cursor-pointer flex-1"
+                                                  className="text-sm cursor-pointer flex-1 break-words"
+                                                  title={`${produto.nome} (${produto.codigo} - ${produto.unidade})`}
                                                 >
-                                                  <span>{produto.nome}</span>
+                                                  <span className="break-words">{produto.nome}</span>
                                                   <span className="text-muted-foreground ml-2 text-xs">
                                                     ({produto.codigo} - {produto.unidade})
                                                   </span>
@@ -1138,7 +1139,7 @@ export const ListasPage = () => {
                                                           
                                                           return (
                                                             <div key={`${item.id}-${index}`} className="flex items-center gap-2 p-2 border rounded bg-background">
-                                                              <span className="flex-1 text-sm">{item.nome}</span>
+                                                              <span className="flex-1 text-sm break-words min-w-0" title={item.nome}>{item.nome}</span>
                                                               <div className="flex gap-1">
                                                                 <Button
                                                                   type="button"
