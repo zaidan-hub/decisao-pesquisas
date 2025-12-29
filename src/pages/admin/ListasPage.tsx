@@ -724,7 +724,7 @@ export const ListasPage = () => {
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 28, { align: 'center' });
     
     // Ordenar produtos conforme hierarquia customizada
-    let produtosOrdenados: Array<{ id: string; nome: string; codigo: string; unidade: string }> = [];
+    let produtosOrdenados: Array<{ id: string; nome: string; codigo: string; unidade: string; quantidade: string }> = [];
     
     const hierarquia = lista.hierarquiaCustomizada as any;
     if (hierarquia?.ordem && Array.isArray(hierarquia.ordem)) {
@@ -737,7 +737,8 @@ export const ListasPage = () => {
               id: produto.id,
               nome: produto.nome,
               codigo: produto.codigo,
-              unidade: produto.unidadeMedida
+              unidade: produto.unidadeMedida,
+              quantidade: produto.quantidade || ''
             });
           }
         }
@@ -751,7 +752,8 @@ export const ListasPage = () => {
             id: produto.id,
             nome: produto.nome,
             codigo: produto.codigo,
-            unidade: produto.unidadeMedida
+            unidade: produto.unidadeMedida,
+            quantidade: produto.quantidade || ''
           });
         }
       });
@@ -762,12 +764,13 @@ export const ListasPage = () => {
       (index + 1).toString(),
       produto.codigo,
       produto.nome,
+      produto.quantidade,
       produto.unidade
     ]);
     
     autoTable(doc, {
       startY: 35,
-      head: [['#', 'Código', 'Produto', 'Unidade']],
+      head: [['#', 'Código', 'Produto', 'Quantidade', 'Unidade']],
       body: tableData,
       styles: {
         fontSize: 9,
@@ -782,7 +785,8 @@ export const ListasPage = () => {
         0: { cellWidth: 15, halign: 'center' },
         1: { cellWidth: 25 },
         2: { cellWidth: 'auto' },
-        3: { cellWidth: 25 }
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 }
       },
       alternateRowStyles: {
         fillColor: [245, 245, 245]
