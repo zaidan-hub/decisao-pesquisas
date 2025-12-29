@@ -9,7 +9,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Lista } from '@/types';
-import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, ArrowUp, ArrowDown, X, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { toast } from '@/hooks/use-toast';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -707,6 +709,101 @@ export const ListasPage = () => {
     });
   };
 
+  const handleExportarPDF = (lista: Lista) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Título
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(lista.nome, pageWidth / 2, 20, { align: 'center' });
+    
+    // Data de geração
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 28, { align: 'center' });
+    
+    // Ordenar produtos conforme hierarquia customizada
+    let produtosOrdenados: Array<{ id: string; nome: string; codigo: string; unidade: string }> = [];
+    
+    const hierarquia = lista.hierarquiaCustomizada as any;
+    if (hierarquia?.ordem && Array.isArray(hierarquia.ordem)) {
+      // Usar ordem customizada
+      hierarquia.ordem.forEach((item: { produtoId: string; tipo: string }) => {
+        if (item.tipo === 'produto') {
+          const produto = produtos.find(p => p.id === item.produtoId);
+          if (produto) {
+            produtosOrdenados.push({
+              id: produto.id,
+              nome: produto.nome,
+              codigo: produto.codigo,
+              unidade: produto.unidadeMedida
+            });
+          }
+        }
+      });
+    } else {
+      // Fallback: usar ordem do array de produtos
+      lista.produtos.forEach(produtoId => {
+        const produto = produtos.find(p => p.id === produtoId);
+        if (produto) {
+          produtosOrdenados.push({
+            id: produto.id,
+            nome: produto.nome,
+            codigo: produto.codigo,
+            unidade: produto.unidadeMedida
+          });
+        }
+      });
+    }
+    
+    // Criar tabela
+    const tableData = produtosOrdenados.map((produto, index) => [
+      (index + 1).toString(),
+      produto.codigo,
+      produto.nome,
+      produto.unidade
+    ]);
+    
+    autoTable(doc, {
+      startY: 35,
+      head: [['#', 'Código', 'Produto', 'Unidade']],
+      body: tableData,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      },
+      headStyles: {
+        fillColor: [59, 130, 246],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 'auto' },
+        3: { cellWidth: 25 }
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      }
+    });
+    
+    // Rodapé com total
+    const finalY = (doc as any).lastAutoTable.finalY || 35;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total de produtos: ${produtosOrdenados.length}`, 14, finalY + 10);
+    
+    // Salvar PDF
+    doc.save(`Lista_${lista.nome.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    
+    toast({
+      title: "PDF exportado",
+      description: `Lista "${lista.nome}" foi exportada com sucesso.`
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1277,6 +1374,14 @@ export const ListasPage = () => {
                   </div>
 
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleExportarPDF(lista)}
+                      title="Exportar PDF"
+                    >
+                      <FileDown className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
