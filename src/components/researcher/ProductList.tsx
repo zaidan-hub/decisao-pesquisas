@@ -72,14 +72,26 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       // Se houver hierarquia customizada, usar a ordem dela
       if (coleta.hierarquiaCustomizada && Object.keys(coleta.hierarquiaCustomizada).length > 0) {
         console.log('📋 Usando hierarquia customizada da lista');
-        // A hierarquia está no formato: { ordem: [...{ produtoId, parentId }...] }
         const hierarquia = coleta.hierarquiaCustomizada as any;
         if (hierarquia.ordem && Array.isArray(hierarquia.ordem)) {
-          const gruposIds = [...new Set(hierarquia.ordem.map((item: any) => {
-            // parentId é o subgrupo_id, precisa encontrar o grupo desse subgrupo
-            return item.grupoId;
-          }).filter(Boolean))] as string[];
-          setGruposComProdutos(gruposIds);
+          // parentId é o subgrupo_id — buscar grupo_id dos subgrupos
+          const subgrupoIds = [...new Set(hierarquia.ordem.map((item: any) => item.parentId).filter(Boolean))] as string[];
+          try {
+            const chunks = chunkArray(subgrupoIds, 100);
+            const promises = chunks.map(async (ids) => {
+              const { data, error } = await supabase
+                .from('subgrupos')
+                .select('grupo_id')
+                .in('id', ids);
+              if (error) throw error;
+              return data || [];
+            });
+            const results = await Promise.all(promises);
+            const gruposIds = [...new Set(results.flat().map(item => item.grupo_id))];
+            setGruposComProdutos(gruposIds);
+          } catch (error) {
+            console.error('Erro ao buscar grupos da hierarquia:', error);
+          }
           return;
         }
       }
