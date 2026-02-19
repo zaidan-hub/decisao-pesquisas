@@ -199,10 +199,30 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   }, [coleta.produtos, coleta.hierarquiaCustomizada, produtosCache, gruposCarregando]);
 
   // Mostrar apenas grupos que têm produtos nesta coleta
-  const gruposDaColeta = useMemo(() => 
-    grupos.filter(g => gruposComProdutos.includes(g.id)), 
-    [grupos, gruposComProdutos]
-  );
+  const gruposDaColeta = useMemo(() => {
+    const filtered = grupos.filter(g => gruposComProdutos.includes(g.id));
+    
+    // Ordenar grupos conforme hierarquia customizada
+    const hierarquia = coleta.hierarquiaCustomizada as any;
+    if (hierarquia?.ordem && Array.isArray(hierarquia.ordem)) {
+      // Extrair ordem dos grupos a partir da hierarquia
+      const grupoOrdem: Record<string, number> = {};
+      let idx = 0;
+      hierarquia.ordem.forEach((item: any) => {
+        if (item.tipo === 'grupo' && !grupoOrdem.hasOwnProperty(item.produtoId)) {
+          grupoOrdem[item.produtoId] = idx++;
+        }
+      });
+      
+      filtered.sort((a, b) => {
+        const ordemA = grupoOrdem[a.id] ?? 99999;
+        const ordemB = grupoOrdem[b.id] ?? 99999;
+        return ordemA - ordemB;
+      });
+    }
+    
+    return filtered;
+  }, [grupos, gruposComProdutos, coleta.hierarquiaCustomizada]);
 
 
   const handlePrecoChange = useCallback((produtoId: string, valor: string) => {
@@ -316,6 +336,35 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       }
       subgruposMap[subgrupoNome].push(produto);
     });
+    
+    // Ordenar subgrupos conforme hierarquia customizada
+    const hierarquia = coleta.hierarquiaCustomizada as any;
+    if (hierarquia?.ordem && Array.isArray(hierarquia.ordem)) {
+      const subgrupoOrdem: Record<string, number> = {};
+      let idx = 0;
+      hierarquia.ordem.forEach((item: any) => {
+        if (item.tipo === 'subgrupo' && !subgrupoOrdem.hasOwnProperty(item.produtoId)) {
+          subgrupoOrdem[item.produtoId] = idx++;
+        }
+      });
+      
+      // Criar mapa de nome -> id do subgrupo para ordenar
+      const nomeToId: Record<string, string> = {};
+      subgrupos.forEach(s => { nomeToId[s.nome] = s.id; });
+      
+      const entries = Object.entries(subgruposMap);
+      entries.sort((a, b) => {
+        const idA = nomeToId[a[0]] || '';
+        const idB = nomeToId[b[0]] || '';
+        const ordemA = subgrupoOrdem[idA] ?? 99999;
+        const ordemB = subgrupoOrdem[idB] ?? 99999;
+        return ordemA - ordemB;
+      });
+      
+      const ordered: { [key: string]: Produto[] } = {};
+      entries.forEach(([k, v]) => { ordered[k] = v; });
+      return ordered;
+    }
     
     return subgruposMap;
   };
