@@ -64,36 +64,45 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     delay: 2000
   });
 
+  // Mapa subgrupo -> grupo (para inferir ordem de grupos a partir da hierarquia)
+  const [subgrupoToGrupoMap, setSubgrupoToGrupoMap] = useState<Record<string, string>>({});
+
   // Buscar grupos que têm produtos nesta coleta
   useEffect(() => {
     const buscarGruposComProdutos = async () => {
       if (!coleta.produtos.length) return;
 
-      // Se houver hierarquia customizada, usar a ordem dela
-      if (coleta.hierarquiaCustomizada && Object.keys(coleta.hierarquiaCustomizada).length > 0) {
+      const hierarquia = coleta.hierarquiaCustomizada as any;
+      const temHierarquia = hierarquia?.ordem && Array.isArray(hierarquia.ordem) && hierarquia.ordem.length > 0;
+
+      if (temHierarquia) {
         console.log('📋 Usando hierarquia customizada da lista');
-        const hierarquia = coleta.hierarquiaCustomizada as any;
-        if (hierarquia.ordem && Array.isArray(hierarquia.ordem)) {
-          // parentId é o subgrupo_id — buscar grupo_id dos subgrupos
-          const subgrupoIds = [...new Set(hierarquia.ordem.map((item: any) => item.parentId).filter(Boolean))] as string[];
-          try {
-            const chunks = chunkArray(subgrupoIds, 100);
-            const promises = chunks.map(async (ids) => {
-              const { data, error } = await supabase
-                .from('subgrupos')
-                .select('grupo_id')
-                .in('id', ids);
-              if (error) throw error;
-              return data || [];
-            });
-            const results = await Promise.all(promises);
-            const gruposIds = [...new Set(results.flat().map(item => item.grupo_id))];
-            setGruposComProdutos(gruposIds);
-          } catch (error) {
-            console.error('Erro ao buscar grupos da hierarquia:', error);
-          }
-          return;
+        // parentId é o subgrupo_id — buscar grupo_id dos subgrupos
+        const subgrupoIds = [...new Set(hierarquia.ordem.map((item: any) => item.parentId).filter(Boolean))] as string[];
+        try {
+          const chunks = chunkArray(subgrupoIds, 100);
+          const promises = chunks.map(async (ids) => {
+            const { data, error } = await supabase
+              .from('subgrupos')
+              .select('id, grupo_id')
+              .in('id', ids);
+            if (error) throw error;
+            return data || [];
+          });
+          const results = await Promise.all(promises);
+          const allSubgrupos = results.flat();
+          
+          // Construir mapa subgrupo -> grupo
+          const sgMap: Record<string, string> = {};
+          allSubgrupos.forEach(s => { sgMap[s.id] = s.grupo_id; });
+          setSubgrupoToGrupoMap(sgMap);
+          
+          const gruposIds = [...new Set(allSubgrupos.map(item => item.grupo_id))];
+          setGruposComProdutos(gruposIds);
+        } catch (error) {
+          console.error('Erro ao buscar grupos da hierarquia:', error);
         }
+        return;
       }
 
       try {
@@ -203,14 +212,18 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     const filtered = grupos.filter(g => gruposComProdutos.includes(g.id));
     
     // Ordenar grupos conforme hierarquia customizada
+    // A hierarquia só tem tipo='produto' com parentId=subgrupo_id
+    // Inferir ordem dos grupos pela primeira aparição de cada grupo na lista
     const hierarquia = coleta.hierarquiaCustomizada as any;
-    if (hierarquia?.ordem && Array.isArray(hierarquia.ordem)) {
-      // Extrair ordem dos grupos a partir da hierarquia
+    if (hierarquia?.ordem && Array.isArray(hierarquia.ordem) && Object.keys(subgrupoToGrupoMap).length > 0) {
       const grupoOrdem: Record<string, number> = {};
       let idx = 0;
       hierarquia.ordem.forEach((item: any) => {
-        if (item.tipo === 'grupo' && !grupoOrdem.hasOwnProperty(item.produtoId)) {
-          grupoOrdem[item.produtoId] = idx++;
+        if (item.tipo === 'produto' && item.parentId) {
+          const grupoId = subgrupoToGrupoMap[item.parentId];
+          if (grupoId && !grupoOrdem.hasOwnProperty(grupoId)) {
+            grupoOrdem[grupoId] = idx++;
+          }
         }
       });
       
@@ -222,7 +235,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     }
     
     return filtered;
-  }, [grupos, gruposComProdutos, coleta.hierarquiaCustomizada]);
+  }, [grupos, gruposComProdutos, coleta.hierarquiaCustomizada, subgrupoToGrupoMap]);
 
 
   const handlePrecoChange = useCallback((produtoId: string, valor: string) => {
@@ -338,13 +351,14 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     });
     
     // Ordenar subgrupos conforme hierarquia customizada
+    // Inferir ordem dos subgrupos pela primeira aparição de cada parentId na hierarquia
     const hierarquia = coleta.hierarquiaCustomizada as any;
     if (hierarquia?.ordem && Array.isArray(hierarquia.ordem)) {
       const subgrupoOrdem: Record<string, number> = {};
       let idx = 0;
       hierarquia.ordem.forEach((item: any) => {
-        if (item.tipo === 'subgrupo' && !subgrupoOrdem.hasOwnProperty(item.produtoId)) {
-          subgrupoOrdem[item.produtoId] = idx++;
+        if (item.tipo === 'produto' && item.parentId && !subgrupoOrdem.hasOwnProperty(item.parentId)) {
+          subgrupoOrdem[item.parentId] = idx++;
         }
       });
       
