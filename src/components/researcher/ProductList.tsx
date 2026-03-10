@@ -31,6 +31,7 @@ interface ProductListProps {
 
 export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinalizarColeta, onOpenConfirmDialog }: ProductListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(coleta.precos || {});
   const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
   const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>(coleta.fotos || {});
@@ -383,6 +384,21 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     return subgruposMap;
   };
 
+  // Auto-expand groups when products load during search
+  useEffect(() => {
+    if (!searchTerm) return;
+    const matchingGroups = gruposDaColeta
+      .filter(g => {
+        const prods = produtosPorGrupo[g.id] || [];
+        return prods.some(p =>
+          p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      })
+      .map(g => g.id);
+    setOpenGroups(matchingGroups);
+  }, [produtosPorGrupo, searchTerm, gruposDaColeta]);
+
   const totalPreenchidos = Object.keys(precos).filter(id => precos[id] > 0).length;
   const totalProdutos = coleta.produtos.length;
 
@@ -433,6 +449,19 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
             // Auto-load all groups when searching
             if (term.length > 0) {
               gruposDaColeta.forEach(g => carregarProdutosGrupo(g.id));
+              // Auto-expand groups that have matching products
+              const matchingGroups = gruposDaColeta
+                .filter(g => {
+                  const prods = produtosPorGrupo[g.id] || [];
+                  return prods.some(p =>
+                    p.nome.toLowerCase().includes(term.toLowerCase()) ||
+                    p.codigo.toLowerCase().includes(term.toLowerCase())
+                  );
+                })
+                .map(g => g.id);
+              setOpenGroups(matchingGroups);
+            } else {
+              setOpenGroups([]);
             }
           }}
           className="pl-10"
@@ -440,7 +469,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       </div>
 
       {/* Products by Group - Accordion */}
-      <Accordion type="multiple" className="space-y-4">
+      <Accordion type="multiple" value={openGroups} onValueChange={setOpenGroups} className="space-y-4">
         {gruposDaColeta.map((grupo) => {
           const produtosGrupo = produtosPorGrupo[grupo.id] || [];
           const produtosFiltrados = searchTerm
