@@ -452,6 +452,9 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
           const subgruposAgrupados = agruparPorSubgrupo(produtosFiltrados);
           const isCarregando = gruposCarregando[grupo.id];
           
+          // Hide groups with no matching products when searching
+          if (searchTerm && produtosFiltrados.length === 0 && !isCarregando) return null;
+          
           return (
             <AccordionItem key={grupo.id} value={grupo.id} className="border rounded-lg">
               <AccordionTrigger
