@@ -470,45 +470,45 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                         </h4>
                         <div className="space-y-3">
                           {produtos.map((produto) => (
-                            <div key={produto.id} className="border rounded-lg p-3">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-sm">{produto.nome}</h5>
+                            <div key={produto.id} className="border rounded-lg p-2">
+                              <div className="flex items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="font-medium text-xs leading-tight break-words">{produto.nome}</h5>
                                   {produto.maisBarato && (
-                                    <span className="text-xs text-blue-600 font-semibold">+ Barato</span>
+                                    <span className="text-[10px] text-blue-600 font-semibold">+ Barato</span>
                                   )}
                                 </div>
                                 
-                                <div className="w-24">
-                                  <Input
-                                    id={`preco-${produto.id}`}
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="0,00"
-                                    value={precos[produto.id] || ''}
-                                    onChange={(e) => handlePrecoChange(produto.id, e.target.value)}
-                                    className="text-center"
-                                  />
-                                </div>
-                                
-                                <div className="flex gap-2">
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <div className="w-20">
+                                    <Input
+                                      id={`preco-${produto.id}`}
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      placeholder="0,00"
+                                      value={precos[produto.id] || ''}
+                                      onChange={(e) => handlePrecoChange(produto.id, e.target.value)}
+                                      className="text-center text-xs h-8 px-1"
+                                    />
+                                  </div>
+                                  
                                   <Button
                                     variant="outline"
-                                    size="sm"
+                                    size="icon"
+                                    className={`h-8 w-8 shrink-0 ${fotos[produto.id] && fotos[produto.id].length > 0 ? 'bg-blue-50 border-blue-200' : ''}`}
                                     onClick={() => handleFotoCapture(produto.id)}
-                                    className={fotos[produto.id] && fotos[produto.id].length > 0 ? 'bg-blue-50 border-blue-200' : ''}
                                   >
-                                    <Camera className="w-4 h-4" />
+                                    <Camera className="w-3.5 h-3.5" />
                                   </Button>
                                   
                                   <Button
                                     variant="outline"
-                                    size="sm"
+                                    size="icon"
+                                    className={`h-8 w-8 shrink-0 ${observacoes[produto.id] ? 'bg-yellow-50 border-yellow-200' : ''}`}
                                     onClick={() => openObservationDialog(produto.id)}
-                                    className={observacoes[produto.id] ? 'bg-yellow-50 border-yellow-200' : ''}
                                   >
-                                    <MessageSquare className="w-4 h-4" />
+                                    <MessageSquare className="w-3.5 h-3.5" />
                                   </Button>
                                 </div>
                               </div>
