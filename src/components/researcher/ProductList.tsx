@@ -434,6 +434,19 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
             // Auto-load all groups when searching
             if (term.length > 0) {
               gruposDaColeta.forEach(g => carregarProdutosGrupo(g.id));
+              // Auto-expand groups that have matching products
+              const matchingGroups = gruposDaColeta
+                .filter(g => {
+                  const prods = produtosPorGrupo[g.id] || [];
+                  return prods.some(p =>
+                    p.nome.toLowerCase().includes(term.toLowerCase()) ||
+                    p.codigo.toLowerCase().includes(term.toLowerCase())
+                  );
+                })
+                .map(g => g.id);
+              setOpenGroups(matchingGroups);
+            } else {
+              setOpenGroups([]);
             }
           }}
           className="pl-10"
@@ -441,7 +454,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
       </div>
 
       {/* Products by Group - Accordion */}
-      <Accordion type="multiple" className="space-y-4">
+      <Accordion type="multiple" value={openGroups} onValueChange={setOpenGroups} className="space-y-4">
         {gruposDaColeta.map((grupo) => {
           const produtosGrupo = produtosPorGrupo[grupo.id] || [];
           const produtosFiltrados = searchTerm
