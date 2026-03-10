@@ -384,6 +384,21 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
     return subgruposMap;
   };
 
+  // Auto-expand groups when products load during search
+  useEffect(() => {
+    if (!searchTerm) return;
+    const matchingGroups = gruposDaColeta
+      .filter(g => {
+        const prods = produtosPorGrupo[g.id] || [];
+        return prods.some(p =>
+          p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      })
+      .map(g => g.id);
+    setOpenGroups(matchingGroups);
+  }, [produtosPorGrupo, searchTerm, gruposDaColeta]);
+
   const totalPreenchidos = Object.keys(precos).filter(id => precos[id] > 0).length;
   const totalProdutos = coleta.produtos.length;
 
