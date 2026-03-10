@@ -427,7 +427,14 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
         <Input
           placeholder="Buscar produto..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            const term = e.target.value;
+            setSearchTerm(term);
+            // Auto-load all groups when searching
+            if (term.length > 0) {
+              gruposDaColeta.forEach(g => carregarProdutosGrupo(g.id));
+            }
+          }}
           className="pl-10"
         />
       </div>
