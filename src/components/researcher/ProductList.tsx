@@ -31,6 +31,7 @@ interface ProductListProps {
 
 export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinalizarColeta, onOpenConfirmDialog }: ProductListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(coleta.precos || {});
   const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
   const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>(coleta.fotos || {});
