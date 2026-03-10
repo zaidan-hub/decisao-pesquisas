@@ -512,7 +512,12 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                             <div key={produto.id} className="border rounded-lg p-2">
                               <div className="flex items-start gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-xs leading-tight break-words">{produto.nome}</h5>
+                                  <h5 className="font-medium text-xs leading-tight break-words">
+                                    {produto.nome}
+                                    {(produto.quantidade || produto.unidadeMedida) && (
+                                      <span className="text-muted-foreground font-normal"> {produto.quantidade}{produto.unidadeMedida}</span>
+                                    )}
+                                  </h5>
                                   {produto.maisBarato && (
                                     <span className="text-[10px] text-blue-600 font-semibold">+ Barato</span>
                                   )}
