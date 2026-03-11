@@ -115,6 +115,41 @@ export type Database = {
           },
         ]
       }
+      compradores: {
+        Row: {
+          created_at: string
+          hierarquia_customizada: Json | null
+          id: string
+          nome: string
+          produtos: string[]
+          supermercado_id: string
+        }
+        Insert: {
+          created_at?: string
+          hierarquia_customizada?: Json | null
+          id?: string
+          nome: string
+          produtos?: string[]
+          supermercado_id: string
+        }
+        Update: {
+          created_at?: string
+          hierarquia_customizada?: Json | null
+          id?: string
+          nome?: string
+          produtos?: string[]
+          supermercado_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compradores_supermercado_id_fkey"
+            columns: ["supermercado_id"]
+            isOneToOne: false
+            referencedRelation: "supermercados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departamentos: {
         Row: {
           codigo: string
