@@ -1027,42 +1027,40 @@ export const generateComparadoresPDF = (
   const outrasColetas = Array.from(coletasPorSupermercado.values())
     .filter(c => c.coleta.supermercadoId !== supermercadoReferenciaId);
 
-  let isFirstPage = true;
+  // Cabeçalho geral (uma vez)
+  doc.setFontSize(14);
+  doc.text('COMPARATIVO POR COMPRADOR', pageWidth / 2, 15, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text(data.nomeCliente, pageWidth / 2, 22, { align: 'center' });
 
+  let yPos = 30;
+  doc.setFontSize(9);
+
+  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
+  const todasDataIguais = datas.every(d => d === datas[0]);
+  if (todasDataIguais && datas.length > 0) {
+    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
+    yPos += 5;
+  }
+  doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
+  yPos += 10;
+
+  // Cada comprador em sequência
   compradoresOrdenados.forEach((comprador) => {
-    if (!isFirstPage) {
-      doc.addPage();
-    }
-    isFirstPage = false;
+    // Checar se precisa de nova página (nome + tabelas precisam de ~80px mínimo)
+    if (yPos > 220) { doc.addPage(); yPos = 20; }
 
-    // Cabeçalho
-    doc.setFontSize(14);
-    doc.text('COMPARATIVO POR COMPRADOR', pageWidth / 2, 15, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(data.nomeCliente, pageWidth / 2, 22, { align: 'center' });
+    // Nome do comprador
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Comprador: ${comprador.nome}`, pageWidth / 2, 30, { align: 'center' });
+    doc.text(`${comprador.nome} (${comprador.produtos.length} produtos)`, 14, yPos);
     doc.setFont('helvetica', 'normal');
+    yPos += 7;
 
-    let yPos = 38;
-    doc.setFontSize(9);
-
-    const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-    const todasDataIguais = datas.every(d => d === datas[0]);
-    if (todasDataIguais && datas.length > 0) {
-      doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-      yPos += 5;
-    }
-    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-    doc.text(`Produtos do comprador: ${comprador.produtos.length}`, 14, yPos + 5);
-    yPos += 15;
-
-    // Filter products to only those in this buyer's list
     const produtosComprador = data.produtos.filter(p => comprador.produtos.includes(p.id));
 
     // ===== TABELA FÍSICO =====
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('FÍSICO', 14, yPos);
     yPos += 5;
@@ -1122,11 +1120,11 @@ export const generateComparadoresPDF = (
       columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
     });
 
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 8;
 
     // ===== TABELA FINANCEIRO =====
     if (yPos > 240) { doc.addPage(); yPos = 20; }
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('FINANCEIRO', 14, yPos);
     yPos += 5;
@@ -1179,6 +1177,8 @@ export const generateComparadoresPDF = (
       headStyles: { fillColor: [66, 66, 66], halign: 'center' },
       columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
     });
+
+    yPos = (doc as any).lastAutoTable.finalY + 15;
   });
 
   doc.save(`${data.nomeCliente}_compradores.pdf`);
