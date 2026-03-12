@@ -36,6 +36,24 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
   const [deleteComprador, setDeleteComprador] = useState<Comprador | null>(null);
 
   const { compradores, loading: loadingCompradores, refetch: refetchCompradores } = useCompradores(supermercado.id);
+  const { produtos } = useProdutos();
+  const { grupos } = useGrupos();
+  const { subgrupos } = useSubgrupos();
+  const { departamentos } = useDepartamentos();
+
+  const handleExportCompradorPDF = useCallback((comprador: Comprador) => {
+    const produtosComprador = produtos.filter(p => comprador.produtos.includes(p.id));
+    generateCompradorListaPDF(
+      comprador.nome,
+      supermercado.nome,
+      produtosComprador,
+      grupos,
+      subgrupos,
+      departamentos,
+      comprador.hierarquia_customizada
+    );
+    toast({ title: "Sucesso", description: `PDF da lista de ${comprador.nome} gerado!` });
+  }, [produtos, grupos, subgrupos, departamentos, supermercado.nome]);
 
   const hasChanges = formData.nome !== originalData.nome ||
     formData.endereco !== originalData.endereco ||
