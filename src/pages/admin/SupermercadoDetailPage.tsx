@@ -5,11 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Supermercado } from '@/types';
-import { ArrowLeft, Trash2, Plus, ShoppingCart, User } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, ShoppingCart, User, FileDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompradores, Comprador } from '@/hooks/useCompradores';
+import { useProdutos } from '@/hooks/useProdutos';
+import { useGrupos } from '@/hooks/useGrupos';
+import { useSubgrupos } from '@/hooks/useSubgrupos';
+import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { CompradorFormModal } from '@/components/admin/CompradorFormModal';
+import { generateCompradorListaPDF } from '@/lib/reportGenerator';
 
 interface SupermercadoDetailPageProps {
   supermercado: Supermercado;
@@ -31,6 +36,24 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
   const [deleteComprador, setDeleteComprador] = useState<Comprador | null>(null);
 
   const { compradores, loading: loadingCompradores, refetch: refetchCompradores } = useCompradores(supermercado.id);
+  const { produtos } = useProdutos();
+  const { grupos } = useGrupos();
+  const { subgrupos } = useSubgrupos();
+  const { departamentos } = useDepartamentos();
+
+  const handleExportCompradorPDF = useCallback((comprador: Comprador) => {
+    const produtosComprador = produtos.filter(p => comprador.produtos.includes(p.id));
+    generateCompradorListaPDF(
+      comprador.nome,
+      supermercado.nome,
+      produtosComprador,
+      grupos,
+      subgrupos,
+      departamentos,
+      comprador.hierarquia_customizada
+    );
+    toast({ title: "Sucesso", description: `PDF da lista de ${comprador.nome} gerado!` });
+  }, [produtos, grupos, subgrupos, departamentos, supermercado.nome]);
 
   const hasChanges = formData.nome !== originalData.nome ||
     formData.endereco !== originalData.endereco ||
@@ -192,6 +215,14 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleExportCompradorPDF(comprador)}
+                          title="Exportar lista em PDF"
+                        >
+                          <FileDown className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

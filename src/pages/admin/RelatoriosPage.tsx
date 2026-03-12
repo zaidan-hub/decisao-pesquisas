@@ -19,7 +19,8 @@ import { useListas } from '@/hooks/useListas';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
-import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateEstatisticasPDF } from '@/lib/reportGenerator';
+import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateEstatisticasPDF, generateComparadoresPDF } from '@/lib/reportGenerator';
+import { supabase } from '@/integrations/supabase/client';
 
 // Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
@@ -54,6 +55,12 @@ export const RelatoriosPage = () => {
   const [showEstatisticasDialog, setShowEstatisticasDialog] = useState(false);
   const [relatorioEstatisticas, setRelatorioEstatisticas] = useState<Relatorio | null>(null);
   const [percentualMinimo, setPercentualMinimo] = useState('');
+
+  // Estados para compradores
+  const [showCompradoresDialog, setShowCompradoresDialog] = useState(false);
+  const [relatorioCompradores, setRelatorioCompradores] = useState<Relatorio | null>(null);
+  const [supermercadoRefCompradores, setSupermercadoRefCompradores] = useState('');
+  const [loadingCompradores, setLoadingCompradores] = useState(false);
 
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
@@ -281,6 +288,62 @@ export const RelatoriosPage = () => {
     });
   }, [relatorioComparativo, supermercadoRefSelecionado, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
+  const handleOpenCompradores = useCallback((relatorio: Relatorio) => {
+    setRelatorioCompradores(relatorio);
+    setSupermercadoRefCompradores('');
+    setShowCompradoresDialog(true);
+  }, []);
+
+  const handleExportCompradores = useCallback(async () => {
+    if (!relatorioCompradores || !supermercadoRefCompradores) {
+      toast({ title: "Erro", description: "Selecione um supermercado de referência", variant: "destructive" });
+      return;
+    }
+
+    setLoadingCompradores(true);
+    try {
+      // Fetch compradores for selected supermarket
+      const { data: compradoresData, error } = await supabase
+        .from('compradores' as any)
+        .select('*')
+        .eq('supermercado_id', supermercadoRefCompradores)
+        .order('nome') as any;
+
+      if (error) throw error;
+
+      if (!compradoresData || compradoresData.length === 0) {
+        toast({ title: "Erro", description: "Nenhum comprador cadastrado para este supermercado", variant: "destructive" });
+        return;
+      }
+
+      const produtosRelatorio = produtos.filter(p => relatorioCompradores.produtos.includes(p.id));
+      const coletasRelatorio = coletas.filter(c => relatorioCompradores.coletas.includes(c.id));
+
+      generateComparadoresPDF(
+        {
+          nome: relatorioCompradores.nome,
+          nomeCliente: relatorioCompradores.nome_cliente,
+          data: relatorioCompradores.data,
+          produtos: produtosRelatorio,
+          coletas: coletasRelatorio,
+          supermercados,
+          grupos,
+          subgrupos,
+          departamentos
+        },
+        supermercadoRefCompradores,
+        compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }))
+      );
+
+      setShowCompradoresDialog(false);
+      toast({ title: "Sucesso", description: "Relatório de compradores gerado com sucesso!" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Erro ao gerar relatório", variant: "destructive" });
+    } finally {
+      setLoadingCompradores(false);
+    }
+  }, [relatorioCompradores, supermercadoRefCompradores, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -463,6 +526,15 @@ export const RelatoriosPage = () => {
                       Estatísticas
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenCompradores(rel)}
+                      title="Comparativo por Compradores"
+                    >
+                      <FileDown className="w-4 h-4 mr-1" />
+                      Compradores
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeletingId(rel.id)}
@@ -581,6 +653,52 @@ export const RelatoriosPage = () => {
               <Button onClick={handleExportEstatisticas} disabled={!percentualMinimo}>
                 <FileDown className="w-4 h-4 mr-2" />
                 Gerar PDF
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Compradores Dialog */}
+      <Dialog open={showCompradoresDialog} onOpenChange={setShowCompradoresDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Comparativo por Compradores</DialogTitle>
+            <DialogDescription>
+              Selecione o supermercado de referência. O sistema usará as listas dos compradores cadastrados para gerar o comparativo.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Supermercado de Referência *</Label>
+              <Select value={supermercadoRefCompradores} onValueChange={setSupermercadoRefCompradores}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um supermercado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {relatorioCompradores && coletas
+                    .filter(c => relatorioCompradores.coletas.includes(c.id))
+                    .map(coleta => {
+                      const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
+                      return supermercado ? (
+                        <SelectItem key={supermercado.id} value={supermercado.id}>
+                          {supermercado.nome}
+                        </SelectItem>
+                      ) : null;
+                    })
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCompradoresDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleExportCompradores} disabled={!supermercadoRefCompradores || loadingCompradores}>
+                <FileDown className="w-4 h-4 mr-2" />
+                {loadingCompradores ? 'Gerando...' : 'Gerar PDF'}
               </Button>
             </div>
           </div>
