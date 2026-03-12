@@ -19,7 +19,8 @@ import { useListas } from '@/hooks/useListas';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
-import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateEstatisticasPDF } from '@/lib/reportGenerator';
+import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateEstatisticasPDF, generateComparadoresPDF } from '@/lib/reportGenerator';
+import { supabase } from '@/integrations/supabase/client';
 
 // Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
