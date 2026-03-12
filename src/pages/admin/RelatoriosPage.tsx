@@ -526,6 +526,15 @@ export const RelatoriosPage = () => {
                       Estatísticas
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenCompradores(rel)}
+                      title="Comparativo por Compradores"
+                    >
+                      <FileDown className="w-4 h-4 mr-1" />
+                      Compradores
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeletingId(rel.id)}
