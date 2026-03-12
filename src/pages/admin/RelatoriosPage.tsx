@@ -288,6 +288,62 @@ export const RelatoriosPage = () => {
     });
   }, [relatorioComparativo, supermercadoRefSelecionado, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
+  const handleOpenCompradores = useCallback((relatorio: Relatorio) => {
+    setRelatorioCompradores(relatorio);
+    setSupermercadoRefCompradores('');
+    setShowCompradoresDialog(true);
+  }, []);
+
+  const handleExportCompradores = useCallback(async () => {
+    if (!relatorioCompradores || !supermercadoRefCompradores) {
+      toast({ title: "Erro", description: "Selecione um supermercado de referência", variant: "destructive" });
+      return;
+    }
+
+    setLoadingCompradores(true);
+    try {
+      // Fetch compradores for selected supermarket
+      const { data: compradoresData, error } = await supabase
+        .from('compradores' as any)
+        .select('*')
+        .eq('supermercado_id', supermercadoRefCompradores)
+        .order('nome') as any;
+
+      if (error) throw error;
+
+      if (!compradoresData || compradoresData.length === 0) {
+        toast({ title: "Erro", description: "Nenhum comprador cadastrado para este supermercado", variant: "destructive" });
+        return;
+      }
+
+      const produtosRelatorio = produtos.filter(p => relatorioCompradores.produtos.includes(p.id));
+      const coletasRelatorio = coletas.filter(c => relatorioCompradores.coletas.includes(c.id));
+
+      generateComparadoresPDF(
+        {
+          nome: relatorioCompradores.nome,
+          nomeCliente: relatorioCompradores.nome_cliente,
+          data: relatorioCompradores.data,
+          produtos: produtosRelatorio,
+          coletas: coletasRelatorio,
+          supermercados,
+          grupos,
+          subgrupos,
+          departamentos
+        },
+        supermercadoRefCompradores,
+        compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }))
+      );
+
+      setShowCompradoresDialog(false);
+      toast({ title: "Sucesso", description: "Relatório de compradores gerado com sucesso!" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Erro ao gerar relatório", variant: "destructive" });
+    } finally {
+      setLoadingCompradores(false);
+    }
+  }, [relatorioCompradores, supermercadoRefCompradores, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
