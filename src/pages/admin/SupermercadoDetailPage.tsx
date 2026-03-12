@@ -5,11 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Supermercado } from '@/types';
-import { ArrowLeft, Trash2, Plus, ShoppingCart, User } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, ShoppingCart, User, FileDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompradores, Comprador } from '@/hooks/useCompradores';
+import { useProdutos } from '@/hooks/useProdutos';
+import { useGrupos } from '@/hooks/useGrupos';
+import { useSubgrupos } from '@/hooks/useSubgrupos';
+import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { CompradorFormModal } from '@/components/admin/CompradorFormModal';
+import { generateCompradorListaPDF } from '@/lib/reportGenerator';
 
 interface SupermercadoDetailPageProps {
   supermercado: Supermercado;
