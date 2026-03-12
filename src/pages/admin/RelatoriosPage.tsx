@@ -56,6 +56,12 @@ export const RelatoriosPage = () => {
   const [relatorioEstatisticas, setRelatorioEstatisticas] = useState<Relatorio | null>(null);
   const [percentualMinimo, setPercentualMinimo] = useState('');
 
+  // Estados para compradores
+  const [showCompradoresDialog, setShowCompradoresDialog] = useState(false);
+  const [relatorioCompradores, setRelatorioCompradores] = useState<Relatorio | null>(null);
+  const [supermercadoRefCompradores, setSupermercadoRefCompradores] = useState('');
+  const [loadingCompradores, setLoadingCompradores] = useState(false);
+
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
