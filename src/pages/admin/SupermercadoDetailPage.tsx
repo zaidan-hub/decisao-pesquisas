@@ -218,6 +218,14 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleExportCompradorPDF(comprador)}
+                          title="Exportar lista em PDF"
+                        >
+                          <FileDown className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => { setEditingComprador(comprador); setShowCompradorModal(true); }}
                         >
                           Editar
