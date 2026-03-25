@@ -316,9 +316,26 @@ export const ListasPage = () => {
     setSelectedItems(new Set());
   };
 
-  const handleMoverItem = (index: number, direcao: 'up' | 'down') => {
+  const handleMoverItem = (index: number, direcao: 'up' | 'down', indicesSubgrupo?: number[]) => {
     const newItems = [...visualizacaoItems];
-    
+
+    if (indicesSubgrupo && indicesSubgrupo.length > 0) {
+      const posicaoNoSubgrupo = indicesSubgrupo.indexOf(index);
+      if (posicaoNoSubgrupo === -1) return;
+
+      if (direcao === 'up' && posicaoNoSubgrupo > 0) {
+        const targetIndex = indicesSubgrupo[posicaoNoSubgrupo - 1];
+        [newItems[index], newItems[targetIndex]] = [newItems[targetIndex], newItems[index]];
+        setVisualizacaoItems(newItems);
+      } else if (direcao === 'down' && posicaoNoSubgrupo < indicesSubgrupo.length - 1) {
+        const targetIndex = indicesSubgrupo[posicaoNoSubgrupo + 1];
+        [newItems[index], newItems[targetIndex]] = [newItems[targetIndex], newItems[index]];
+        setVisualizacaoItems(newItems);
+      }
+
+      return;
+    }
+
     if (direcao === 'up' && index > 0) {
       [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
       setVisualizacaoItems(newItems);
@@ -1246,9 +1263,10 @@ export const ListasPage = () => {
                                                       <div className="p-2 space-y-1">
                                                         {indices.map(index => {
                                                           const item = visualizacaoItems[index];
-                                                          const canMoveUp = index > 0;
-                                                          const canMoveDown = index < visualizacaoItems.length - 1;
-                                                          
+                                                          const posicaoNoSubgrupo = indices.indexOf(index);
+                                                          const canMoveUp = posicaoNoSubgrupo > 0;
+                                                          const canMoveDown = posicaoNoSubgrupo < indices.length - 1;
+                                                           
                                                           return (
                                                             <div key={`${item.id}-${index}`} className="flex items-center gap-2 p-2 border rounded bg-background">
                                                               <span className="flex-1 text-sm" title={item.nome}>{item.nome}</span>
@@ -1257,7 +1275,7 @@ export const ListasPage = () => {
                                                                   type="button"
                                                                   variant="ghost"
                                                                   size="sm"
-                                                                  onClick={() => handleMoverItem(index, 'up')}
+                                                                  onClick={() => handleMoverItem(index, 'up', indices)}
                                                                   disabled={!canMoveUp}
                                                                 >
                                                                   <ArrowUp className="w-3 h-3" />
@@ -1266,7 +1284,7 @@ export const ListasPage = () => {
                                                                   type="button"
                                                                   variant="ghost"
                                                                   size="sm"
-                                                                  onClick={() => handleMoverItem(index, 'down')}
+                                                                  onClick={() => handleMoverItem(index, 'down', indices)}
                                                                   disabled={!canMoveDown}
                                                                 >
                                                                   <ArrowDown className="w-3 h-3" />
