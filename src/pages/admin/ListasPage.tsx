@@ -1246,8 +1246,8 @@ export const ListasPage = () => {
                                                       <div className="p-2 space-y-1">
                                                         {indices.map(index => {
                                                           const item = visualizacaoItems[index];
-                                                          const canMoveUp = index > 0 && visualizacaoItems[index - 1].parentId === item.parentId;
-                                                          const canMoveDown = index < visualizacaoItems.length - 1 && visualizacaoItems[index + 1].parentId === item.parentId;
+                                                          const canMoveUp = index > 0;
+                                                          const canMoveDown = index < visualizacaoItems.length - 1;
                                                           
                                                           return (
                                                             <div key={`${item.id}-${index}`} className="flex items-center gap-2 p-2 border rounded bg-background">
