@@ -48,6 +48,7 @@ export const ListasPage = () => {
   const [expandedVisualizacaoGrupos, setExpandedVisualizacaoGrupos] = useState<Set<string>>(new Set());
   const [expandedVisualizacaoSubgrupos, setExpandedVisualizacaoSubgrupos] = useState<Set<string>>(new Set());
   const [deleteCategory, setDeleteCategory] = useState<{ tipo: 'departamento' | 'grupo' | 'subgrupo'; id: string; nome: string } | null>(null);
+  const [vizSearchTerm, setVizSearchTerm] = useState('');
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -999,7 +1000,16 @@ export const ListasPage = () => {
                 {/* Visualização do Pesquisador */}
                 <div className="space-y-4">
                   <Label>Visualização do Pesquisador</Label>
-                  <ScrollArea className="border rounded-md h-[500px] p-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar na lista..."
+                      value={vizSearchTerm}
+                      onChange={(e) => setVizSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <ScrollArea className="border rounded-md h-[460px] p-4">
                     {visualizacaoItems.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
                         Nenhum produto adicionado
@@ -1012,6 +1022,14 @@ export const ListasPage = () => {
                           visualizacaoItems.forEach((item, index) => {
                             const produto = produtos.find(p => p.id === item.id);
                             if (!produto) return;
+                            
+                            // Filtrar por termo de busca
+                            if (vizSearchTerm) {
+                              const term = vizSearchTerm.toLowerCase();
+                              const matchNome = produto.nome.toLowerCase().includes(term);
+                              const matchCodigo = produto.codigo.toLowerCase().includes(term);
+                              if (!matchNome && !matchCodigo) return;
+                            }
                             
                             const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
                             const grupo = grupos.find(g => g.id === produto.grupoId);
