@@ -1023,6 +1023,14 @@ export const ListasPage = () => {
                             const produto = produtos.find(p => p.id === item.id);
                             if (!produto) return;
                             
+                            // Filtrar por termo de busca
+                            if (vizSearchTerm) {
+                              const term = vizSearchTerm.toLowerCase();
+                              const matchNome = produto.nome.toLowerCase().includes(term);
+                              const matchCodigo = produto.codigo.toLowerCase().includes(term);
+                              if (!matchNome && !matchCodigo) return;
+                            }
+                            
                             const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
                             const grupo = grupos.find(g => g.id === produto.grupoId);
                             const dept = departamentos.find(d => d.id === grupo?.departamentoId);
