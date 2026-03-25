@@ -318,20 +318,13 @@ export const ListasPage = () => {
 
   const handleMoverItem = (index: number, direcao: 'up' | 'down') => {
     const newItems = [...visualizacaoItems];
-    const item = newItems[index];
     
     if (direcao === 'up' && index > 0) {
-      const prevItem = newItems[index - 1];
-      if (item.parentId === prevItem.parentId) {
-        [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
-        setVisualizacaoItems(newItems);
-      }
+      [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+      setVisualizacaoItems(newItems);
     } else if (direcao === 'down' && index < newItems.length - 1) {
-      const nextItem = newItems[index + 1];
-      if (item.parentId === nextItem.parentId) {
-        [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-        setVisualizacaoItems(newItems);
-      }
+      [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+      setVisualizacaoItems(newItems);
     }
   };
 
