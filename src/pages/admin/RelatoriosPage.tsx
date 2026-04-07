@@ -328,7 +328,9 @@ export const RelatoriosPage = () => {
         return;
       }
 
-      const produtosRelatorio = produtos.filter(p => relatorioCompradores.produtos.includes(p.id));
+      const produtosRelatorio = relatorioCompradores.produtos
+        .map(id => produtos.find(p => p.id === id))
+        .filter((p): p is typeof produtos[0] => !!p);
       const coletasRelatorio = coletas.filter(c => relatorioCompradores.coletas.includes(c.id));
 
       generateComparadoresPDF(
