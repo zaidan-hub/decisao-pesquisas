@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, FileText, Trash2, FileDown } from 'lucide-react';
+import { Plus, FileText, Trash2, FileDown, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useGrupos } from '@/hooks/useGrupos';
