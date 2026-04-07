@@ -421,7 +421,7 @@ export const generateProdutosNaoEncontradosPDF = (data: RelatorioData) => {
   });
   
   // Ordenar e criar linhas da tabela
-  const sortedDepartamentos = Array.from(hierarchy.keys()).sort();
+  const sortedDepartamentos = Array.from(hierarchy.keys());
   
   sortedDepartamentos.forEach(depNome => {
     tableData.push([{
@@ -431,7 +431,7 @@ export const generateProdutosNaoEncontradosPDF = (data: RelatorioData) => {
     }]);
     
     const grupoMap = hierarchy.get(depNome)!;
-    const sortedGrupos = Array.from(grupoMap.keys()).sort();
+    const sortedGrupos = Array.from(grupoMap.keys());
     
     sortedGrupos.forEach(grupoNome => {
       tableData.push([{
@@ -441,7 +441,7 @@ export const generateProdutosNaoEncontradosPDF = (data: RelatorioData) => {
       }]);
       
       const subgrupoMap = grupoMap.get(grupoNome)!;
-      const sortedSubgrupos = Array.from(subgrupoMap.keys()).sort();
+      const sortedSubgrupos = Array.from(subgrupoMap.keys());
       
       sortedSubgrupos.forEach(subgrupoNome => {
         tableData.push([{
@@ -451,7 +451,7 @@ export const generateProdutosNaoEncontradosPDF = (data: RelatorioData) => {
         }]);
         
         const produtos = subgrupoMap.get(subgrupoNome)!;
-        const produtosOrdenados = produtos.sort((a, b) => a.nome.localeCompare(b.nome));
+        const produtosOrdenados = produtos;
         
         produtosOrdenados.forEach(produto => {
           const qntd = produto.quantidade && produto.unidadeMedida 
