@@ -165,7 +165,7 @@ export const generatePDF = (data: RelatorioData) => {
       currentRowIndex++;
       
       const subgrupoMap = grupoMap.get(grupoNome)!;
-      const sortedSubgrupos = Array.from(subgrupoMap.keys()).sort();
+      const sortedSubgrupos = Array.from(subgrupoMap.keys());
       
       sortedSubgrupos.forEach(subgrupoNome => {
         // Adicionar linha do subgrupo (mais indentada)
