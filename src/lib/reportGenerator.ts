@@ -177,7 +177,7 @@ export const generatePDF = (data: RelatorioData) => {
         currentRowIndex++;
         
         const produtos = subgrupoMap.get(subgrupoNome)!;
-        const produtosOrdenados = produtos.sort((a, b) => a.nome.localeCompare(b.nome));
+        const produtosOrdenados = produtos;
         
         // Adicionar produtos
         produtosOrdenados.forEach(produto => {
