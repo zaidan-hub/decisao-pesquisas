@@ -1225,15 +1225,15 @@ export const generateCompradorListaPDF = (
   });
 
   const tableData: any[] = [];
-  Array.from(hierarchy.keys()).sort().forEach(depNome => {
+  Array.from(hierarchy.keys()).forEach(depNome => {
     tableData.push([{ content: depNome.toUpperCase(), colSpan: 4, styles: { fontStyle: 'bold', fontSize: 10, fillColor: [240, 240, 240] } }]);
     const gm = hierarchy.get(depNome)!;
-    Array.from(gm.keys()).sort().forEach(grupoNome => {
+    Array.from(gm.keys()).forEach(grupoNome => {
       tableData.push([{ content: '  ' + grupoNome.toUpperCase(), colSpan: 4, styles: { fontStyle: 'bold', fontSize: 9, fillColor: [250, 250, 250] } }]);
       const sm = gm.get(grupoNome)!;
-      Array.from(sm.keys()).sort().forEach(subgrupoNome => {
+      Array.from(sm.keys()).forEach(subgrupoNome => {
         tableData.push([{ content: '    ' + subgrupoNome.toUpperCase(), colSpan: 4, styles: { fontStyle: 'bold', fontSize: 8 } }]);
-        sm.get(subgrupoNome)!.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(produto => {
+        sm.get(subgrupoNome)!.forEach(produto => {
           const qntd = produto.quantidade && produto.unidadeMedida
             ? `${produto.quantidade} ${produto.unidadeMedida}`
             : produto.quantidade || produto.unidadeMedida || '-';
