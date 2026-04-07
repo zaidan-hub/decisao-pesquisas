@@ -477,8 +477,15 @@ export const RelatoriosPage = () => {
             <div className="space-y-2">
               {relatorios.map(rel => (
                 <div key={rel.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{rel.nome}</h4>
+                  <div 
+                    className="cursor-pointer hover:opacity-70 transition-opacity"
+                    onClick={() => setRelatorioDetalhe(rel)}
+                    title="Clique para ver detalhes"
+                  >
+                    <h4 className="font-medium flex items-center gap-1">
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                      {rel.nome}
+                    </h4>
                     <p className="text-sm text-muted-foreground">
                       Cliente: {rel.nome_cliente} | Data: {formatDate(rel.data)} | {rel.produtos.length} produtos | {rel.coletas.length} coletas
                     </p>
