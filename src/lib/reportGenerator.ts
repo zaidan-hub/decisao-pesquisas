@@ -141,7 +141,7 @@ export const generatePDF = (data: RelatorioData) => {
   });
   
   // Ordenar e criar linhas da tabela com hierarquia
-  const sortedDepartamentos = Array.from(hierarchy.keys()).sort();
+  const sortedDepartamentos = Array.from(hierarchy.keys());
   
   sortedDepartamentos.forEach(depNome => {
     // Adicionar linha do departamento (em negrito via estilo)
