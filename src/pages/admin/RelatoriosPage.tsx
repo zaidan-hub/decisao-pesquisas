@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, FileText, Trash2, FileDown } from 'lucide-react';
+import { Plus, FileText, Trash2, FileDown, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -62,6 +62,8 @@ export const RelatoriosPage = () => {
   const [supermercadoRefCompradores, setSupermercadoRefCompradores] = useState('');
   const [loadingCompradores, setLoadingCompradores] = useState(false);
 
+  // Estado para modal de detalhes do relatório
+  const [relatorioDetalhe, setRelatorioDetalhe] = useState<Relatorio | null>(null);
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
@@ -475,8 +477,15 @@ export const RelatoriosPage = () => {
             <div className="space-y-2">
               {relatorios.map(rel => (
                 <div key={rel.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{rel.nome}</h4>
+                  <div 
+                    className="cursor-pointer hover:opacity-70 transition-opacity"
+                    onClick={() => setRelatorioDetalhe(rel)}
+                    title="Clique para ver detalhes"
+                  >
+                    <h4 className="font-medium flex items-center gap-1">
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                      {rel.nome}
+                    </h4>
                     <p className="text-sm text-muted-foreground">
                       Cliente: {rel.nome_cliente} | Data: {formatDate(rel.data)} | {rel.produtos.length} produtos | {rel.coletas.length} coletas
                     </p>
@@ -702,6 +711,78 @@ export const RelatoriosPage = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Modal de Detalhes do Relatório */}
+      <Dialog open={!!relatorioDetalhe} onOpenChange={() => setRelatorioDetalhe(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Relatório</DialogTitle>
+            <DialogDescription>Informações completas do relatório</DialogDescription>
+          </DialogHeader>
+          {relatorioDetalhe && (() => {
+            // Encontrar lista correspondente comparando produtos
+            const listaCorrespondente = listas.find(l => {
+              if (!l.produtos || !relatorioDetalhe.produtos) return false;
+              if (l.produtos.length !== relatorioDetalhe.produtos.length) return false;
+              return l.produtos.every((p: string) => relatorioDetalhe.produtos.includes(p));
+            });
+            const coletasDoRelatorio = coletas.filter(c => relatorioDetalhe.coletas.includes(c.id));
+            
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Nome</Label>
+                    <p className="font-medium">{relatorioDetalhe.nome}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Cliente</Label>
+                    <p className="font-medium">{relatorioDetalhe.nome_cliente}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Data</Label>
+                    <p className="font-medium">{formatDate(relatorioDetalhe.data)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Produtos</Label>
+                    <p className="font-medium">{relatorioDetalhe.produtos.length} produtos</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground text-xs">Lista Utilizada</Label>
+                  <p className="font-medium">
+                    {listaCorrespondente ? listaCorrespondente.nome : 'Lista não identificada (pode ter sido alterada ou excluída)'}
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground text-xs">Coletas Consideradas ({coletasDoRelatorio.length})</Label>
+                  <div className="border rounded-md p-3 mt-1 space-y-1 max-h-[200px] overflow-y-auto">
+                    {coletasDoRelatorio.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhuma coleta encontrada</p>
+                    ) : (
+                      coletasDoRelatorio.map(coleta => {
+                        const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
+                        return (
+                          <div key={coleta.id} className="text-sm flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                            <span>{formatDate(coleta.data)} - {supermercado?.nome || 'N/A'}</span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground text-xs">Criado em</Label>
+                  <p className="font-medium">{formatDate(relatorioDetalhe.created_at)}</p>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
