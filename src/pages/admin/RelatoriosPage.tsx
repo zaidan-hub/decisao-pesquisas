@@ -141,7 +141,9 @@ export const RelatoriosPage = () => {
   }, []);
 
   const handleExportPDF = useCallback((relatorio: Relatorio) => {
-    const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
+    const produtosRelatorio = relatorio.produtos
+      .map(id => produtos.find(p => p.id === id))
+      .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
     console.log('🟢 EXPORTANDO PDF - Relatório:', relatorio);
@@ -165,7 +167,9 @@ export const RelatoriosPage = () => {
   }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
   const handleExportTXT = useCallback((relatorio: Relatorio) => {
-    const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
+    const produtosRelatorio = relatorio.produtos
+      .map(id => produtos.find(p => p.id === id))
+      .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
     generateTXT({
@@ -182,7 +186,9 @@ export const RelatoriosPage = () => {
   }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
   const handleExportProdutosNaoEncontrados = useCallback((relatorio: Relatorio) => {
-    const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
+    const produtosRelatorio = relatorio.produtos
+      .map(id => produtos.find(p => p.id === id))
+      .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
     generateProdutosNaoEncontradosPDF({
@@ -230,7 +236,9 @@ export const RelatoriosPage = () => {
       return;
     }
 
-    const produtosRelatorio = produtos.filter(p => relatorioEstatisticas.produtos.includes(p.id));
+    const produtosRelatorio = relatorioEstatisticas.produtos
+      .map(id => produtos.find(p => p.id === id))
+      .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorioEstatisticas.coletas.includes(c.id));
 
     generateEstatisticasPDF(
@@ -265,7 +273,9 @@ export const RelatoriosPage = () => {
       return;
     }
 
-    const produtosRelatorio = produtos.filter(p => relatorioComparativo.produtos.includes(p.id));
+    const produtosRelatorio = relatorioComparativo.produtos
+      .map(id => produtos.find(p => p.id === id))
+      .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorioComparativo.coletas.includes(c.id));
 
     generateComparativoConcorrenciaPDF(
@@ -318,7 +328,9 @@ export const RelatoriosPage = () => {
         return;
       }
 
-      const produtosRelatorio = produtos.filter(p => relatorioCompradores.produtos.includes(p.id));
+      const produtosRelatorio = relatorioCompradores.produtos
+        .map(id => produtos.find(p => p.id === id))
+        .filter((p): p is typeof produtos[0] => !!p);
       const coletasRelatorio = coletas.filter(c => relatorioCompradores.coletas.includes(c.id));
 
       generateComparadoresPDF(
