@@ -62,6 +62,8 @@ export const RelatoriosPage = () => {
   const [supermercadoRefCompradores, setSupermercadoRefCompradores] = useState('');
   const [loadingCompradores, setLoadingCompradores] = useState(false);
 
+  // Estado para modal de detalhes do relatório
+  const [relatorioDetalhe, setRelatorioDetalhe] = useState<Relatorio | null>(null);
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
