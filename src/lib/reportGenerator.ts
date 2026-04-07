@@ -153,7 +153,7 @@ export const generatePDF = (data: RelatorioData) => {
     currentRowIndex++;
     
     const grupoMap = hierarchy.get(depNome)!;
-    const sortedGrupos = Array.from(grupoMap.keys()).sort();
+    const sortedGrupos = Array.from(grupoMap.keys());
     
     sortedGrupos.forEach(grupoNome => {
       // Adicionar linha do grupo (indentada)
