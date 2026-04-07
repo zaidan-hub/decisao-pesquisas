@@ -1259,10 +1259,8 @@ export const generateCompradorListaPDF = (
 export const generateTXT = (data: RelatorioData) => {
   const lines: string[] = [];
 
-  // Ordenar produtos por nome A-Z
-  const produtosOrdenados = [...data.produtos].sort((a, b) => 
-    a.nome.localeCompare(b.nome)
-  );
+  // Manter ordem original da lista
+  const produtosOrdenados = data.produtos;
 
   produtosOrdenados.forEach(produto => {
     data.coletas.forEach(coleta => {
