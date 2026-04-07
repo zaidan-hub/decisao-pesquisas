@@ -236,7 +236,9 @@ export const RelatoriosPage = () => {
       return;
     }
 
-    const produtosRelatorio = produtos.filter(p => relatorioEstatisticas.produtos.includes(p.id));
+    const produtosRelatorio = relatorioEstatisticas.produtos
+      .map(id => produtos.find(p => p.id === id))
+      .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorioEstatisticas.coletas.includes(c.id));
 
     generateEstatisticasPDF(
