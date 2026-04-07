@@ -141,7 +141,9 @@ export const RelatoriosPage = () => {
   }, []);
 
   const handleExportPDF = useCallback((relatorio: Relatorio) => {
-    const produtosRelatorio = produtos.filter(p => relatorio.produtos.includes(p.id));
+    const produtosRelatorio = relatorio.produtos
+      .map(id => produtos.find(p => p.id === id))
+      .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
 
     console.log('🟢 EXPORTANDO PDF - Relatório:', relatorio);
