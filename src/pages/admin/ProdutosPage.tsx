@@ -274,6 +274,18 @@ export const ProdutosPage = () => {
           return;
         }
         
+        // Verificar se já existe produto com este código
+        const { data: existente } = await supabase
+          .from('produtos')
+          .select('id')
+          .eq('codigo', newItem.codigo.trim())
+          .limit(1);
+        
+        if (existente && existente.length > 0) {
+          toast.error(`Já existe um produto com o código '${newItem.codigo.trim()}'. Por favor, use um código diferente.`);
+          return;
+        }
+        
         // Buscar o grupo_id do subgrupo selecionado
         const subgrupo = subgrupos.find(s => s.id === newItem.subgrupoId);
         if (!subgrupo) {
