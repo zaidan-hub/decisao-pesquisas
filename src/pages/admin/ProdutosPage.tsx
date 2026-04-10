@@ -75,10 +75,12 @@ export const ProdutosPage = () => {
     (!selectedGrupo || sg.grupoId === selectedGrupo)
   );
 
-  const filteredProdutos = produtos.filter(p => 
-    p.nome.toLowerCase().includes(searchTerms.produtos.toLowerCase()) &&
-    (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo)
-  );
+  const filteredProdutos = produtos.filter(p => {
+    const term = searchTerms.produtos.toLowerCase();
+    const matchesSearch = p.nome.toLowerCase().includes(term) || 
+                          p.codigo.toLowerCase().includes(term);
+    return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
+  });
 
   // Handlers
   const handleDepartamentoClick = (departamentoId: string) => {
