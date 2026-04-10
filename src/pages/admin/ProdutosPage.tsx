@@ -324,8 +324,14 @@ export const ProdutosPage = () => {
       
     } catch (error: any) {
       console.error('Erro ao criar item:', error);
-      const errorMessage = error?.message || 'Erro desconhecido ao criar item';
-      toast.error(`Erro ao criar item: ${errorMessage}`);
+      const msg = error?.message || '';
+      if (msg.includes('produtos_codigo_key')) {
+        toast.error(`Já existe um produto com o código '${newItem.codigo.trim()}'. Por favor, use um código diferente.`);
+      } else if (msg.includes('duplicate key')) {
+        toast.error(`Já existe um item com este código. Por favor, use um código diferente.`);
+      } else {
+        toast.error(`Erro ao criar item: ${msg || 'Erro desconhecido'}`);
+      }
     }
   };
 
