@@ -274,6 +274,18 @@ export const ProdutosPage = () => {
           return;
         }
         
+        // Verificar se já existe produto com este código
+        const { data: existente } = await supabase
+          .from('produtos')
+          .select('id')
+          .eq('codigo', newItem.codigo.trim())
+          .limit(1);
+        
+        if (existente && existente.length > 0) {
+          toast.error(`Já existe um produto com o código '${newItem.codigo.trim()}'. Por favor, use um código diferente.`);
+          return;
+        }
+        
         // Buscar o grupo_id do subgrupo selecionado
         const subgrupo = subgrupos.find(s => s.id === newItem.subgrupoId);
         if (!subgrupo) {
@@ -312,8 +324,14 @@ export const ProdutosPage = () => {
       
     } catch (error: any) {
       console.error('Erro ao criar item:', error);
-      const errorMessage = error?.message || 'Erro desconhecido ao criar item';
-      toast.error(`Erro ao criar item: ${errorMessage}`);
+      const msg = error?.message || '';
+      if (msg.includes('produtos_codigo_key')) {
+        toast.error(`Já existe um produto com o código '${newItem.codigo.trim()}'. Por favor, use um código diferente.`);
+      } else if (msg.includes('duplicate key')) {
+        toast.error(`Já existe um item com este código. Por favor, use um código diferente.`);
+      } else {
+        toast.error(`Erro ao criar item: ${msg || 'Erro desconhecido'}`);
+      }
     }
   };
 
