@@ -742,6 +742,97 @@ export const ListasPage = () => {
     });
   };
 
+  // Reorganiza a ordem dos produtos da lista agrupando por subgrupo (e por extensão grupo/departamento),
+  // mantendo a ordem em que cada subgrupo apareceu pela primeira vez na ordem atual.
+  // Útil para "consertar" listas onde produtos foram adicionados depois e ficaram fora de seu bloco.
+  const handleReorganizar = async (lista: Lista) => {
+    try {
+      const hierarquia = lista.hierarquiaCustomizada as any;
+      const ordemAtual: Array<{ produtoId?: string; tipo?: string; parentId?: string }> =
+        Array.isArray(hierarquia?.ordem) ? hierarquia.ordem : [];
+
+      // Mapa: produtoId -> produto (para descobrir o subgrupo real do banco)
+      const produtosMap = new Map(produtos.map(p => [p.id, p]));
+
+      // Construir lista de IDs de produtos a reorganizar (ordem atual + faltantes do array produtos)
+      const idsOrdemAtual: string[] = [];
+      const jaVistos = new Set<string>();
+      ordemAtual.forEach(item => {
+        if (item?.tipo === 'produto' && item.produtoId && !jaVistos.has(item.produtoId)) {
+          jaVistos.add(item.produtoId);
+          idsOrdemAtual.push(item.produtoId);
+        }
+      });
+      (lista.produtos || []).forEach(pid => {
+        if (!jaVistos.has(pid)) {
+          jaVistos.add(pid);
+          idsOrdemAtual.push(pid);
+        }
+      });
+
+      // Determinar a ordem em que cada subgrupo apareceu pela primeira vez
+      const ordemSubgrupos: string[] = [];
+      const subgruposVistos = new Set<string>();
+      idsOrdemAtual.forEach(pid => {
+        const produto = produtosMap.get(pid);
+        if (!produto) return;
+        const sg = produto.subgrupoId || '__sem_subgrupo__';
+        if (!subgruposVistos.has(sg)) {
+          subgruposVistos.add(sg);
+          ordemSubgrupos.push(sg);
+        }
+      });
+
+      // Agrupar produtos por subgrupo, preservando a ordem interna original
+      const porSubgrupo = new Map<string, string[]>();
+      idsOrdemAtual.forEach(pid => {
+        const produto = produtosMap.get(pid);
+        if (!produto) return;
+        const sg = produto.subgrupoId || '__sem_subgrupo__';
+        if (!porSubgrupo.has(sg)) porSubgrupo.set(sg, []);
+        porSubgrupo.get(sg)!.push(pid);
+      });
+
+      // Montar nova ordem: percorre subgrupos na sequência original e concatena seus produtos
+      const novaOrdem: Array<{ produtoId: string; tipo: 'produto'; parentId?: string }> = [];
+      const novosProdutos: string[] = [];
+      ordemSubgrupos.forEach(sg => {
+        (porSubgrupo.get(sg) || []).forEach(pid => {
+          const produto = produtosMap.get(pid);
+          if (!produto) return;
+          novaOrdem.push({
+            produtoId: pid,
+            tipo: 'produto',
+            parentId: produto.subgrupoId,
+          });
+          novosProdutos.push(pid);
+        });
+      });
+
+      const { error } = await supabase
+        .from('listas' as any)
+        .update({
+          produtos: novosProdutos,
+          hierarquia_customizada: { ordem: novaOrdem },
+        })
+        .eq('id', lista.id) as any;
+
+      if (error) throw error;
+
+      await refetch();
+      toast({
+        title: 'Lista reorganizada',
+        description: `Os produtos de "${lista.nome}" foram reagrupados por subgrupo.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao reorganizar lista',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleExportarPDF = (lista: Lista) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
