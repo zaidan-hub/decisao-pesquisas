@@ -619,7 +619,11 @@ export const ListasPage = () => {
 
   const filteredListas = listas
     .filter(l => l.nome.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => a.nome.localeCompare(b.nome));
+    .sort((a, b) => {
+      const dateA = new Date((a as any).created_at || 0).getTime();
+      const dateB = new Date((b as any).created_at || 0).getTime();
+      return dateB - dateA;
+    });
 
   const getProdutoNome = (id: string) => {
     return produtos.find(p => p.id === id)?.nome || 'N/A';
