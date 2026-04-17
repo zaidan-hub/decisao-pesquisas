@@ -804,7 +804,7 @@ export const ListasPage = () => {
       });
     }
 
-    console.log('[ExportarPDF]', lista.nome, '— total:', produtosOrdenados.length, '— primeiros 5:', produtosOrdenados.slice(0, 5).map(p => `${p.codigo} ${p.nome}`));
+    
     
     // Criar tabela
     const tableData = produtosOrdenados.map((produto, index) => [
