@@ -1516,25 +1516,9 @@ export const ListasPage = () => {
                       <h3 className="font-semibold text-lg">{lista.nome}</h3>
                     </div>
                     
-                    <div className="text-sm text-muted-foreground mb-3">
+                    <div className="text-sm text-muted-foreground">
                       <strong>Produtos:</strong> {lista.produtos.length} itens
                     </div>
-
-                    {lista.produtos.length > 0 && (
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-medium">Produtos inclusos:</h4>
-                        <div className="text-sm text-muted-foreground max-h-20 overflow-y-auto">
-                          {lista.produtos.slice(0, 5).map(produtoId => (
-                            <div key={produtoId}>• {getProdutoNome(produtoId)}</div>
-                          ))}
-                          {lista.produtos.length > 5 && (
-                            <div className="text-xs italic">
-                              ... e mais {lista.produtos.length - 5} produto(s)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="flex gap-2">
