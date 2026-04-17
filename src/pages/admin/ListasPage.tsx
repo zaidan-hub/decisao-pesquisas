@@ -734,41 +734,55 @@ export const ListasPage = () => {
     doc.setFont('helvetica', 'normal');
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 28, { align: 'center' });
     
-    // Ordenar produtos conforme hierarquia customizada
+    // Ordenar produtos conforme hierarquia customizada (Visualização do Pesquisador)
     let produtosOrdenados: Array<{ id: string; nome: string; codigo: string; unidade: string; quantidade: string }> = [];
     
+    // Construir mapa de produtos para lookup eficiente
+    const produtosMap = new Map(produtos.map(p => [p.id, p]));
+
+    const pushProduto = (produtoId: string) => {
+      const produto = produtosMap.get(produtoId);
+      if (produto) {
+        produtosOrdenados.push({
+          id: produto.id,
+          nome: produto.nome,
+          codigo: produto.codigo,
+          unidade: produto.unidadeMedida,
+          quantidade: produto.quantidade || ''
+        });
+      }
+    };
+
     const hierarquia = lista.hierarquiaCustomizada as any;
-    if (hierarquia?.ordem && Array.isArray(hierarquia.ordem)) {
-      // Usar ordem customizada
-      hierarquia.ordem.forEach((item: { produtoId: string; tipo: string }) => {
-        if (item.tipo === 'produto') {
-          const produto = produtos.find(p => p.id === item.produtoId);
-          if (produto) {
-            produtosOrdenados.push({
-              id: produto.id,
-              nome: produto.nome,
-              codigo: produto.codigo,
-              unidade: produto.unidadeMedida,
-              quantidade: produto.quantidade || ''
-            });
-          }
+    const ordem = hierarquia?.ordem;
+    const idsJaAdicionados = new Set<string>();
+
+    if (Array.isArray(ordem) && ordem.length > 0) {
+      // Usar ordem customizada da Visualização do Pesquisador
+      ordem.forEach((item: { produtoId?: string; tipo?: string }) => {
+        if (item?.tipo === 'produto' && item.produtoId && !idsJaAdicionados.has(item.produtoId)) {
+          idsJaAdicionados.add(item.produtoId);
+          pushProduto(item.produtoId);
+        }
+      });
+      // Garantir que produtos da lista que não estejam na ordem (caso raro) sejam incluídos no final
+      (lista.produtos || []).forEach(produtoId => {
+        if (!idsJaAdicionados.has(produtoId)) {
+          idsJaAdicionados.add(produtoId);
+          pushProduto(produtoId);
         }
       });
     } else {
-      // Fallback: usar ordem do array de produtos
-      lista.produtos.forEach(produtoId => {
-        const produto = produtos.find(p => p.id === produtoId);
-        if (produto) {
-          produtosOrdenados.push({
-            id: produto.id,
-            nome: produto.nome,
-            codigo: produto.codigo,
-            unidade: produto.unidadeMedida,
-            quantidade: produto.quantidade || ''
-          });
+      // Fallback: usar ordem do array de produtos (preserva ordem de inserção)
+      (lista.produtos || []).forEach(produtoId => {
+        if (!idsJaAdicionados.has(produtoId)) {
+          idsJaAdicionados.add(produtoId);
+          pushProduto(produtoId);
         }
       });
     }
+
+    console.log('[ExportarPDF]', lista.nome, '— total:', produtosOrdenados.length, '— primeiros 5:', produtosOrdenados.slice(0, 5).map(p => `${p.codigo} ${p.nome}`));
     
     // Criar tabela
     const tableData = produtosOrdenados.map((produto, index) => [
