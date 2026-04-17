@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Lista } from '@/types';
-import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, ArrowUp, ArrowDown, X, FileDown } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, ArrowUp, ArrowDown, X, FileDown, ListOrdered } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from '@/hooks/use-toast';
@@ -292,10 +292,10 @@ export const ListasPage = () => {
     if (selectedItems.size === 0) return;
 
     const novosItems: VisualizacaoItem[] = [];
-    
+
     selectedItems.forEach(itemKey => {
       const [tipo, id] = itemKey.split(':');
-      
+
       if (tipo === 'produto') {
         const produto = produtos.find(p => p.id === id);
         if (produto && !visualizacaoItems.some(i => i.id === id)) {
@@ -308,11 +308,33 @@ export const ListasPage = () => {
         }
       }
     });
-    
-    if (novosItems.length > 0) {
-      setVisualizacaoItems(prev => [...prev, ...novosItems]);
+
+    if (novosItems.length === 0) {
+      setSelectedItems(new Set());
+      return;
     }
-    
+
+    // Inserir cada novo produto logo após o último item do mesmo subgrupo (parentId).
+    // Se nenhum item do mesmo subgrupo existir, vai para o final.
+    setVisualizacaoItems(prev => {
+      const result = [...prev];
+      novosItems.forEach(novo => {
+        let ultimoIdxMesmoSubgrupo = -1;
+        for (let i = result.length - 1; i >= 0; i--) {
+          if (result[i].parentId === novo.parentId) {
+            ultimoIdxMesmoSubgrupo = i;
+            break;
+          }
+        }
+        if (ultimoIdxMesmoSubgrupo >= 0) {
+          result.splice(ultimoIdxMesmoSubgrupo + 1, 0, novo);
+        } else {
+          result.push(novo);
+        }
+      });
+      return result;
+    });
+
     setSelectedItems(new Set());
   };
 
@@ -720,6 +742,97 @@ export const ListasPage = () => {
     });
   };
 
+  // Reorganiza a ordem dos produtos da lista agrupando por subgrupo (e por extensão grupo/departamento),
+  // mantendo a ordem em que cada subgrupo apareceu pela primeira vez na ordem atual.
+  // Útil para "consertar" listas onde produtos foram adicionados depois e ficaram fora de seu bloco.
+  const handleReorganizar = async (lista: Lista) => {
+    try {
+      const hierarquia = lista.hierarquiaCustomizada as any;
+      const ordemAtual: Array<{ produtoId?: string; tipo?: string; parentId?: string }> =
+        Array.isArray(hierarquia?.ordem) ? hierarquia.ordem : [];
+
+      // Mapa: produtoId -> produto (para descobrir o subgrupo real do banco)
+      const produtosMap = new Map(produtos.map(p => [p.id, p]));
+
+      // Construir lista de IDs de produtos a reorganizar (ordem atual + faltantes do array produtos)
+      const idsOrdemAtual: string[] = [];
+      const jaVistos = new Set<string>();
+      ordemAtual.forEach(item => {
+        if (item?.tipo === 'produto' && item.produtoId && !jaVistos.has(item.produtoId)) {
+          jaVistos.add(item.produtoId);
+          idsOrdemAtual.push(item.produtoId);
+        }
+      });
+      (lista.produtos || []).forEach(pid => {
+        if (!jaVistos.has(pid)) {
+          jaVistos.add(pid);
+          idsOrdemAtual.push(pid);
+        }
+      });
+
+      // Determinar a ordem em que cada subgrupo apareceu pela primeira vez
+      const ordemSubgrupos: string[] = [];
+      const subgruposVistos = new Set<string>();
+      idsOrdemAtual.forEach(pid => {
+        const produto = produtosMap.get(pid);
+        if (!produto) return;
+        const sg = produto.subgrupoId || '__sem_subgrupo__';
+        if (!subgruposVistos.has(sg)) {
+          subgruposVistos.add(sg);
+          ordemSubgrupos.push(sg);
+        }
+      });
+
+      // Agrupar produtos por subgrupo, preservando a ordem interna original
+      const porSubgrupo = new Map<string, string[]>();
+      idsOrdemAtual.forEach(pid => {
+        const produto = produtosMap.get(pid);
+        if (!produto) return;
+        const sg = produto.subgrupoId || '__sem_subgrupo__';
+        if (!porSubgrupo.has(sg)) porSubgrupo.set(sg, []);
+        porSubgrupo.get(sg)!.push(pid);
+      });
+
+      // Montar nova ordem: percorre subgrupos na sequência original e concatena seus produtos
+      const novaOrdem: Array<{ produtoId: string; tipo: 'produto'; parentId?: string }> = [];
+      const novosProdutos: string[] = [];
+      ordemSubgrupos.forEach(sg => {
+        (porSubgrupo.get(sg) || []).forEach(pid => {
+          const produto = produtosMap.get(pid);
+          if (!produto) return;
+          novaOrdem.push({
+            produtoId: pid,
+            tipo: 'produto',
+            parentId: produto.subgrupoId,
+          });
+          novosProdutos.push(pid);
+        });
+      });
+
+      const { error } = await supabase
+        .from('listas' as any)
+        .update({
+          produtos: novosProdutos,
+          hierarquia_customizada: { ordem: novaOrdem },
+        })
+        .eq('id', lista.id) as any;
+
+      if (error) throw error;
+
+      await refetch();
+      toast({
+        title: 'Lista reorganizada',
+        description: `Os produtos de "${lista.nome}" foram reagrupados por subgrupo.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao reorganizar lista',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleExportarPDF = (lista: Lista) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -782,7 +895,7 @@ export const ListasPage = () => {
       });
     }
 
-    console.log('[ExportarPDF]', lista.nome, '— total:', produtosOrdenados.length, '— primeiros 5:', produtosOrdenados.slice(0, 5).map(p => `${p.codigo} ${p.nome}`));
+    
     
     // Criar tabela
     const tableData = produtosOrdenados.map((produto, index) => [
@@ -1421,6 +1534,14 @@ export const ListasPage = () => {
                   </div>
 
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleReorganizar(lista)}
+                      title="Reorganizar (reagrupar produtos por subgrupo)"
+                    >
+                      <ListOrdered className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
