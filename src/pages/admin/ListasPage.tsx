@@ -292,10 +292,10 @@ export const ListasPage = () => {
     if (selectedItems.size === 0) return;
 
     const novosItems: VisualizacaoItem[] = [];
-    
+
     selectedItems.forEach(itemKey => {
       const [tipo, id] = itemKey.split(':');
-      
+
       if (tipo === 'produto') {
         const produto = produtos.find(p => p.id === id);
         if (produto && !visualizacaoItems.some(i => i.id === id)) {
@@ -308,11 +308,33 @@ export const ListasPage = () => {
         }
       }
     });
-    
-    if (novosItems.length > 0) {
-      setVisualizacaoItems(prev => [...prev, ...novosItems]);
+
+    if (novosItems.length === 0) {
+      setSelectedItems(new Set());
+      return;
     }
-    
+
+    // Inserir cada novo produto logo após o último item do mesmo subgrupo (parentId).
+    // Se nenhum item do mesmo subgrupo existir, vai para o final.
+    setVisualizacaoItems(prev => {
+      const result = [...prev];
+      novosItems.forEach(novo => {
+        let ultimoIdxMesmoSubgrupo = -1;
+        for (let i = result.length - 1; i >= 0; i--) {
+          if (result[i].parentId === novo.parentId) {
+            ultimoIdxMesmoSubgrupo = i;
+            break;
+          }
+        }
+        if (ultimoIdxMesmoSubgrupo >= 0) {
+          result.splice(ultimoIdxMesmoSubgrupo + 1, 0, novo);
+        } else {
+          result.push(novo);
+        }
+      });
+      return result;
+    });
+
     setSelectedItems(new Set());
   };
 
