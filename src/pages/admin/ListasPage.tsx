@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Lista } from '@/types';
-import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, ArrowUp, ArrowDown, X, FileDown } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Copy, List, ChevronRight, ChevronDown, ArrowUp, ArrowDown, X, FileDown, ListOrdered } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from '@/hooks/use-toast';
