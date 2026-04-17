@@ -1537,6 +1537,14 @@ export const ListasPage = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleReorganizar(lista)}
+                      title="Reorganizar (reagrupar produtos por subgrupo)"
+                    >
+                      <ListOrdered className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleExportarPDF(lista)}
                       title="Exportar PDF"
                     >
