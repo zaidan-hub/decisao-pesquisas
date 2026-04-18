@@ -261,14 +261,16 @@ export const generatePDF = (data: RelatorioData) => {
   });
 
   // Cabeçalhos da tabela (usar abreviação nas colunas)
-  const headers = [
+  const supermercadoNomes = Array.from(coletasPorSupermercado.values()).map(c => {
+    const supermercado = data.supermercados.find(s => s.nome === c.nome);
+    return supermercado?.abreviacao || c.nome;
+  });
+  const headers = ['Código', 'Produto', 'Qntd', ...supermercadoNomes];
+  const headRow: any[] = [
     'Código',
     'Produto',
     'Qntd',
-    ...Array.from(coletasPorSupermercado.values()).map(c => {
-      const supermercado = data.supermercados.find(s => s.nome === c.nome);
-      return supermercado?.abreviacao || c.nome;
-    })
+    ...supermercadoNomes.map(nome => ({ content: nome, styles: { halign: 'right' } }))
   ];
 
   // Configurar alinhamento das colunas de preço
@@ -282,7 +284,7 @@ export const generatePDF = (data: RelatorioData) => {
   }
 
   autoTable(doc, {
-    head: [headers],
+    head: [headRow],
     body: tableData,
     startY: yPos,
     styles: { fontSize: 8, cellPadding: 2 },
