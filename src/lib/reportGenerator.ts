@@ -21,10 +21,6 @@ interface RelatorioData {
 
 // Gera PDF do relatório
 export const generatePDF = (data: RelatorioData) => {
-  console.log('🔵 GERANDO PDF - Dados recebidos:', data);
-  console.log('🔵 Coletas:', data.coletas);
-  console.log('🔵 Produtos:', data.produtos);
-  
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
