@@ -21,10 +21,6 @@ interface RelatorioData {
 
 // Gera PDF do relatório
 export const generatePDF = (data: RelatorioData) => {
-  console.log('🔵 GERANDO PDF - Dados recebidos:', data);
-  console.log('🔵 Coletas:', data.coletas);
-  console.log('🔵 Produtos:', data.produtos);
-  
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -192,19 +188,27 @@ export const generatePDF = (data: RelatorioData) => {
           ];
 
           // Preços por supermercado (priorizar preços editados pelo admin)
+          // IMPORTANTE: iterar pelas mesmas chaves de supermercado usadas no cabeçalho
+          // para garantir alinhamento correto das colunas
           const precos: number[] = [];
           const textosMaisBarato: string[] = [];
           let temTextoMaisBarato = false;
           
-          data.coletas.forEach(coleta => {
-            console.log(`🔵 Produto ${produto.nome} - Coleta ${coleta.id}:`, {
-              precosEditadosAdmin: coleta.precosEditadosAdmin,
-              precos: coleta.precos,
-              precoFinal: coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0
-            });
-            
-            const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
-            const texto = coleta.textosMaisBarato?.[produto.id] || '';
+          Array.from(coletasPorSupermercado.keys()).forEach(supermercadoId => {
+            // Encontrar a coleta correspondente a este supermercado
+            const coletasDoSuper = data.coletas.filter(c => c.supermercadoId === supermercadoId);
+            // Pegar o melhor preço disponível entre as coletas do mesmo supermercado
+            let preco = 0;
+            let texto = '';
+            for (const coleta of coletasDoSuper) {
+              const p = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+              if (p > 0 && (preco === 0 || p < preco)) {
+                preco = p;
+                texto = coleta.textosMaisBarato?.[produto.id] || '';
+              } else if (preco === 0) {
+                texto = texto || coleta.textosMaisBarato?.[produto.id] || '';
+              }
+            }
             precos.push(preco);
             textosMaisBarato.push(texto);
             
