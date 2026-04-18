@@ -283,6 +283,8 @@ export const generatePDF = (data: RelatorioData) => {
     columnStyles[i] = { halign: 'right' };
   }
 
+  const manualPriceTextMap = new Map<string, { valueText: string; symbol: string }>();
+
   autoTable(doc, {
     head: [headRow],
     body: tableData,
@@ -290,44 +292,60 @@ export const generatePDF = (data: RelatorioData) => {
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [66, 66, 66] },
     columnStyles,
-    didDrawCell: (data) => {
-      // Aplicar cores aos símbolos + e -
+    willDrawCell: (data) => {
       if (data.section !== 'body' || data.column.index < 3) return;
-      
+
       const rowSymbols = symbolsMap.get(data.row.index);
       const symbol = rowSymbols?.get(data.column.index);
       const cellText = data.cell.text?.[0];
-      
+
       if (!symbol || !cellText || cellText === '-') return;
 
+      manualPriceTextMap.set(`${data.row.index}-${data.column.index}`, {
+        valueText: cellText,
+        symbol,
+      });
+
+      data.cell.text = [''];
+    },
+    didDrawCell: (data) => {
+      if (data.section !== 'body' || data.column.index < 3) return;
+
+      const manualCell = manualPriceTextMap.get(`${data.row.index}-${data.column.index}`);
+      if (!manualCell) return;
+
+      const { valueText, symbol } = manualCell;
       const fontSize = data.cell.styles.fontSize || 8;
+      const textPos = (data.cell as any).getTextPos();
+      const lineY = textPos.y + fontSize * 0.3;
+      const rightEdgeX = textPos.x;
+      const gap = 0.8;
+
       doc.setFontSize(fontSize);
 
-      const textWidth = doc.getTextWidth(cellText);
-      const cellPadding = data.cell.styles.cellPadding;
-      const paddingRight = typeof cellPadding === 'number'
-        ? cellPadding
-        : (typeof cellPadding === 'object' && !Array.isArray(cellPadding) && cellPadding.right !== undefined
-            ? cellPadding.right
-            : 2);
+      const plusWidth = symbol.includes('+') ? doc.getTextWidth('+') : 0;
+      const minusWidth = symbol.includes('-') ? doc.getTextWidth('-') : 0;
+      const symbolsWidth = plusWidth + (symbol.includes('+') && symbol.includes('-') ? gap : 0) + minusWidth;
+      const valueRightX = rightEdgeX - symbolsWidth - gap;
 
-      const textStartX = data.cell.x + data.cell.width - paddingRight - textWidth;
-      const symbolX = textStartX + textWidth + 0.8;
-      const symbolY = data.cell.y + (data.cell.height / 2) + fontSize * 0.35;
-
-      // Desenhar símbolos com cores
-      if (symbol.includes('+')) {
-        doc.setTextColor(0, 0, 255); // Azul
-        doc.text('+', symbolX, symbolY);
-      }
-      if (symbol.includes('-')) {
-        const plusWidth = symbol.includes('+') ? doc.getTextWidth('+') + 1 : 0;
-        doc.setTextColor(255, 0, 0); // Vermelho
-        doc.text('-', symbolX + plusWidth, symbolY);
-      }
-      
-      // Resetar cor para preto
       doc.setTextColor(0, 0, 0);
+      doc.text(valueText, valueRightX, lineY, { align: 'right' });
+
+      let currentX = valueRightX + gap;
+
+      if (symbol.includes('+')) {
+        doc.setTextColor(0, 0, 255);
+        doc.text('+', currentX, lineY);
+        currentX += plusWidth + (symbol.includes('-') ? gap : 0);
+      }
+
+      if (symbol.includes('-')) {
+        doc.setTextColor(255, 0, 0);
+        doc.text('-', currentX, lineY);
+      }
+
+      doc.setTextColor(0, 0, 0);
+      manualPriceTextMap.delete(`${data.row.index}-${data.column.index}`);
     }
   });
 
