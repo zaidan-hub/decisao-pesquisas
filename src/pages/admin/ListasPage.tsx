@@ -875,14 +875,58 @@ export const ListasPage = () => {
     const idsJaAdicionados = new Set<string>();
 
     if (Array.isArray(ordem) && ordem.length > 0) {
-      // Usar ordem customizada da Visualização do Pesquisador
-      ordem.forEach((item: { produtoId?: string; tipo?: string }) => {
-        if (item?.tipo === 'produto' && item.produtoId && !idsJaAdicionados.has(item.produtoId)) {
-          idsJaAdicionados.add(item.produtoId);
-          pushProduto(item.produtoId);
-        }
+      // Espelhar a ordenação da "Visualização do Pesquisador":
+      // produtos são agrupados por grupo → subgrupo, onde a ordem de cada
+      // grupo/subgrupo é definida pela primeira aparição na hierarquia salva.
+      // Dentro de cada subgrupo, manter a sequência exata da hierarquia.
+      const subgrupoMap = new Map(subgrupos.map(s => [s.id, s]));
+      const flatOrder: string[] = ordem
+        .filter((it: any) => it?.tipo === 'produto' && it.produtoId)
+        .map((it: any) => it.produtoId);
+
+      const grupoFirstSeen = new Map<string, number>();
+      const subgrupoFirstSeen = new Map<string, number>();
+      const produtosPorSubgrupo = new Map<string, string[]>();
+      const semSubgrupo: string[] = [];
+      let seq = 0;
+      const grupoSemId = '__sem_grupo__';
+      const subgrupoSemId = '__sem_subgrupo__';
+      if (!grupoFirstSeen.has(grupoSemId)) grupoFirstSeen.set(grupoSemId, Number.MAX_SAFE_INTEGER);
+      if (!subgrupoFirstSeen.has(subgrupoSemId)) subgrupoFirstSeen.set(subgrupoSemId, Number.MAX_SAFE_INTEGER);
+
+      flatOrder.forEach(pid => {
+        const produto = produtosMap.get(pid);
+        const subId = produto?.subgrupoId || subgrupoSemId;
+        const grpId = (produto?.grupoId) || (subgrupoMap.get(subId)?.grupoId) || grupoSemId;
+        if (!grupoFirstSeen.has(grpId)) grupoFirstSeen.set(grpId, seq);
+        if (!subgrupoFirstSeen.has(subId)) subgrupoFirstSeen.set(subId, seq);
+        seq++;
+        if (!produtosPorSubgrupo.has(subId)) produtosPorSubgrupo.set(subId, []);
+        produtosPorSubgrupo.get(subId)!.push(pid);
       });
-      // Garantir que produtos da lista que não estejam na ordem (caso raro) sejam incluídos no final
+
+      // Ordenar subgrupos por: ordem do grupo (primeira aparição), depois ordem do subgrupo
+      const subgruposOrdenados = Array.from(produtosPorSubgrupo.keys()).sort((a, b) => {
+        const grpA = subgrupoMap.get(a)?.grupoId || grupoSemId;
+        const grpB = subgrupoMap.get(b)?.grupoId || grupoSemId;
+        const ga = grupoFirstSeen.get(grpA) ?? Number.MAX_SAFE_INTEGER;
+        const gb = grupoFirstSeen.get(grpB) ?? Number.MAX_SAFE_INTEGER;
+        if (ga !== gb) return ga - gb;
+        const sa = subgrupoFirstSeen.get(a) ?? Number.MAX_SAFE_INTEGER;
+        const sb = subgrupoFirstSeen.get(b) ?? Number.MAX_SAFE_INTEGER;
+        return sa - sb;
+      });
+
+      subgruposOrdenados.forEach(subId => {
+        produtosPorSubgrupo.get(subId)!.forEach(pid => {
+          if (!idsJaAdicionados.has(pid)) {
+            idsJaAdicionados.add(pid);
+            pushProduto(pid);
+          }
+        });
+      });
+
+      // Garantir que produtos da lista que não estejam na ordem sejam incluídos no final
       (lista.produtos || []).forEach(produtoId => {
         if (!idsJaAdicionados.has(produtoId)) {
           idsJaAdicionados.add(produtoId);
