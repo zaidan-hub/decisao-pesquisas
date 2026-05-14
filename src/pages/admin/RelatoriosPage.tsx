@@ -470,6 +470,7 @@ export const RelatoriosPage = () => {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Relatórios Gerados */}
