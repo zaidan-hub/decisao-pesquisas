@@ -1327,3 +1327,238 @@ export const generateTXT = (data: RelatorioData) => {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 };
+// ============================================================================
+// Relatório Personalizado: hierarquia totalmente customizável (mover/renomear)
+// ============================================================================
+interface VisualizacaoItemPDF {
+  tipo: 'departamento' | 'grupo' | 'subgrupo' | 'produto';
+  id: string;
+  parentId?: string;
+}
+
+interface RelatorioPersonalizadoData {
+  nome: string;
+  data: string; // ISO yyyy-mm-dd
+  produtos: Produto[];
+  coletas: Coleta[];
+  supermercados: Supermercado[];
+  grupos: Grupo[];
+  subgrupos: Subgrupo[];
+  departamentos: Departamento[];
+  hierarquia: {
+    ordem?: VisualizacaoItemPDF[];
+    nomes?: {
+      departamentos?: { [id: string]: string };
+      grupos?: { [id: string]: string };
+      subgrupos?: { [id: string]: string };
+    };
+  };
+}
+
+const formatDataBR = (iso: string) => {
+  const [y, m, d] = iso.split('T')[0].split('-');
+  return `${d}/${m}/${y}`;
+};
+
+export const generateRelatorioPersonalizadoPDF = (data: RelatorioPersonalizadoData) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Cabeçalho
+  doc.setFontSize(16);
+  doc.text(data.nome, pageWidth / 2, 15, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text(formatDataBR(data.data), pageWidth / 2, 22, { align: 'center' });
+
+  let yPos = 30;
+  doc.setFontSize(9);
+
+  // Agrupar coletas por supermercado
+  const coletasPorSupermercado = new Map<string, { data: string; nome: string }>();
+  data.coletas.forEach(c => {
+    const s = data.supermercados.find(x => x.id === c.supermercadoId);
+    if (s) {
+      coletasPorSupermercado.set(s.id, { data: formatDataBR(c.data), nome: s.nome });
+    }
+  });
+  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
+  const todasIguais = datas.every(d => d === datas[0]);
+  if (todasIguais && datas.length > 0) {
+    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos); yPos += 5;
+    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
+  } else {
+    doc.text('Datas e Supermercados:', 14, yPos); yPos += 5;
+    coletasPorSupermercado.forEach(({ data: dd, nome }) => {
+      doc.text(`  • ${nome}: ${dd}`, 14, yPos); yPos += 5;
+    });
+  }
+  yPos += 6;
+
+  const ordem = data.hierarquia.ordem || [];
+  const nomes = data.hierarquia.nomes || {};
+  const produtosMap = new Map(data.produtos.map(p => [p.id, p]));
+  const departamentosMap = new Map(data.departamentos.map(d => [d.id, d]));
+  const gruposMap = new Map(data.grupos.map(g => [g.id, g]));
+  const subgruposMap = new Map(data.subgrupos.map(s => [s.id, s]));
+
+  const nomeDepartamento = (id: string) => nomes.departamentos?.[id] || departamentosMap.get(id)?.nome || 'SEM DEPARTAMENTO';
+  const nomeGrupo = (id: string) => nomes.grupos?.[id] || gruposMap.get(id)?.nome || 'SEM GRUPO';
+  const nomeSubgrupo = (id: string) => nomes.subgrupos?.[id] || subgruposMap.get(id)?.nome || 'SEM SUBGRUPO';
+
+  const tableData: any[] = [];
+  const symbolsMap = new Map<number, Map<number, string>>();
+  let currentRowIndex = 0;
+  const colCount = 3 + coletasPorSupermercado.size;
+
+  // Renderizar na ordem dada
+  ordem.forEach(item => {
+    if (item.tipo === 'departamento') {
+      tableData.push([{
+        content: nomeDepartamento(item.id).toUpperCase(),
+        colSpan: colCount,
+        styles: { fontStyle: 'bold', fontSize: 10, fillColor: [240, 240, 240] }
+      }]);
+      currentRowIndex++;
+    } else if (item.tipo === 'grupo') {
+      tableData.push([{
+        content: '  ' + nomeGrupo(item.id).toUpperCase(),
+        colSpan: colCount,
+        styles: { fontStyle: 'bold', fontSize: 9, fillColor: [250, 250, 250] }
+      }]);
+      currentRowIndex++;
+    } else if (item.tipo === 'subgrupo') {
+      tableData.push([{
+        content: '    ' + nomeSubgrupo(item.id).toUpperCase(),
+        colSpan: colCount,
+        styles: { fontStyle: 'bold', fontSize: 8 }
+      }]);
+      currentRowIndex++;
+    } else if (item.tipo === 'produto') {
+      const produto = produtosMap.get(item.id);
+      if (!produto) return;
+      const qntd = produto.quantidade && produto.unidadeMedida
+        ? `${produto.quantidade} ${produto.unidadeMedida}`
+        : produto.quantidade || produto.unidadeMedida || '-';
+      const row: any[] = [
+        produto.codigo,
+        produto.nome + (produto.maisBarato ? ' (+Barato)' : ''),
+        qntd,
+      ];
+      const precos: number[] = [];
+      Array.from(coletasPorSupermercado.keys()).forEach(supId => {
+        const coletasSup = data.coletas.filter(c => c.supermercadoId === supId);
+        let preco = 0;
+        for (const c of coletasSup) {
+          const p = c.precosEditadosAdmin?.[produto.id] ?? c.precos?.[produto.id] ?? 0;
+          if (p > 0 && (preco === 0 || p < preco)) preco = p;
+        }
+        precos.push(preco);
+        row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+      });
+      const validos = precos.filter(p => p > 0);
+      if (validos.length > 0) {
+        const maxP = Math.max(...validos);
+        const minP = Math.min(...validos);
+        if (!symbolsMap.has(currentRowIndex)) symbolsMap.set(currentRowIndex, new Map());
+        for (let i = 0; i < precos.length; i++) {
+          if (precos[i] > 0) {
+            if (precos[i] === maxP && precos[i] === minP) symbolsMap.get(currentRowIndex)!.set(3 + i, '+ -');
+            else if (precos[i] === maxP) symbolsMap.get(currentRowIndex)!.set(3 + i, '+');
+            else if (precos[i] === minP) symbolsMap.get(currentRowIndex)!.set(3 + i, '-');
+          }
+        }
+      }
+      tableData.push(row);
+      currentRowIndex++;
+    }
+  });
+
+  // Caso ordem esteja vazia mas haja produtos (fallback): listar em ordem simples
+  if (ordem.length === 0) {
+    data.produtos.forEach(produto => {
+      const qntd = produto.quantidade && produto.unidadeMedida
+        ? `${produto.quantidade} ${produto.unidadeMedida}`
+        : produto.quantidade || produto.unidadeMedida || '-';
+      const row: any[] = [produto.codigo, produto.nome, qntd];
+      Array.from(coletasPorSupermercado.keys()).forEach(supId => {
+        const coletasSup = data.coletas.filter(c => c.supermercadoId === supId);
+        let preco = 0;
+        for (const c of coletasSup) {
+          const p = c.precosEditadosAdmin?.[produto.id] ?? c.precos?.[produto.id] ?? 0;
+          if (p > 0 && (preco === 0 || p < preco)) preco = p;
+        }
+        row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+      });
+      tableData.push(row);
+      currentRowIndex++;
+    });
+  }
+
+  const supermercadoNomes = Array.from(coletasPorSupermercado.values()).map(c => {
+    const s = data.supermercados.find(x => x.nome === c.nome);
+    return s?.abreviacao || c.nome;
+  });
+  const headRow: any[] = [
+    'Código', 'Produto', 'Qntd',
+    ...supermercadoNomes.map(n => ({ content: n, styles: { halign: 'right' } }))
+  ];
+  const columnStyles: any = {
+    0: { cellWidth: 20 },
+    1: { cellWidth: 50 },
+    2: { cellWidth: 25 },
+  };
+  for (let i = 3; i < 3 + supermercadoNomes.length; i++) {
+    columnStyles[i] = { halign: 'right' };
+  }
+  const manualPriceTextMap = new Map<string, { valueText: string; symbol: string }>();
+
+  autoTable(doc, {
+    head: [headRow],
+    body: tableData,
+    startY: yPos,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [66, 66, 66] },
+    columnStyles,
+    willDrawCell: (d) => {
+      if (d.section !== 'body' || d.column.index < 3) return;
+      const sym = symbolsMap.get(d.row.index)?.get(d.column.index);
+      const txt = d.cell.text?.[0];
+      if (!sym || !txt || txt === '-') return;
+      manualPriceTextMap.set(`${d.row.index}-${d.column.index}`, { valueText: txt, symbol: sym });
+      d.cell.text = [''];
+    },
+    didDrawCell: (d) => {
+      if (d.section !== 'body' || d.column.index < 3) return;
+      const m = manualPriceTextMap.get(`${d.row.index}-${d.column.index}`);
+      if (!m) return;
+      const { valueText, symbol } = m;
+      const fontSize = d.cell.styles.fontSize || 8;
+      const tp = (d.cell as any).getTextPos();
+      const lineY = tp.y + fontSize * 0.3;
+      const rightX = tp.x;
+      const gap = 0.8;
+      doc.setFontSize(fontSize);
+      const plusW = symbol.includes('+') ? doc.getTextWidth('+') : 0;
+      const minusW = symbol.includes('-') ? doc.getTextWidth('-') : 0;
+      const symW = plusW + (symbol.includes('+') && symbol.includes('-') ? gap : 0) + minusW;
+      const valueRightX = rightX - symW - gap;
+      doc.setTextColor(0, 0, 0);
+      doc.text(valueText, valueRightX, lineY, { align: 'right' });
+      let cx = valueRightX + gap;
+      if (symbol.includes('+')) {
+        doc.setTextColor(0, 0, 255);
+        doc.text('+', cx, lineY);
+        cx += plusW + (symbol.includes('-') ? gap : 0);
+      }
+      if (symbol.includes('-')) {
+        doc.setTextColor(255, 0, 0);
+        doc.text('-', cx, lineY);
+      }
+      doc.setTextColor(0, 0, 0);
+      manualPriceTextMap.delete(`${d.row.index}-${d.column.index}`);
+    }
+  });
+
+  const safeName = data.nome.replace(/[^a-z0-9_-]+/gi, '_');
+  doc.save(`${safeName}_${data.data}.pdf`);
+};
