@@ -370,6 +370,11 @@ export const RelatoriosPage = () => {
           <p className="text-muted-foreground">Crie relatórios com base em listas e coletas finalizadas</p>
         </div>
         
+        <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setShowPersonalizadoModal(true)}>
+          <Settings2 className="w-4 h-4 mr-2" />
+          Personalizado
+        </Button>
         <Dialog open={showRelatorioDialog} onOpenChange={setShowRelatorioDialog}>
           <DialogTrigger asChild>
             <Button onClick={() => resetRelatorioForm()}>
