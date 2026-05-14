@@ -403,6 +403,33 @@ export type Database = {
         }
         Relationships: []
       }
+      relatorios_personalizados: {
+        Row: {
+          created_at: string
+          hierarquia_customizada: Json
+          id: string
+          nome: string
+          produtos: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hierarquia_customizada?: Json
+          id?: string
+          nome: string
+          produtos?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hierarquia_customizada?: Json
+          id?: string
+          nome?: string
+          produtos?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subgrupos: {
         Row: {
           codigo: string

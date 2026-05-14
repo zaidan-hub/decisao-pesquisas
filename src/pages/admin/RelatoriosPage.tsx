@@ -21,6 +21,8 @@ import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
 import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateEstatisticasPDF, generateComparadoresPDF } from '@/lib/reportGenerator';
 import { supabase } from '@/integrations/supabase/client';
+import { RelatorioPersonalizadoModal } from '@/components/admin/RelatorioPersonalizadoModal';
+import { Settings2 } from 'lucide-react';
 
 // Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
@@ -64,6 +66,7 @@ export const RelatoriosPage = () => {
 
   // Estado para modal de detalhes do relatório
   const [relatorioDetalhe, setRelatorioDetalhe] = useState<Relatorio | null>(null);
+  const [showPersonalizadoModal, setShowPersonalizadoModal] = useState(false);
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
@@ -367,6 +370,11 @@ export const RelatoriosPage = () => {
           <p className="text-muted-foreground">Crie relatórios com base em listas e coletas finalizadas</p>
         </div>
         
+        <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setShowPersonalizadoModal(true)}>
+          <Settings2 className="w-4 h-4 mr-2" />
+          Personalizado
+        </Button>
         <Dialog open={showRelatorioDialog} onOpenChange={setShowRelatorioDialog}>
           <DialogTrigger asChild>
             <Button onClick={() => resetRelatorioForm()}>
@@ -462,6 +470,7 @@ export const RelatoriosPage = () => {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Relatórios Gerados */}
@@ -797,6 +806,11 @@ export const RelatoriosPage = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      <RelatorioPersonalizadoModal
+        open={showPersonalizadoModal}
+        onOpenChange={setShowPersonalizadoModal}
+      />
     </div>
   );
 };
