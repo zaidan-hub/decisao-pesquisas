@@ -497,78 +497,50 @@ export const RelatoriosPage = () => {
           ) : (
             <div className="space-y-2">
               {relatorios.map(rel => (
-                <div key={rel.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div 
-                    className="cursor-pointer hover:opacity-70 transition-opacity"
-                    onClick={() => setRelatorioDetalhe(rel)}
-                    title="Clique para ver detalhes"
-                  >
-                    <h4 className="font-medium flex items-center gap-1">
-                      <Info className="w-4 h-4 text-muted-foreground" />
-                      {rel.nome}
+                <div
+                  key={rel.id}
+                  className="p-3 border rounded-lg cursor-pointer hover:bg-accent/40 transition-colors"
+                  onClick={() => setRelatorioDetalhe(rel)}
+                  title="Clique para ver detalhes"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="font-medium flex items-center gap-1 min-w-0 truncate">
+                      <Info className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">{rel.nome_cliente}</span>
                     </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Cliente: {rel.nome_cliente} | Data: {formatDate(rel.data)} | {rel.produtos.length} produtos | {rel.coletas.length} coletas
-                    </p>
+                    <span className="text-sm text-muted-foreground shrink-0">
+                      {formatDate(rel.data)}
+                    </span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExportPDF(rel)}
-                    >
+                  <div
+                    className="flex flex-wrap gap-2 mt-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button variant="outline" size="sm" onClick={() => handleExportPDF(rel)}>
                       <FileDown className="w-4 h-4 mr-1" />
                       PDF
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExportTXT(rel)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleExportTXT(rel)}>
                       <FileDown className="w-4 h-4 mr-1" />
                       TXT
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExportProdutosNaoEncontrados(rel)}
-                      title="Produtos Não Encontrados"
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleExportProdutosNaoEncontrados(rel)} title="Produtos Não Encontrados">
                       <FileDown className="w-4 h-4 mr-1" />
                       Não Encontrados
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenComparativo(rel)}
-                      title="Comparativo da Concorrência"
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleOpenComparativo(rel)} title="Comparativo da Concorrência">
                       <FileDown className="w-4 h-4 mr-1" />
                       Comparativo
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenEstatisticas(rel)}
-                      title="Estatísticas"
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleOpenEstatisticas(rel)} title="Estatísticas">
                       <FileDown className="w-4 h-4 mr-1" />
                       Estatísticas
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenCompradores(rel)}
-                      title="Comparativo por Compradores"
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleOpenCompradores(rel)} title="Comparativo por Compradores">
                       <FileDown className="w-4 h-4 mr-1" />
                       Compradores
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeletingId(rel.id)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setDeletingId(rel.id)} title="Excluir">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
