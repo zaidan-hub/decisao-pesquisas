@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Plus, Edit, Trash2, ArrowUp, ArrowDown, FileDown, X, Pencil, MoveRight, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, ArrowUp, ArrowDown, FileDown, X, Pencil, MoveRight, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -307,6 +307,12 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   const [renomeando, setRenomeando] = useState<{ tipo: 'departamento' | 'grupo' | 'subgrupo'; id: string } | null>(null);
   const [renomeValor, setRenomeValor] = useState('');
 
+  // Seleção em cascata da árvore (lado esquerdo)
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [expandedDeps, setExpandedDeps] = useState<Set<string>>(new Set());
+  const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
+  const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
+
   const departamentosMap = useMemo(() => new Map(departamentos.map(d => [d.id, d])), [departamentos]);
   const gruposMap = useMemo(() => new Map(grupos.map(g => [g.id, g])), [grupos]);
   const subgruposMap = useMemo(() => new Map(subgrupos.map(s => [s.id, s])), [subgrupos]);
@@ -320,33 +326,126 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     return '?';
   };
 
-  // Adicionar produto (e cadeia) à visualização
-  const adicionarProduto = (produtoId: string) => {
+  // Construir hierarquia completa (departamento → grupo → subgrupo → produtos), filtrada por busca
+  const departamentoHierarchy = useMemo(() => {
+    const term = busca.trim().toLowerCase();
+    const matchProduto = (p: any) =>
+      !term || p.nome.toLowerCase().includes(term) || (p.codigo || '').toLowerCase().includes(term);
+
+    return departamentos.map(dep => {
+      const gruposDoDep = grupos
+        .filter(g => g.departamentoId === dep.id)
+        .map(g => {
+          const subsDoGrupo = subgrupos
+            .filter(s => s.grupoId === g.id)
+            .map(s => {
+              const prods = produtos.filter(p => p.subgrupoId === s.id && matchProduto(p));
+              const matchSub = !term || s.nome.toLowerCase().includes(term);
+              return { ...s, produtos: matchSub ? produtos.filter(p => p.subgrupoId === s.id) : prods };
+            })
+            .filter(s => {
+              if (!term) return true;
+              return s.nome.toLowerCase().includes(term) || s.produtos.length > 0;
+            });
+          return { ...g, subgrupos: subsDoGrupo };
+        })
+        .filter(g => {
+          if (!term) return true;
+          return g.nome.toLowerCase().includes(term) || g.subgrupos.length > 0;
+        });
+      return { departamento: dep, grupos: gruposDoDep };
+    });
+  }, [departamentos, grupos, subgrupos, produtos, busca]);
+
+  // Auto-expandir nós que casam com a busca
+  useEffect(() => {
+    if (!busca.trim()) return;
+    const deps = new Set<string>();
+    const grps = new Set<string>();
+    const subs = new Set<string>();
+    departamentoHierarchy.forEach(d => {
+      if (d.grupos.length > 0) {
+        deps.add(d.departamento.id);
+        d.grupos.forEach(g => {
+          grps.add(g.id);
+          g.subgrupos.forEach(s => subs.add(s.id));
+        });
+      }
+    });
+    setExpandedDeps(deps);
+    setExpandedGrupos(grps);
+    setExpandedSubs(subs);
+  }, [busca, departamentoHierarchy]);
+
+  // Cascata de seleção (idêntica à de Listas)
+  const handleSelectItem = (tipo: 'departamento' | 'grupo' | 'subgrupo' | 'produto', id: string) => {
+    const key = `${tipo}:${id}`;
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      const add = !next.has(key);
+      if (add) next.add(key); else next.delete(key);
+
+      const op = (k: string) => add ? next.add(k) : next.delete(k);
+      if (tipo === 'departamento') {
+        grupos.filter(g => g.departamentoId === id).forEach(g => {
+          op(`grupo:${g.id}`);
+          subgrupos.filter(s => s.grupoId === g.id).forEach(s => {
+            op(`subgrupo:${s.id}`);
+            produtos.filter(p => p.subgrupoId === s.id).forEach(p => op(`produto:${p.id}`));
+          });
+        });
+      } else if (tipo === 'grupo') {
+        subgrupos.filter(s => s.grupoId === id).forEach(s => {
+          op(`subgrupo:${s.id}`);
+          produtos.filter(p => p.subgrupoId === s.id).forEach(p => op(`produto:${p.id}`));
+        });
+      } else if (tipo === 'subgrupo') {
+        produtos.filter(p => p.subgrupoId === id).forEach(p => op(`produto:${p.id}`));
+      }
+      return next;
+    });
+  };
+
+  const toggleSet = (set: Set<string>, setter: (s: Set<string>) => void, id: string) => {
+    const n = new Set(set);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    setter(n);
+  };
+
+  // Adicionar produto à visualização (já cria a cadeia dep/grupo/subgrupo)
+  const adicionarProduto = (produtoId: string, base?: VisualizacaoItem[]) => {
     const produto = produtosMap.get(produtoId);
-    if (!produto) return;
-    if (items.some(i => i.tipo === 'produto' && i.id === produtoId)) return;
+    if (!produto) return base ?? items;
+    const arr = base ? [...base] : [...items];
+    if (arr.some(i => i.tipo === 'produto' && i.id === produtoId)) return arr;
 
     const subgrupo = subgruposMap.get(produto.subgrupoId);
     const grupo = subgrupo ? gruposMap.get(subgrupo.grupoId) : undefined;
     const depId = grupo?.departamentoId;
 
-    setItems(prev => {
-      const next = [...prev];
-      // garantir departamento
-      if (depId && !next.some(i => i.tipo === 'departamento' && i.id === depId)) {
-        next.push({ tipo: 'departamento', id: depId });
-      }
-      // garantir grupo
-      if (grupo && !next.some(i => i.tipo === 'grupo' && i.id === grupo.id)) {
-        next.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
-      }
-      // garantir subgrupo
-      if (subgrupo && !next.some(i => i.tipo === 'subgrupo' && i.id === subgrupo.id)) {
-        next.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
-      }
-      next.push({ tipo: 'produto', id: produtoId, parentId: subgrupo?.id });
-      return next;
-    });
+    if (depId && !arr.some(i => i.tipo === 'departamento' && i.id === depId)) {
+      arr.push({ tipo: 'departamento', id: depId });
+    }
+    if (grupo && !arr.some(i => i.tipo === 'grupo' && i.id === grupo.id)) {
+      arr.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
+    }
+    if (subgrupo && !arr.some(i => i.tipo === 'subgrupo' && i.id === subgrupo.id)) {
+      arr.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
+    }
+    arr.push({ tipo: 'produto', id: produtoId, parentId: subgrupo?.id });
+    return arr;
+  };
+
+  const handleAdicionarSelecionados = () => {
+    if (selectedItems.size === 0) return;
+    let next = [...items];
+    // Coletar IDs de produtos das chaves "produto:..."
+    const produtosAdicionar = Array.from(selectedItems)
+      .filter(k => k.startsWith('produto:'))
+      .map(k => k.split(':')[1]);
+    produtosAdicionar.forEach(pid => { next = adicionarProduto(pid, next) ?? next; });
+    setItems(next);
+    setSelectedItems(new Set());
   };
 
   const removerItem = (idx: number) => {
@@ -391,16 +490,6 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     onSaved(nome, produtosFinais, { ordem: items, nomes });
   };
 
-  // Filtros do painel esquerdo (lista plana de produtos)
-  const produtosFiltrados = useMemo(() => {
-    const t = busca.trim().toLowerCase();
-    return produtos
-      .filter(p => !t || p.nome.toLowerCase().includes(t) || p.codigo.toLowerCase().includes(t))
-      .slice(0, 200);
-  }, [produtos, busca]);
-
-  const idsAdicionados = new Set(items.filter(i => i.tipo === 'produto').map(i => i.id));
-
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Breadcrumb */}
@@ -422,42 +511,114 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
 
       {/* Dual panel */}
       <div className="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
-        {/* Esquerda: produtos disponíveis */}
+        {/* Esquerda: árvore hierárquica completa */}
         <div className="border rounded-md flex flex-col min-h-0">
-          <div className="p-2 border-b">
+          <div className="p-2 border-b space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">Selecionar Produtos</span>
+              {selectedItems.size > 0 && (
+                <Button type="button" size="sm" onClick={handleAdicionarSelecionados}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Adicionar ({Array.from(selectedItems).filter(k => k.startsWith('produto:')).length})
+                </Button>
+              )}
+            </div>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={busca}
                 onChange={e => setBusca(e.target.value)}
-                placeholder="Buscar produto por nome ou código"
-                className="pl-8"
+                placeholder="Buscar produtos, departamentos, grupos ou subgrupos..."
+                className="pl-8 h-8"
               />
             </div>
           </div>
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">
-              {produtosFiltrados.map(p => {
-                const adicionado = idsAdicionados.has(p.id);
+              {departamentoHierarchy.map(deptData => {
+                const hasContent = deptData.grupos.length > 0;
+                if (!hasContent) return null;
+                const depExpanded = expandedDeps.has(deptData.departamento.id);
                 return (
-                  <div key={p.id} className="flex items-center gap-2 text-sm p-1 hover:bg-muted/50 rounded">
-                    <Checkbox
-                      checked={adicionado}
-                      onCheckedChange={() => {
-                        if (adicionado) {
-                          setItems(prev => prev.filter(i => !(i.tipo === 'produto' && i.id === p.id)));
-                        } else {
-                          adicionarProduto(p.id);
-                        }
-                      }}
-                    />
-                    <span className="text-xs text-muted-foreground w-12">{p.codigo}</span>
-                    <span className="flex-1 truncate">{p.nome}</span>
+                  <div key={deptData.departamento.id} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleSet(expandedDeps, setExpandedDeps, deptData.departamento.id)}
+                        className="p-0 hover:bg-muted rounded"
+                      >
+                        {depExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+                      <Checkbox
+                        checked={selectedItems.has(`departamento:${deptData.departamento.id}`)}
+                        onCheckedChange={() => handleSelectItem('departamento', deptData.departamento.id)}
+                      />
+                      <span className="font-semibold text-sm">{deptData.departamento.nome}</span>
+                    </div>
+                    {depExpanded && deptData.grupos.map(grupoData => {
+                      const grpExpanded = expandedGrupos.has(grupoData.id);
+                      return (
+                        <div key={grupoData.id} className="ml-5 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleSet(expandedGrupos, setExpandedGrupos, grupoData.id)}
+                              className="p-0 hover:bg-muted rounded"
+                            >
+                              {grpExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
+                            <Checkbox
+                              checked={selectedItems.has(`grupo:${grupoData.id}`)}
+                              onCheckedChange={() => handleSelectItem('grupo', grupoData.id)}
+                            />
+                            <span className="font-medium text-sm">{grupoData.nome}</span>
+                          </div>
+                          {grpExpanded && grupoData.subgrupos.map((subData: any) => {
+                            const subExpanded = expandedSubs.has(subData.id);
+                            return (
+                              <div key={subData.id} className="ml-5 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSet(expandedSubs, setExpandedSubs, subData.id)}
+                                    className="p-0 hover:bg-muted rounded"
+                                  >
+                                    {subExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  </button>
+                                  <Checkbox
+                                    checked={selectedItems.has(`subgrupo:${subData.id}`)}
+                                    onCheckedChange={() => handleSelectItem('subgrupo', subData.id)}
+                                  />
+                                  <span className="text-sm">
+                                    {subData.nome}
+                                    <span className="text-xs text-muted-foreground ml-1">({subData.produtos.length})</span>
+                                  </span>
+                                </div>
+                                {subExpanded && (
+                                  <div className="ml-5 space-y-1">
+                                    {subData.produtos.map((p: any) => (
+                                      <div key={p.id} className="flex items-center gap-2">
+                                        <Checkbox
+                                          checked={selectedItems.has(`produto:${p.id}`)}
+                                          onCheckedChange={() => handleSelectItem('produto', p.id)}
+                                        />
+                                        <span className="text-xs text-muted-foreground w-12">{p.codigo}</span>
+                                        <span className="text-sm flex-1 truncate">{p.nome}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
-              {produtosFiltrados.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-4">Nenhum produto encontrado</p>
+              {departamentoHierarchy.every(d => d.grupos.length === 0) && (
+                <p className="text-center text-muted-foreground text-sm py-4">Nenhum item encontrado</p>
               )}
             </div>
           </ScrollArea>
