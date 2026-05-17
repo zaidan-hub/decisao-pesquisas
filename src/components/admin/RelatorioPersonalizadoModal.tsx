@@ -522,9 +522,6 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setItems(prev => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const onMoveRow = useCallback((idx: number, dir: -1 | 1) => moverItemRef.current(idx, dir), []);
-  const onRemoveRow = useCallback((idx: number) => removerItem(idx), [removerItem]);
-  const onReatribuirRow = useCallback((idx: number, novoParentId: string) => reatribuirParentRef.current(idx, novoParentId), []);
   const onRenameRow = useCallback((tipo: 'departamento' | 'grupo' | 'subgrupo', id: string, nomeAtual: string) => {
     setRenomeando({ tipo, id });
     setRenomeValor(nomeAtual);
