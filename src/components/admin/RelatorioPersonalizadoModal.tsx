@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -323,6 +323,48 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   const subgruposMap = useMemo(() => new Map(subgrupos.map(s => [s.id, s])), [subgrupos]);
   const produtosMap = useMemo(() => new Map(produtos.map(p => [p.id, p])), [produtos]);
 
+  // Índices pré-computados (uma vez por mudança das listas-base)
+  const gruposByDep = useMemo(() => {
+    const m = new Map<string, any[]>();
+    grupos.forEach(g => {
+      const arr = m.get(g.departamentoId) || [];
+      arr.push(g); m.set(g.departamentoId, arr);
+    });
+    return m;
+  }, [grupos]);
+  const subsByGrupo = useMemo(() => {
+    const m = new Map<string, any[]>();
+    subgrupos.forEach(s => {
+      const arr = m.get(s.grupoId) || [];
+      arr.push(s); m.set(s.grupoId, arr);
+    });
+    return m;
+  }, [subgrupos]);
+  const prodsBySub = useMemo(() => {
+    const m = new Map<string, any[]>();
+    produtos.forEach(p => {
+      const arr = m.get(p.subgrupoId) || [];
+      arr.push(p); m.set(p.subgrupoId, arr);
+    });
+    return m;
+  }, [produtos]);
+  // Nomes em lowercase em cache (evita recomputar a cada keystroke)
+  const produtoLower = useMemo(() => {
+    const m = new Map<string, { nome: string; codigo: string }>();
+    produtos.forEach(p => m.set(p.id, { nome: (p.nome || '').toLowerCase(), codigo: (p.codigo || '').toLowerCase() }));
+    return m;
+  }, [produtos]);
+  const subLower = useMemo(() => {
+    const m = new Map<string, string>();
+    subgrupos.forEach(s => m.set(s.id, (s.nome || '').toLowerCase()));
+    return m;
+  }, [subgrupos]);
+  const grupoLower = useMemo(() => {
+    const m = new Map<string, string>();
+    grupos.forEach(g => m.set(g.id, (g.nome || '').toLowerCase()));
+    return m;
+  }, [grupos]);
+
   const getNome = (tipo: string, id: string) => {
     if (tipo === 'departamento') return nomes?.departamentos?.[id] || departamentosMap.get(id)?.nome || '?';
     if (tipo === 'grupo') return nomes?.grupos?.[id] || gruposMap.get(id)?.nome || '?';
@@ -331,40 +373,42 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     return '?';
   };
 
-  // Construir hierarquia completa (departamento → grupo → subgrupo → produtos), filtrada por busca
-  const departamentoHierarchy = useMemo(() => {
-    const term = busca.trim().toLowerCase();
-    const matchProduto = (p: any) =>
-      !term || p.nome.toLowerCase().includes(term) || (p.codigo || '').toLowerCase().includes(term);
+  // Busca deferida — mantém o input responsivo enquanto a árvore recomputa em background
+  const buscaDeferred = useDeferredValue(busca);
 
+  // Construir hierarquia completa, usando índices pré-computados
+  const departamentoHierarchy = useMemo(() => {
+    const term = buscaDeferred.trim().toLowerCase();
     return departamentos.map(dep => {
-      const gruposDoDep = grupos
-        .filter(g => g.departamentoId === dep.id)
-        .map(g => {
-          const subsDoGrupo = subgrupos
-            .filter(s => s.grupoId === g.id)
-            .map(s => {
-              const prods = produtos.filter(p => p.subgrupoId === s.id && matchProduto(p));
-              const matchSub = !term || s.nome.toLowerCase().includes(term);
-              return { ...s, produtos: matchSub ? produtos.filter(p => p.subgrupoId === s.id) : prods };
-            })
-            .filter(s => {
-              if (!term) return true;
-              return s.nome.toLowerCase().includes(term) || s.produtos.length > 0;
-            });
-          return { ...g, subgrupos: subsDoGrupo };
-        })
-        .filter(g => {
+      const gruposDoDep = (gruposByDep.get(dep.id) || []).map(g => {
+        const subsDoGrupo = (subsByGrupo.get(g.id) || []).map(s => {
+          const allProds = prodsBySub.get(s.id) || [];
+          const matchSub = !term || (subLower.get(s.id) || '').includes(term);
+          const prods = !term
+            ? allProds
+            : matchSub
+              ? allProds
+              : allProds.filter(p => {
+                  const low = produtoLower.get(p.id);
+                  return !!low && (low.nome.includes(term) || low.codigo.includes(term));
+                });
+          return { ...s, produtos: prods };
+        }).filter(s => {
           if (!term) return true;
-          return g.nome.toLowerCase().includes(term) || g.subgrupos.length > 0;
+          return (subLower.get(s.id) || '').includes(term) || s.produtos.length > 0;
         });
+        return { ...g, subgrupos: subsDoGrupo };
+      }).filter(g => {
+        if (!term) return true;
+        return (grupoLower.get(g.id) || '').includes(term) || g.subgrupos.length > 0;
+      });
       return { departamento: dep, grupos: gruposDoDep };
     });
-  }, [departamentos, grupos, subgrupos, produtos, busca]);
+  }, [departamentos, gruposByDep, subsByGrupo, prodsBySub, produtoLower, subLower, grupoLower, buscaDeferred]);
 
   // Auto-expandir nós que casam com a busca
   useEffect(() => {
-    if (!busca.trim()) return;
+    if (!buscaDeferred.trim()) return;
     const deps = new Set<string>();
     const grps = new Set<string>();
     const subs = new Set<string>();
@@ -380,32 +424,31 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setExpandedDeps(deps);
     setExpandedGrupos(grps);
     setExpandedSubs(subs);
-  }, [busca, departamentoHierarchy]);
+  }, [buscaDeferred, departamentoHierarchy]);
 
-  // Cascata de seleção (idêntica à de Listas)
+  // Cascata de seleção (idêntica à de Listas) — usa índices pré-computados
   const handleSelectItem = (tipo: 'departamento' | 'grupo' | 'subgrupo' | 'produto', id: string) => {
     const key = `${tipo}:${id}`;
     setSelectedItems(prev => {
       const next = new Set(prev);
       const add = !next.has(key);
       if (add) next.add(key); else next.delete(key);
-
       const op = (k: string) => add ? next.add(k) : next.delete(k);
       if (tipo === 'departamento') {
-        grupos.filter(g => g.departamentoId === id).forEach(g => {
+        (gruposByDep.get(id) || []).forEach(g => {
           op(`grupo:${g.id}`);
-          subgrupos.filter(s => s.grupoId === g.id).forEach(s => {
+          (subsByGrupo.get(g.id) || []).forEach(s => {
             op(`subgrupo:${s.id}`);
-            produtos.filter(p => p.subgrupoId === s.id).forEach(p => op(`produto:${p.id}`));
+            (prodsBySub.get(s.id) || []).forEach(p => op(`produto:${p.id}`));
           });
         });
       } else if (tipo === 'grupo') {
-        subgrupos.filter(s => s.grupoId === id).forEach(s => {
+        (subsByGrupo.get(id) || []).forEach(s => {
           op(`subgrupo:${s.id}`);
-          produtos.filter(p => p.subgrupoId === s.id).forEach(p => op(`produto:${p.id}`));
+          (prodsBySub.get(s.id) || []).forEach(p => op(`produto:${p.id}`));
         });
       } else if (tipo === 'subgrupo') {
-        produtos.filter(p => p.subgrupoId === id).forEach(p => op(`produto:${p.id}`));
+        (prodsBySub.get(id) || []).forEach(p => op(`produto:${p.id}`));
       }
       return next;
     });
@@ -417,39 +460,48 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setter(n);
   };
 
-  // Adicionar produto à visualização (já cria a cadeia dep/grupo/subgrupo)
-  const adicionarProduto = (produtoId: string, base?: VisualizacaoItem[]) => {
-    const produto = produtosMap.get(produtoId);
-    if (!produto) return base ?? items;
-    const arr = base ? [...base] : [...items];
-    if (arr.some(i => i.tipo === 'produto' && i.id === produtoId)) return arr;
-
-    const subgrupo = subgruposMap.get(produto.subgrupoId);
-    const grupo = subgrupo ? gruposMap.get(subgrupo.grupoId) : undefined;
-    const depId = grupo?.departamentoId;
-
-    if (depId && !arr.some(i => i.tipo === 'departamento' && i.id === depId)) {
-      arr.push({ tipo: 'departamento', id: depId });
-    }
-    if (grupo && !arr.some(i => i.tipo === 'grupo' && i.id === grupo.id)) {
-      arr.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
-    }
-    if (subgrupo && !arr.some(i => i.tipo === 'subgrupo' && i.id === subgrupo.id)) {
-      arr.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
-    }
-    arr.push({ tipo: 'produto', id: produtoId, parentId: subgrupo?.id });
-    return arr;
-  };
-
   const handleAdicionarSelecionados = () => {
     if (selectedItems.size === 0) return;
-    let next = [...items];
-    // Coletar IDs de produtos das chaves "produto:..."
-    const produtosAdicionar = Array.from(selectedItems)
-      .filter(k => k.startsWith('produto:'))
-      .map(k => k.split(':')[1]);
-    produtosAdicionar.forEach(pid => { next = adicionarProduto(pid, next) ?? next; });
-    setItems(next);
+    const produtosAdicionar: string[] = [];
+    selectedItems.forEach(k => { if (k.startsWith('produto:')) produtosAdicionar.push(k.slice(8)); });
+    if (produtosAdicionar.length === 0) { setSelectedItems(new Set()); return; }
+
+    setItems(prev => {
+      const next = [...prev];
+      const hasProduto = new Set<string>();
+      const hasSubgrupo = new Set<string>();
+      const hasGrupo = new Set<string>();
+      const hasDep = new Set<string>();
+      for (const it of next) {
+        if (it.tipo === 'produto') hasProduto.add(it.id);
+        else if (it.tipo === 'subgrupo') hasSubgrupo.add(it.id);
+        else if (it.tipo === 'grupo') hasGrupo.add(it.id);
+        else if (it.tipo === 'departamento') hasDep.add(it.id);
+      }
+      for (const pid of produtosAdicionar) {
+        if (hasProduto.has(pid)) continue;
+        const produto = produtosMap.get(pid);
+        if (!produto) continue;
+        const subgrupo = subgruposMap.get(produto.subgrupoId);
+        const grupo = subgrupo ? gruposMap.get(subgrupo.grupoId) : undefined;
+        const depId = grupo?.departamentoId;
+        if (depId && !hasDep.has(depId)) {
+          next.push({ tipo: 'departamento', id: depId });
+          hasDep.add(depId);
+        }
+        if (grupo && !hasGrupo.has(grupo.id)) {
+          next.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
+          hasGrupo.add(grupo.id);
+        }
+        if (subgrupo && !hasSubgrupo.has(subgrupo.id)) {
+          next.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
+          hasSubgrupo.add(subgrupo.id);
+        }
+        next.push({ tipo: 'produto', id: pid, parentId: subgrupo?.id });
+        hasProduto.add(pid);
+      }
+      return next;
+    });
     setSelectedItems(new Set());
   };
 
@@ -535,6 +587,25 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setRenomeando(null);
     setRenomeValor('');
   };
+
+  // Pré-computa ancestrais e listas de pai por tipo para o painel direito
+  const itemMeta = useMemo(() => {
+    const subParent = new Map<string, string | undefined>(); // sub.id -> grupo.id
+    const grupoParent = new Map<string, string | undefined>(); // grupo.id -> dep.id
+    const depOpts: { id: string; nome: string }[] = [];
+    const grupoOpts: { id: string; nome: string }[] = [];
+    const subOpts: { id: string; nome: string }[] = [];
+    for (const it of items) {
+      if (it.tipo === 'subgrupo') subParent.set(it.id, it.parentId);
+      else if (it.tipo === 'grupo') grupoParent.set(it.id, it.parentId);
+    }
+    for (const it of items) {
+      if (it.tipo === 'departamento') depOpts.push({ id: it.id, nome: getNome('departamento', it.id) });
+      else if (it.tipo === 'grupo') grupoOpts.push({ id: it.id, nome: getNome('grupo', it.id) });
+      else if (it.tipo === 'subgrupo') subOpts.push({ id: it.id, nome: getNome('subgrupo', it.id) });
+    }
+    return { subParent, grupoParent, depOpts, grupoOpts, subOpts };
+  }, [items, nomes, departamentosMap, gruposMap, subgruposMap]);
 
   const handleSalvar = () => {
     if (!nome.trim()) {
@@ -689,20 +760,17 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                   Selecione produtos à esquerda para construir a hierarquia.
                 </p>
               ) : items.map((item, idx) => {
-                // Resolver ancestrais via parentId
+                // Resolver ancestrais via mapas pré-computados
                 let subId: string | undefined;
                 let grupoId: string | undefined;
                 let depId: string | undefined;
                 if (item.tipo === 'produto') {
                   subId = item.parentId;
-                  const sub = items.find(i => i.tipo === 'subgrupo' && i.id === subId);
-                  grupoId = sub?.parentId;
-                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
-                  depId = grp?.parentId;
+                  grupoId = subId ? itemMeta.subParent.get(subId) : undefined;
+                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
                 } else if (item.tipo === 'subgrupo') {
                   grupoId = item.parentId;
-                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
-                  depId = grp?.parentId;
+                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
                 } else if (item.tipo === 'grupo') {
                   depId = item.parentId;
                 }
@@ -727,21 +795,11 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                   else if (item.tipo === 'grupo') toggleSet(collapsedGrupos, setCollapsedGrupos, item.id);
                   else if (item.tipo === 'subgrupo') toggleSet(collapsedSubs, setCollapsedSubs, item.id);
                 };
-                // Opções de novo pai
-                let opcoesPai: { id: string; nome: string }[] = [];
-                if (item.tipo === 'grupo') {
-                  opcoesPai = items
-                    .filter(i => i.tipo === 'departamento')
-                    .map(i => ({ id: i.id, nome: getNome('departamento', i.id) }));
-                } else if (item.tipo === 'subgrupo') {
-                  opcoesPai = items
-                    .filter(i => i.tipo === 'grupo')
-                    .map(i => ({ id: i.id, nome: getNome('grupo', i.id) }));
-                } else if (item.tipo === 'produto') {
-                  opcoesPai = items
-                    .filter(i => i.tipo === 'subgrupo')
-                    .map(i => ({ id: i.id, nome: getNome('subgrupo', i.id) }));
-                }
+                const opcoesPai =
+                  item.tipo === 'grupo' ? itemMeta.depOpts :
+                  item.tipo === 'subgrupo' ? itemMeta.grupoOpts :
+                  item.tipo === 'produto' ? itemMeta.subOpts :
+                  [];
                 return (
                   <div
                     key={`${item.tipo}-${item.id}-${idx}`}
