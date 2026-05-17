@@ -313,6 +313,11 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
 
+  // Collapse na visualização (lado direito)
+  const [collapsedDeps, setCollapsedDeps] = useState<Set<string>>(new Set());
+  const [collapsedGrupos, setCollapsedGrupos] = useState<Set<string>>(new Set());
+  const [collapsedSubs, setCollapsedSubs] = useState<Set<string>>(new Set());
+
   const departamentosMap = useMemo(() => new Map(departamentos.map(d => [d.id, d])), [departamentos]);
   const gruposMap = useMemo(() => new Map(grupos.map(g => [g.id, g])), [grupos]);
   const subgruposMap = useMemo(() => new Map(subgrupos.map(s => [s.id, s])), [subgrupos]);
@@ -452,13 +457,63 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setItems(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const tipoNivel = (t: VisualizacaoItem['tipo']) =>
+    t === 'departamento' ? 0 : t === 'grupo' ? 1 : t === 'subgrupo' ? 2 : 3;
+
+  // Bloco = item + descendentes consecutivos (níveis maiores que o do item)
+  const getBlocoRange = (arr: VisualizacaoItem[], start: number): [number, number] => {
+    const nivel = tipoNivel(arr[start].tipo);
+    let end = start + 1;
+    while (end < arr.length && tipoNivel(arr[end].tipo) > nivel) end++;
+    return [start, end];
+  };
+
   const moverItem = (idx: number, dir: -1 | 1) => {
     setItems(prev => {
-      const next = [...prev];
-      const target = idx + dir;
-      if (target < 0 || target >= next.length) return next;
-      [next[idx], next[target]] = [next[target], next[idx]];
-      return next;
+      const arr = [...prev];
+      const alvo = arr[idx];
+      if (!alvo) return prev;
+      const [aStart, aEnd] = getBlocoRange(arr, idx);
+
+      if (dir === 1) {
+        // próximo bloco de mesmo tipo a partir de aEnd
+        let nStart = -1;
+        for (let i = aEnd; i < arr.length; i++) {
+          if (arr[i].tipo === alvo.tipo) { nStart = i; break; }
+          if (tipoNivel(arr[i].tipo) < tipoNivel(alvo.tipo)) break; // saiu do escopo
+        }
+        if (nStart === -1) return prev;
+        const [, nEnd] = getBlocoRange(arr, nStart);
+        const blocoAlvo = arr.slice(aStart, aEnd);
+        const entre = arr.slice(aEnd, nStart);
+        const blocoViz = arr.slice(nStart, nEnd);
+        return [
+          ...arr.slice(0, aStart),
+          ...blocoViz,
+          ...entre,
+          ...blocoAlvo,
+          ...arr.slice(nEnd),
+        ];
+      } else {
+        // bloco anterior de mesmo tipo
+        let pStart = -1;
+        for (let i = aStart - 1; i >= 0; i--) {
+          if (tipoNivel(arr[i].tipo) < tipoNivel(alvo.tipo)) break;
+          if (arr[i].tipo === alvo.tipo) { pStart = i; break; }
+        }
+        if (pStart === -1) return prev;
+        const [, pEnd] = getBlocoRange(arr, pStart);
+        const blocoPrev = arr.slice(pStart, pEnd);
+        const entre = arr.slice(pEnd, aStart);
+        const blocoAlvo = arr.slice(aStart, aEnd);
+        return [
+          ...arr.slice(0, pStart),
+          ...blocoAlvo,
+          ...entre,
+          ...blocoPrev,
+          ...arr.slice(aEnd),
+        ];
+      }
     });
   };
 
@@ -634,11 +689,44 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                   Selecione produtos à esquerda para construir a hierarquia.
                 </p>
               ) : items.map((item, idx) => {
+                // Resolver ancestrais via parentId
+                let subId: string | undefined;
+                let grupoId: string | undefined;
+                let depId: string | undefined;
+                if (item.tipo === 'produto') {
+                  subId = item.parentId;
+                  const sub = items.find(i => i.tipo === 'subgrupo' && i.id === subId);
+                  grupoId = sub?.parentId;
+                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
+                  depId = grp?.parentId;
+                } else if (item.tipo === 'subgrupo') {
+                  grupoId = item.parentId;
+                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
+                  depId = grp?.parentId;
+                } else if (item.tipo === 'grupo') {
+                  depId = item.parentId;
+                }
+                const hiddenByAncestor =
+                  (depId && collapsedDeps.has(depId)) ||
+                  (grupoId && collapsedGrupos.has(grupoId)) ||
+                  (subId && collapsedSubs.has(subId));
+                if (hiddenByAncestor) return null;
+
                 const indent = item.tipo === 'departamento' ? 0
                   : item.tipo === 'grupo' ? 4
                   : item.tipo === 'subgrupo' ? 8
                   : 12;
                 const podeRenomear = item.tipo !== 'produto';
+                const podeColapsar = item.tipo !== 'produto';
+                const colapsado =
+                  item.tipo === 'departamento' ? collapsedDeps.has(item.id) :
+                  item.tipo === 'grupo' ? collapsedGrupos.has(item.id) :
+                  item.tipo === 'subgrupo' ? collapsedSubs.has(item.id) : false;
+                const onToggleCollapse = () => {
+                  if (item.tipo === 'departamento') toggleSet(collapsedDeps, setCollapsedDeps, item.id);
+                  else if (item.tipo === 'grupo') toggleSet(collapsedGrupos, setCollapsedGrupos, item.id);
+                  else if (item.tipo === 'subgrupo') toggleSet(collapsedSubs, setCollapsedSubs, item.id);
+                };
                 // Opções de novo pai
                 let opcoesPai: { id: string; nome: string }[] = [];
                 if (item.tipo === 'grupo') {
@@ -664,6 +752,18 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                     }`}
                     style={{ paddingLeft: indent + 4 }}
                   >
+                    {podeColapsar ? (
+                      <button
+                        type="button"
+                        onClick={onToggleCollapse}
+                        className="p-0 hover:bg-muted rounded shrink-0"
+                        title={colapsado ? 'Expandir' : 'Contrair'}
+                      >
+                        {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+                    ) : (
+                      <span className="w-3 shrink-0" />
+                    )}
                     <span className="flex-1 truncate">
                       <span className="text-muted-foreground mr-1">[{item.tipo[0].toUpperCase()}]</span>
                       {getNome(item.tipo, item.id)}
