@@ -686,7 +686,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                         <SelectTrigger className="h-6 w-7 p-0 border-0 bg-transparent">
                           <MoveRight className="w-3 h-3" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent position="popper" side="bottom" align="start" avoidCollisions={false} className="max-h-[240px]">
                           {opcoesPai.map(o => (
                             <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
                           ))}
