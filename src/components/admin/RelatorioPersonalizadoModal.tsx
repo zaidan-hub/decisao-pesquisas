@@ -313,6 +313,11 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
 
+  // Collapse na visualização (lado direito)
+  const [collapsedDeps, setCollapsedDeps] = useState<Set<string>>(new Set());
+  const [collapsedGrupos, setCollapsedGrupos] = useState<Set<string>>(new Set());
+  const [collapsedSubs, setCollapsedSubs] = useState<Set<string>>(new Set());
+
   const departamentosMap = useMemo(() => new Map(departamentos.map(d => [d.id, d])), [departamentos]);
   const gruposMap = useMemo(() => new Map(grupos.map(g => [g.id, g])), [grupos]);
   const subgruposMap = useMemo(() => new Map(subgrupos.map(s => [s.id, s])), [subgrupos]);
