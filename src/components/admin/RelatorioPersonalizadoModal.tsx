@@ -627,7 +627,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     });
   }, []);
 
-  const reatribuirParent = (idx: number, novoParentId: string) => {
+  const reatribuirParent = useCallback((idx: number, novoParentId: string) => {
     setItems(prev => {
       const arr = [...prev];
       const alvo = arr[idx];
@@ -644,7 +644,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
       const [, pEnd] = getBlocoRange(semBloco, pIdx);
       return [...semBloco.slice(0, pEnd), ...bloco, ...semBloco.slice(pEnd)];
     });
-  };
+  }, []);
 
   const aplicarRenomeio = () => {
     if (!renomeando) return;
