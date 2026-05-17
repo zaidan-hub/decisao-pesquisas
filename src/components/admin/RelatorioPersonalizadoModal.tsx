@@ -760,20 +760,17 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                   Selecione produtos à esquerda para construir a hierarquia.
                 </p>
               ) : items.map((item, idx) => {
-                // Resolver ancestrais via parentId
+                // Resolver ancestrais via mapas pré-computados
                 let subId: string | undefined;
                 let grupoId: string | undefined;
                 let depId: string | undefined;
                 if (item.tipo === 'produto') {
                   subId = item.parentId;
-                  const sub = items.find(i => i.tipo === 'subgrupo' && i.id === subId);
-                  grupoId = sub?.parentId;
-                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
-                  depId = grp?.parentId;
+                  grupoId = subId ? itemMeta.subParent.get(subId) : undefined;
+                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
                 } else if (item.tipo === 'subgrupo') {
                   grupoId = item.parentId;
-                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
-                  depId = grp?.parentId;
+                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
                 } else if (item.tipo === 'grupo') {
                   depId = item.parentId;
                 }
@@ -798,21 +795,11 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                   else if (item.tipo === 'grupo') toggleSet(collapsedGrupos, setCollapsedGrupos, item.id);
                   else if (item.tipo === 'subgrupo') toggleSet(collapsedSubs, setCollapsedSubs, item.id);
                 };
-                // Opções de novo pai
-                let opcoesPai: { id: string; nome: string }[] = [];
-                if (item.tipo === 'grupo') {
-                  opcoesPai = items
-                    .filter(i => i.tipo === 'departamento')
-                    .map(i => ({ id: i.id, nome: getNome('departamento', i.id) }));
-                } else if (item.tipo === 'subgrupo') {
-                  opcoesPai = items
-                    .filter(i => i.tipo === 'grupo')
-                    .map(i => ({ id: i.id, nome: getNome('grupo', i.id) }));
-                } else if (item.tipo === 'produto') {
-                  opcoesPai = items
-                    .filter(i => i.tipo === 'subgrupo')
-                    .map(i => ({ id: i.id, nome: getNome('subgrupo', i.id) }));
-                }
+                const opcoesPai =
+                  item.tipo === 'grupo' ? itemMeta.depOpts :
+                  item.tipo === 'subgrupo' ? itemMeta.grupoOpts :
+                  item.tipo === 'produto' ? itemMeta.subOpts :
+                  [];
                 return (
                   <div
                     key={`${item.tipo}-${item.id}-${idx}`}
