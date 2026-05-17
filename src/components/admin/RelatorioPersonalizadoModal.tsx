@@ -588,7 +588,25 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setRenomeValor('');
   };
 
-  const handleSalvar = () => {
+  // Pré-computa ancestrais e listas de pai por tipo para o painel direito
+  const itemMeta = useMemo(() => {
+    const subParent = new Map<string, string | undefined>(); // sub.id -> grupo.id
+    const grupoParent = new Map<string, string | undefined>(); // grupo.id -> dep.id
+    const depOpts: { id: string; nome: string }[] = [];
+    const grupoOpts: { id: string; nome: string }[] = [];
+    const subOpts: { id: string; nome: string }[] = [];
+    for (const it of items) {
+      if (it.tipo === 'subgrupo') subParent.set(it.id, it.parentId);
+      else if (it.tipo === 'grupo') grupoParent.set(it.id, it.parentId);
+    }
+    for (const it of items) {
+      if (it.tipo === 'departamento') depOpts.push({ id: it.id, nome: getNome('departamento', it.id) });
+      else if (it.tipo === 'grupo') grupoOpts.push({ id: it.id, nome: getNome('grupo', it.id) });
+      else if (it.tipo === 'subgrupo') subOpts.push({ id: it.id, nome: getNome('subgrupo', it.id) });
+    }
+    return { subParent, grupoParent, depOpts, grupoOpts, subOpts };
+  }, [items, nomes, departamentosMap, gruposMap, subgruposMap]);
+
     if (!nome.trim()) {
       toast({ title: 'Nome obrigatório', description: 'Informe o nome do relatório.', variant: 'destructive' });
       return;
