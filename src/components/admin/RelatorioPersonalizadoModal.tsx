@@ -972,7 +972,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                 <p className="text-center text-muted-foreground text-sm py-4">Nenhum item encontrado</p>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         {/* Direita: visualização ordenada */}
