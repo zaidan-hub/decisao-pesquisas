@@ -978,121 +978,31 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
         {/* Direita: visualização ordenada */}
         <div className="border rounded-md flex flex-col min-h-0">
           <div className="p-2 border-b text-sm font-medium">Hierarquia ({items.length} itens)</div>
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-auto">
             <div className="p-2 space-y-1">
               {items.length === 0 ? (
                 <p className="text-center text-muted-foreground text-sm py-8">
                   Selecione produtos à esquerda para construir a hierarquia.
                 </p>
-              ) : items.map((item, idx) => {
-                // Resolver ancestrais via mapas pré-computados
-                let subId: string | undefined;
-                let grupoId: string | undefined;
-                let depId: string | undefined;
-                if (item.tipo === 'produto') {
-                  subId = item.parentId;
-                  grupoId = subId ? itemMeta.subParent.get(subId) : undefined;
-                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
-                } else if (item.tipo === 'subgrupo') {
-                  grupoId = item.parentId;
-                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
-                } else if (item.tipo === 'grupo') {
-                  depId = item.parentId;
-                }
-                const hiddenByAncestor =
-                  (depId && collapsedDeps.has(depId)) ||
-                  (grupoId && collapsedGrupos.has(grupoId)) ||
-                  (subId && collapsedSubs.has(subId));
-                if (hiddenByAncestor) return null;
-
-                const indent = item.tipo === 'departamento' ? 0
-                  : item.tipo === 'grupo' ? 4
-                  : item.tipo === 'subgrupo' ? 8
-                  : 12;
-                const podeRenomear = item.tipo !== 'produto';
-                const podeColapsar = item.tipo !== 'produto';
-                const colapsado =
-                  item.tipo === 'departamento' ? collapsedDeps.has(item.id) :
-                  item.tipo === 'grupo' ? collapsedGrupos.has(item.id) :
-                  item.tipo === 'subgrupo' ? collapsedSubs.has(item.id) : false;
-                const onToggleCollapse = () => {
-                  if (item.tipo === 'departamento') toggleSet(collapsedDeps, setCollapsedDeps, item.id);
-                  else if (item.tipo === 'grupo') toggleSet(collapsedGrupos, setCollapsedGrupos, item.id);
-                  else if (item.tipo === 'subgrupo') toggleSet(collapsedSubs, setCollapsedSubs, item.id);
-                };
-                const opcoesPai =
-                  item.tipo === 'grupo' ? itemMeta.depOpts :
-                  item.tipo === 'subgrupo' ? itemMeta.grupoOpts :
-                  item.tipo === 'produto' ? itemMeta.subOpts :
-                  [];
-                return (
-                  <div
-                    key={`${item.tipo}-${item.id}-${idx}`}
-                    className={`flex items-center gap-1 p-1 rounded text-xs ${
-                      item.tipo === 'departamento' ? 'bg-muted font-bold' :
-                      item.tipo === 'grupo' ? 'bg-muted/60 font-semibold' :
-                      item.tipo === 'subgrupo' ? 'bg-muted/30' : ''
-                    }`}
-                    style={{ paddingLeft: indent + 4 }}
-                  >
-                    {podeColapsar ? (
-                      <button
-                        type="button"
-                        onClick={onToggleCollapse}
-                        className="p-0 hover:bg-muted rounded shrink-0"
-                        title={colapsado ? 'Expandir' : 'Contrair'}
-                      >
-                        {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      </button>
-                    ) : (
-                      <span className="w-3 shrink-0" />
-                    )}
-                    <span className="flex-1 truncate">
-                      <span className="text-muted-foreground mr-1">[{item.tipo[0].toUpperCase()}]</span>
-                      {getNome(item.tipo, item.id)}
-                    </span>
-                    {podeRenomear && (
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                        onClick={() => {
-                          setRenomeando({ tipo: item.tipo as any, id: item.id });
-                          setRenomeValor(getNome(item.tipo, item.id));
-                        }}
-                        title="Renomear">
-                        <Pencil className="w-3 h-3" />
-                      </Button>
-                    )}
-                    {opcoesPai.length > 0 && item.tipo !== 'departamento' && (
-                      <Select
-                        value={item.parentId || ''}
-                        onValueChange={(v) => reatribuirParent(idx, v)}
-                      >
-                        <SelectTrigger className="h-6 w-7 p-0 border-0 bg-transparent">
-                          <MoveRight className="w-3 h-3" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" align="start" className="max-h-[min(240px,var(--radix-select-content-available-height))]">
-                          {opcoesPai.map(o => (
-                            <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                      onClick={() => moverItem(idx, -1)} title="Mover para cima">
-                      <ArrowUp className="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                      onClick={() => moverItem(idx, 1)} title="Mover para baixo">
-                      <ArrowDown className="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                      onClick={() => removerItem(idx)} title="Remover">
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                );
-              })}
+              ) : itensVisiveis.map(({ item, idx, nome: rowNome, colapsado, opcoesPai }) => (
+                <HierarquiaRow
+                  key={`${item.tipo}-${item.id}-${idx}`}
+                  item={item}
+                  idx={idx}
+                  nome={rowNome}
+                  colapsado={colapsado}
+                  podeColapsar={item.tipo !== 'produto'}
+                  podeRenomear={item.tipo !== 'produto'}
+                  opcoesPai={opcoesPai}
+                  onToggleCollapse={toggleCollapseRow}
+                  onMove={moverItem}
+                  onRemove={removerItem}
+                  onRename={onRenameRow}
+                  onReatribuir={reatribuirParent}
+                />
+              ))}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </div>
 
