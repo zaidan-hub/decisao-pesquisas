@@ -452,13 +452,63 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setItems(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const tipoNivel = (t: VisualizacaoItem['tipo']) =>
+    t === 'departamento' ? 0 : t === 'grupo' ? 1 : t === 'subgrupo' ? 2 : 3;
+
+  // Bloco = item + descendentes consecutivos (níveis maiores que o do item)
+  const getBlocoRange = (arr: VisualizacaoItem[], start: number): [number, number] => {
+    const nivel = tipoNivel(arr[start].tipo);
+    let end = start + 1;
+    while (end < arr.length && tipoNivel(arr[end].tipo) > nivel) end++;
+    return [start, end];
+  };
+
   const moverItem = (idx: number, dir: -1 | 1) => {
     setItems(prev => {
-      const next = [...prev];
-      const target = idx + dir;
-      if (target < 0 || target >= next.length) return next;
-      [next[idx], next[target]] = [next[target], next[idx]];
-      return next;
+      const arr = [...prev];
+      const alvo = arr[idx];
+      if (!alvo) return prev;
+      const [aStart, aEnd] = getBlocoRange(arr, idx);
+
+      if (dir === 1) {
+        // próximo bloco de mesmo tipo a partir de aEnd
+        let nStart = -1;
+        for (let i = aEnd; i < arr.length; i++) {
+          if (arr[i].tipo === alvo.tipo) { nStart = i; break; }
+          if (tipoNivel(arr[i].tipo) < tipoNivel(alvo.tipo)) break; // saiu do escopo
+        }
+        if (nStart === -1) return prev;
+        const [, nEnd] = getBlocoRange(arr, nStart);
+        const blocoAlvo = arr.slice(aStart, aEnd);
+        const entre = arr.slice(aEnd, nStart);
+        const blocoViz = arr.slice(nStart, nEnd);
+        return [
+          ...arr.slice(0, aStart),
+          ...blocoViz,
+          ...entre,
+          ...blocoAlvo,
+          ...arr.slice(nEnd),
+        ];
+      } else {
+        // bloco anterior de mesmo tipo
+        let pStart = -1;
+        for (let i = aStart - 1; i >= 0; i--) {
+          if (tipoNivel(arr[i].tipo) < tipoNivel(alvo.tipo)) break;
+          if (arr[i].tipo === alvo.tipo) { pStart = i; break; }
+        }
+        if (pStart === -1) return prev;
+        const [, pEnd] = getBlocoRange(arr, pStart);
+        const blocoPrev = arr.slice(pStart, pEnd);
+        const entre = arr.slice(pEnd, aStart);
+        const blocoAlvo = arr.slice(aStart, aEnd);
+        return [
+          ...arr.slice(0, pStart),
+          ...blocoAlvo,
+          ...entre,
+          ...blocoPrev,
+          ...arr.slice(aEnd),
+        ];
+      }
     });
   };
 

@@ -1,91 +1,41 @@
-## Novo tipo de relatório: "Personalizado"
+## Objetivo
 
-### Visão geral
+Na lista "Hierarquia" (painel direito) do modal de Relatórios Personalizados, adicionar:
 
-Adicionar um novo tipo de exportação na aba **Relatórios** chamado "Personalizado". Ele abre um fluxo em modal de duas etapas (lista → criação/edição) com reordenação livre de hierarquia e renomeio de grupos/subgrupos/departamentos por relatório.
+1. Contrair/expandir nós (departamento, grupo, subgrupo) — ocultando os filhos na visualização.
+2. Corrigir os botões ↑ / ↓ para que cada item só troque de lugar com um item do mesmo tipo (departamento ↔ departamento, grupo ↔ grupo, subgrupo ↔ subgrupo, produto ↔ produto), em vez de simplesmente trocar com o item adjacente no array.
 
----
+## Mudanças (apenas em `src/components/admin/RelatorioPersonalizadoModal.tsx`)
 
-### 1. Banco de dados
+### 1. Estado de collapse no editor
+- Adicionar `collapsedDeps`, `collapsedGrupos`, `collapsedSubs` (`Set<string>`) ao `RelatorioEditor`.
+- Render: em cada linha de departamento/grupo/subgrupo, prefixar um botão chevron (`ChevronDown` quando expandido, `ChevronRight` quando contraído) que alterna o respectivo Set. Para `produto`, manter um pequeno espaçador para alinhar.
+- No `.map` da `items`, esconder a renderização de qualquer item cujo ancestral esteja colapsado:
+  - produto escondido se seu `parentId` (subgrupo) estiver em `collapsedSubs`, OU se o grupo pai do subgrupo estiver em `collapsedGrupos`, OU se o departamento avô estiver em `collapsedDeps`.
+  - subgrupo escondido se seu grupo pai estiver em `collapsedGrupos` ou o departamento avô estiver em `collapsedDeps`.
+  - grupo escondido se seu departamento pai estiver em `collapsedDeps`.
+- Para resolver os ancestrais, derivar de `items` (cada item tem `parentId`) — fazer um helper `getAncestors(item)` que retorna `{ depId, grupoId, subId }`.
 
-Criar nova tabela `relatorios_personalizados`:
+### 2. Mover apenas com vizinhos do mesmo tipo (mantendo subárvore)
 
-- `id` (uuid, PK)
-- `nome` (text) — nome do relatório
-- `produtos` (text[]) — IDs dos produtos selecionados, na ordem
-- `hierarquia_customizada` (jsonb) — `{ departamentos: {id: nome}, grupos: {id: nome}, subgrupos: {id: nome}, ordem: { departamentos: [...], grupos: { [depId]: [...] }, subgrupos: { [grupoId]: [...] }, produtos: { [subgrupoId]: [...] } }, reassignments: { grupos: { [grupoId]: novoDepartamentoId }, subgrupos: { [subgrupoId]: novoGrupoId } } }`
-- `created_at`, `updated_at`
+Substituir `moverItem(idx, dir)` por uma versão que opera em "blocos":
 
-RLS: somente admins (mesmo padrão de `listas`).
+- Um **bloco** de um item começa no seu índice e termina antes do próximo item de tipo de mesma profundidade-ou-maior (ou seja, inclui todos os descendentes consecutivos com nível de tipo > nível do alvo). Níveis: departamento=0, grupo=1, subgrupo=2, produto=3.
+- Algoritmo `moveSameType(idx, dir)`:
+  1. Identificar o bloco do item alvo (`[start, end)`).
+  2. Procurar o **próximo bloco de mesmo `tipo`** na direção `dir`:
+     - `dir = +1`: começar no índice `end`, varrer adiante até achar item com `tipo === alvo.tipo` (será o início do bloco vizinho); calcular o `end` desse bloco. Trocar os dois blocos consecutivos ou não.
+     - `dir = -1`: varrer de trás pra frente a partir de `start-1` até achar item com `tipo === alvo.tipo`; esse é o início do bloco anterior; o `end` dele é `start`.
+  3. Se não existir vizinho do mesmo tipo, não faz nada.
+  4. Reordenar o array juntando: prefixo + (bloco vizinho) + (itens entre blocos, se houver) + (bloco alvo) + sufixo — para o caso `+1`; espelhado para `-1`.
+- Resultado: um subgrupo trocará de posição com o próximo/anterior subgrupo, levando seus produtos junto; idem para grupo (leva subgrupos + produtos) e departamento (leva tudo abaixo).
 
----
+Manter `parentId` inalterado (a operação só reordena, não muda hierarquia).
 
-### 2. Hook
+### 3. UI / acessibilidade
 
-`src/hooks/useRelatoriosPersonalizados.ts` — CRUD análogo a `useListas`.
+- Botão chevron ocupa ~16px à esquerda da linha (antes do `[D]/[G]/[S]/[P]`).
+- Para `produto`, renderizar um `<span className="w-4" />` no lugar do chevron para manter alinhamento.
+- Tooltip dos botões ↑/↓ continua "Mover para cima/baixo".
 
----
-
-### 3. Modal multi-etapa
-
-Novo componente `src/components/admin/RelatorioPersonalizadoModal.tsx`:
-
-**Etapa A — Lista**
-- Lista de relatórios personalizados (checkboxes para multi-seleção)
-- Cada item: nome, botões editar / deletar
-- Botão "Criar novo relatório personalizado" no topo
-- Botão "Gerar relatório" no rodapé direito (habilitado se ≥1 selecionado)
-
-**Etapa B — Criação/Edição**
-- Breadcrumb "← Voltar" no topo
-- Campo "Nome do Relatório"
-- Painel de seleção de produtos (reaproveitar lógica de `ListasPage` para escolher produtos com hierarquia)
-- Painel de hierarquia customizada com:
-  - Reordenação (↑/↓) de departamentos, grupos, subgrupos e produtos
-  - **Mover entre pais**: grupo pode mudar de departamento; subgrupo pode mudar de grupo (popover/select com lista de destinos)
-  - Renomear inline departamentos/grupos/subgrupos (não produtos)
-- Botão "Salvar"
-
----
-
-### 4. Integração na aba Relatórios
-
-Em `src/pages/admin/RelatoriosPage.tsx`, adicionar botão/card "Personalizado" junto aos demais tipos. Ao clicar abre o `RelatorioPersonalizadoModal`.
-
----
-
-### 5. Geração do PDF
-
-Em `src/lib/reportGenerator.ts`, criar função `generateRelatorioPersonalizadoPDF(relatorio, coletas, dadosAuxiliares)`:
-
-- Mesmo cabeçalho do relatório padrão
-- Aplica `hierarquia_customizada` (reassignments + nomes renomeados + ordem) ao montar a árvore
-- Tabela de produtos x supermercados com símbolos +/- (mesma lógica já corrigida)
-
-Se múltiplos relatórios selecionados → gerar 1 PDF por relatório (downloads separados) ou um único PDF concatenado por `addPage`. **Decisão:** arquivos separados, conforme pedido ("separados caso seja mais de um selecionado").
-
-A geração precisa de coletas — usar as mesmas coletas atualmente filtradas/disponíveis na aba Relatórios (mesmo critério dos outros exports da página).
-
----
-
-### Arquivos a criar/modificar
-
-**Novos:**
-- `src/components/admin/RelatorioPersonalizadoModal.tsx`
-- `src/components/admin/RelatorioPersonalizadoEditor.tsx` (etapa B)
-- `src/hooks/useRelatoriosPersonalizados.ts`
-
-**Modificados:**
-- `src/pages/admin/RelatoriosPage.tsx` — botão "Personalizado" + abrir modal
-- `src/lib/reportGenerator.ts` — `generateRelatorioPersonalizadoPDF`
-- `src/types/index.ts` — tipo `RelatorioPersonalizado`
-
-**Migration:** criar tabela `relatorios_personalizados` com RLS admin-only.
-
----
-
-### Pontos de confirmação
-
-1. Para a etapa B, devo reaproveitar **exatamente** o seletor de produtos do modal de Listas (com a mesma UX de checkboxes em cascata) e adicionar por cima as ações de mover/renomear?
-2. Ao gerar múltiplos PDFs, baixo os arquivos separadamente (1 download por relatório) — ok?
-3. Os dados (coletas) usados na geração devem vir do mesmo filtro/seleção já existente na aba Relatórios (intervalo de datas / coletas atuais)? Ou o usuário escolhe coletas dentro do próprio modal personalizado?
+Nada mais é tocado: árvore esquerda, persistência, seleção e renomear ficam como estão.
