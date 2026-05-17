@@ -1,13 +1,13 @@
-import { useState, useMemo, useEffect, useDeferredValue } from 'react';
+import { useState, useMemo, useEffect, useDeferredValue, useCallback, memo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Plus, Edit, Trash2, ArrowUp, ArrowDown, FileDown, X, Pencil, MoveRight, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, ArrowUp, ArrowDown, FileDown, X, Pencil, MoveRight, Search, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -29,6 +29,121 @@ interface Props {
 }
 
 type ViewMode = 'list' | 'editor';
+
+// ---------- Lazy popover para reatribuir pai (evita montar centenas de Selects Radix) ----------
+interface ReatribuirPaiOption { id: string; nome: string; }
+interface ReatribuirPaiButtonProps {
+  value?: string;
+  opcoes: ReatribuirPaiOption[];
+  onChange: (id: string) => void;
+}
+const ReatribuirPaiButton = memo(({ value, opcoes, onChange }: ReatribuirPaiButtonProps) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Mover para outro pai">
+          <MoveRight className="w-3 h-3" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-1 w-64 max-h-60 overflow-auto" align="start" sideOffset={4}>
+        {opcoes.map(o => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => { onChange(o.id); setOpen(false); }}
+            className="w-full text-left text-xs px-2 py-1 rounded hover:bg-muted flex items-center gap-2"
+          >
+            <span className="w-3 shrink-0">
+              {o.id === value && <Check className="w-3 h-3" />}
+            </span>
+            <span className="truncate">{o.nome}</span>
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+});
+ReatribuirPaiButton.displayName = 'ReatribuirPaiButton';
+
+// ---------- Linha memoizada do painel direito (Hierarquia) ----------
+interface HierarquiaRowProps {
+  item: VisualizacaoItem;
+  idx: number;
+  nome: string;
+  colapsado: boolean;
+  podeColapsar: boolean;
+  podeRenomear: boolean;
+  opcoesPai: ReatribuirPaiOption[];
+  onToggleCollapse: (tipo: string, id: string) => void;
+  onMove: (idx: number, dir: -1 | 1) => void;
+  onRemove: (idx: number) => void;
+  onRename: (tipo: 'departamento' | 'grupo' | 'subgrupo', id: string, nomeAtual: string) => void;
+  onReatribuir: (idx: number, novoParentId: string) => void;
+}
+const HierarquiaRow = memo(({
+  item, idx, nome, colapsado, podeColapsar, podeRenomear, opcoesPai,
+  onToggleCollapse, onMove, onRemove, onRename, onReatribuir,
+}: HierarquiaRowProps) => {
+  const indent = item.tipo === 'departamento' ? 0
+    : item.tipo === 'grupo' ? 4
+    : item.tipo === 'subgrupo' ? 8
+    : 12;
+  const rowClass = item.tipo === 'departamento' ? 'bg-muted font-bold'
+    : item.tipo === 'grupo' ? 'bg-muted/60 font-semibold'
+    : item.tipo === 'subgrupo' ? 'bg-muted/30' : '';
+  return (
+    <div
+      className={`flex items-center gap-1 p-1 rounded text-xs ${rowClass}`}
+      style={{ paddingLeft: indent + 4 }}
+    >
+      {podeColapsar ? (
+        <button
+          type="button"
+          onClick={() => onToggleCollapse(item.tipo, item.id)}
+          className="p-0 hover:bg-muted rounded shrink-0"
+          title={colapsado ? 'Expandir' : 'Contrair'}
+        >
+          {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+      ) : (
+        <span className="w-3 shrink-0" />
+      )}
+      <span className="flex-1 truncate">
+        <span className="text-muted-foreground mr-1">[{item.tipo[0].toUpperCase()}]</span>
+        {nome}
+      </span>
+      {podeRenomear && (
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+          onClick={() => onRename(item.tipo as any, item.id, nome)}
+          title="Renomear">
+          <Pencil className="w-3 h-3" />
+        </Button>
+      )}
+      {opcoesPai.length > 0 && item.tipo !== 'departamento' && (
+        <ReatribuirPaiButton
+          value={item.parentId}
+          opcoes={opcoesPai}
+          onChange={(v) => onReatribuir(idx, v)}
+        />
+      )}
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+        onClick={() => onMove(idx, -1)} title="Mover para cima">
+        <ArrowUp className="w-3 h-3" />
+      </Button>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+        onClick={() => onMove(idx, 1)} title="Mover para baixo">
+        <ArrowDown className="w-3 h-3" />
+      </Button>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+        onClick={() => onRemove(idx)} title="Remover">
+        <X className="w-3 h-3" />
+      </Button>
+    </div>
+  );
+});
+HierarquiaRow.displayName = 'HierarquiaRow';
+
 
 export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
   const { items, loading, create, update, remove } = useRelatoriosPersonalizados();
@@ -454,11 +569,24 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     });
   };
 
-  const toggleSet = (set: Set<string>, setter: (s: Set<string>) => void, id: string) => {
-    const n = new Set(set);
-    if (n.has(id)) n.delete(id); else n.add(id);
-    setter(n);
-  };
+  // Toggle estável usando setter funcional — não depende do Set atual
+  const toggleSetStable = useCallback((setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) => {
+    setter(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }, []);
+  // Wrapper para manter chamadas atuais (toggleSet(set, setter, id))
+  const toggleSet = useCallback((_set: Set<string>, setter: any, id: string) => {
+    toggleSetStable(setter, id);
+  }, [toggleSetStable]);
+
+  const toggleCollapseRow = useCallback((tipo: string, id: string) => {
+    if (tipo === 'departamento') toggleSetStable(setCollapsedDeps, id);
+    else if (tipo === 'grupo') toggleSetStable(setCollapsedGrupos, id);
+    else if (tipo === 'subgrupo') toggleSetStable(setCollapsedSubs, id);
+  }, [toggleSetStable]);
 
   const handleAdicionarSelecionados = () => {
     if (selectedItems.size === 0) return;
@@ -505,9 +633,14 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setSelectedItems(new Set());
   };
 
-  const removerItem = (idx: number) => {
+  const removerItem = useCallback((idx: number) => {
     setItems(prev => prev.filter((_, i) => i !== idx));
-  };
+  }, []);
+
+  const onRenameRow = useCallback((tipo: 'departamento' | 'grupo' | 'subgrupo', id: string, nomeAtual: string) => {
+    setRenomeando({ tipo, id });
+    setRenomeValor(nomeAtual);
+  }, []);
 
   const tipoNivel = (t: VisualizacaoItem['tipo']) =>
     t === 'departamento' ? 0 : t === 'grupo' ? 1 : t === 'subgrupo' ? 2 : 3;
@@ -523,7 +656,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   const parentTipo = (t: VisualizacaoItem['tipo']): VisualizacaoItem['tipo'] | null =>
     t === 'grupo' ? 'departamento' : t === 'subgrupo' ? 'grupo' : t === 'produto' ? 'subgrupo' : null;
 
-  const moverItem = (idx: number, dir: -1 | 1) => {
+  const moverItem = useCallback((idx: number, dir: -1 | 1) => {
     setItems(prev => {
       const arr = [...prev];
       const alvo = arr[idx];
@@ -607,9 +740,9 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
         ];
       }
     });
-  };
+  }, []);
 
-  const reatribuirParent = (idx: number, novoParentId: string) => {
+  const reatribuirParent = useCallback((idx: number, novoParentId: string) => {
     setItems(prev => {
       const arr = [...prev];
       const alvo = arr[idx];
@@ -626,7 +759,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
       const [, pEnd] = getBlocoRange(semBloco, pIdx);
       return [...semBloco.slice(0, pEnd), ...bloco, ...semBloco.slice(pEnd)];
     });
-  };
+  }, []);
 
   const aplicarRenomeio = () => {
     if (!renomeando) return;
@@ -661,6 +794,43 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     }
     return { subParent, grupoParent, depOpts, grupoOpts, subOpts };
   }, [items, nomes, departamentosMap, gruposMap, subgruposMap]);
+
+  // Pré-filtra itens visíveis (já com nome computado) — evita iterar tudo no render
+  const itensVisiveis = useMemo(() => {
+    const out: { item: VisualizacaoItem; idx: number; nome: string; colapsado: boolean; opcoesPai: ReatribuirPaiOption[] }[] = [];
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      let subId: string | undefined;
+      let grupoId: string | undefined;
+      let depId: string | undefined;
+      if (item.tipo === 'produto') {
+        subId = item.parentId;
+        grupoId = subId ? itemMeta.subParent.get(subId) : undefined;
+        depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
+      } else if (item.tipo === 'subgrupo') {
+        grupoId = item.parentId;
+        depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
+      } else if (item.tipo === 'grupo') {
+        depId = item.parentId;
+      }
+      const hidden =
+        (depId && collapsedDeps.has(depId)) ||
+        (grupoId && collapsedGrupos.has(grupoId)) ||
+        (subId && collapsedSubs.has(subId));
+      if (hidden) continue;
+      const colapsado =
+        item.tipo === 'departamento' ? collapsedDeps.has(item.id) :
+        item.tipo === 'grupo' ? collapsedGrupos.has(item.id) :
+        item.tipo === 'subgrupo' ? collapsedSubs.has(item.id) : false;
+      const opcoesPai =
+        item.tipo === 'grupo' ? itemMeta.depOpts :
+        item.tipo === 'subgrupo' ? itemMeta.grupoOpts :
+        item.tipo === 'produto' ? itemMeta.subOpts :
+        [];
+      out.push({ item, idx, nome: getNome(item.tipo, item.id), colapsado, opcoesPai });
+    }
+    return out;
+  }, [items, itemMeta, collapsedDeps, collapsedGrupos, collapsedSubs, nomes, departamentosMap, gruposMap, subgruposMap, produtosMap]);
 
   const handleSalvar = () => {
     if (!nome.trim()) {
@@ -714,7 +884,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
               />
             </div>
           </div>
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-auto">
             <div className="p-2 space-y-1">
               {departamentoHierarchy.map(deptData => {
                 const hasContent = deptData.grupos.length > 0;
@@ -802,127 +972,37 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                 <p className="text-center text-muted-foreground text-sm py-4">Nenhum item encontrado</p>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         {/* Direita: visualização ordenada */}
         <div className="border rounded-md flex flex-col min-h-0">
           <div className="p-2 border-b text-sm font-medium">Hierarquia ({items.length} itens)</div>
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-auto">
             <div className="p-2 space-y-1">
               {items.length === 0 ? (
                 <p className="text-center text-muted-foreground text-sm py-8">
                   Selecione produtos à esquerda para construir a hierarquia.
                 </p>
-              ) : items.map((item, idx) => {
-                // Resolver ancestrais via mapas pré-computados
-                let subId: string | undefined;
-                let grupoId: string | undefined;
-                let depId: string | undefined;
-                if (item.tipo === 'produto') {
-                  subId = item.parentId;
-                  grupoId = subId ? itemMeta.subParent.get(subId) : undefined;
-                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
-                } else if (item.tipo === 'subgrupo') {
-                  grupoId = item.parentId;
-                  depId = grupoId ? itemMeta.grupoParent.get(grupoId) : undefined;
-                } else if (item.tipo === 'grupo') {
-                  depId = item.parentId;
-                }
-                const hiddenByAncestor =
-                  (depId && collapsedDeps.has(depId)) ||
-                  (grupoId && collapsedGrupos.has(grupoId)) ||
-                  (subId && collapsedSubs.has(subId));
-                if (hiddenByAncestor) return null;
-
-                const indent = item.tipo === 'departamento' ? 0
-                  : item.tipo === 'grupo' ? 4
-                  : item.tipo === 'subgrupo' ? 8
-                  : 12;
-                const podeRenomear = item.tipo !== 'produto';
-                const podeColapsar = item.tipo !== 'produto';
-                const colapsado =
-                  item.tipo === 'departamento' ? collapsedDeps.has(item.id) :
-                  item.tipo === 'grupo' ? collapsedGrupos.has(item.id) :
-                  item.tipo === 'subgrupo' ? collapsedSubs.has(item.id) : false;
-                const onToggleCollapse = () => {
-                  if (item.tipo === 'departamento') toggleSet(collapsedDeps, setCollapsedDeps, item.id);
-                  else if (item.tipo === 'grupo') toggleSet(collapsedGrupos, setCollapsedGrupos, item.id);
-                  else if (item.tipo === 'subgrupo') toggleSet(collapsedSubs, setCollapsedSubs, item.id);
-                };
-                const opcoesPai =
-                  item.tipo === 'grupo' ? itemMeta.depOpts :
-                  item.tipo === 'subgrupo' ? itemMeta.grupoOpts :
-                  item.tipo === 'produto' ? itemMeta.subOpts :
-                  [];
-                return (
-                  <div
-                    key={`${item.tipo}-${item.id}-${idx}`}
-                    className={`flex items-center gap-1 p-1 rounded text-xs ${
-                      item.tipo === 'departamento' ? 'bg-muted font-bold' :
-                      item.tipo === 'grupo' ? 'bg-muted/60 font-semibold' :
-                      item.tipo === 'subgrupo' ? 'bg-muted/30' : ''
-                    }`}
-                    style={{ paddingLeft: indent + 4 }}
-                  >
-                    {podeColapsar ? (
-                      <button
-                        type="button"
-                        onClick={onToggleCollapse}
-                        className="p-0 hover:bg-muted rounded shrink-0"
-                        title={colapsado ? 'Expandir' : 'Contrair'}
-                      >
-                        {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      </button>
-                    ) : (
-                      <span className="w-3 shrink-0" />
-                    )}
-                    <span className="flex-1 truncate">
-                      <span className="text-muted-foreground mr-1">[{item.tipo[0].toUpperCase()}]</span>
-                      {getNome(item.tipo, item.id)}
-                    </span>
-                    {podeRenomear && (
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                        onClick={() => {
-                          setRenomeando({ tipo: item.tipo as any, id: item.id });
-                          setRenomeValor(getNome(item.tipo, item.id));
-                        }}
-                        title="Renomear">
-                        <Pencil className="w-3 h-3" />
-                      </Button>
-                    )}
-                    {opcoesPai.length > 0 && item.tipo !== 'departamento' && (
-                      <Select
-                        value={item.parentId || ''}
-                        onValueChange={(v) => reatribuirParent(idx, v)}
-                      >
-                        <SelectTrigger className="h-6 w-7 p-0 border-0 bg-transparent">
-                          <MoveRight className="w-3 h-3" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" align="start" className="max-h-[min(240px,var(--radix-select-content-available-height))]">
-                          {opcoesPai.map(o => (
-                            <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                      onClick={() => moverItem(idx, -1)} title="Mover para cima">
-                      <ArrowUp className="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                      onClick={() => moverItem(idx, 1)} title="Mover para baixo">
-                      <ArrowDown className="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                      onClick={() => removerItem(idx)} title="Remover">
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                );
-              })}
+              ) : itensVisiveis.map(({ item, idx, nome: rowNome, colapsado, opcoesPai }) => (
+                <HierarquiaRow
+                  key={`${item.tipo}-${item.id}-${idx}`}
+                  item={item}
+                  idx={idx}
+                  nome={rowNome}
+                  colapsado={colapsado}
+                  podeColapsar={item.tipo !== 'produto'}
+                  podeRenomear={item.tipo !== 'produto'}
+                  opcoesPai={opcoesPai}
+                  onToggleCollapse={toggleCollapseRow}
+                  onMove={moverItem}
+                  onRemove={removerItem}
+                  onRename={onRenameRow}
+                  onReatribuir={reatribuirParent}
+                />
+              ))}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </div>
 
