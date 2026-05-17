@@ -689,11 +689,44 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                   Selecione produtos à esquerda para construir a hierarquia.
                 </p>
               ) : items.map((item, idx) => {
+                // Resolver ancestrais via parentId
+                let subId: string | undefined;
+                let grupoId: string | undefined;
+                let depId: string | undefined;
+                if (item.tipo === 'produto') {
+                  subId = item.parentId;
+                  const sub = items.find(i => i.tipo === 'subgrupo' && i.id === subId);
+                  grupoId = sub?.parentId;
+                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
+                  depId = grp?.parentId;
+                } else if (item.tipo === 'subgrupo') {
+                  grupoId = item.parentId;
+                  const grp = items.find(i => i.tipo === 'grupo' && i.id === grupoId);
+                  depId = grp?.parentId;
+                } else if (item.tipo === 'grupo') {
+                  depId = item.parentId;
+                }
+                const hiddenByAncestor =
+                  (depId && collapsedDeps.has(depId)) ||
+                  (grupoId && collapsedGrupos.has(grupoId)) ||
+                  (subId && collapsedSubs.has(subId));
+                if (hiddenByAncestor) return null;
+
                 const indent = item.tipo === 'departamento' ? 0
                   : item.tipo === 'grupo' ? 4
                   : item.tipo === 'subgrupo' ? 8
                   : 12;
                 const podeRenomear = item.tipo !== 'produto';
+                const podeColapsar = item.tipo !== 'produto';
+                const colapsado =
+                  item.tipo === 'departamento' ? collapsedDeps.has(item.id) :
+                  item.tipo === 'grupo' ? collapsedGrupos.has(item.id) :
+                  item.tipo === 'subgrupo' ? collapsedSubs.has(item.id) : false;
+                const onToggleCollapse = () => {
+                  if (item.tipo === 'departamento') toggleSet(collapsedDeps, setCollapsedDeps, item.id);
+                  else if (item.tipo === 'grupo') toggleSet(collapsedGrupos, setCollapsedGrupos, item.id);
+                  else if (item.tipo === 'subgrupo') toggleSet(collapsedSubs, setCollapsedSubs, item.id);
+                };
                 // Opções de novo pai
                 let opcoesPai: { id: string; nome: string }[] = [];
                 if (item.tipo === 'grupo') {
@@ -719,6 +752,18 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
                     }`}
                     style={{ paddingLeft: indent + 4 }}
                   >
+                    {podeColapsar ? (
+                      <button
+                        type="button"
+                        onClick={onToggleCollapse}
+                        className="p-0 hover:bg-muted rounded shrink-0"
+                        title={colapsado ? 'Expandir' : 'Contrair'}
+                      >
+                        {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+                    ) : (
+                      <span className="w-3 shrink-0" />
+                    )}
                     <span className="flex-1 truncate">
                       <span className="text-muted-foreground mr-1">[{item.tipo[0].toUpperCase()}]</span>
                       {getNome(item.tipo, item.id)}
