@@ -371,10 +371,6 @@ export const RelatoriosPage = () => {
         </div>
         
         <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setShowPersonalizadoModal(true)}>
-          <Settings2 className="w-4 h-4 mr-2" />
-          Personalizado
-        </Button>
         <Dialog open={showRelatorioDialog} onOpenChange={setShowRelatorioDialog}>
           <DialogTrigger asChild>
             <Button onClick={() => resetRelatorioForm()}>
@@ -539,6 +535,10 @@ export const RelatoriosPage = () => {
                     <Button variant="outline" size="sm" onClick={() => handleOpenCompradores(rel)} title="Comparativo por Compradores">
                       <FileDown className="w-4 h-4 mr-1" />
                       Compradores
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setShowPersonalizadoModal(true)} title="Relatório Personalizado">
+                      <Settings2 className="w-4 h-4 mr-1" />
+                      Personalizado
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => setDeletingId(rel.id)} title="Excluir">
                       <Trash2 className="w-4 h-4" />
