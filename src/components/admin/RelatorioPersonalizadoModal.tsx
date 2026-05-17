@@ -30,6 +30,121 @@ interface Props {
 
 type ViewMode = 'list' | 'editor';
 
+// ---------- Lazy popover para reatribuir pai (evita montar centenas de Selects Radix) ----------
+interface ReatribuirPaiOption { id: string; nome: string; }
+interface ReatribuirPaiButtonProps {
+  value?: string;
+  opcoes: ReatribuirPaiOption[];
+  onChange: (id: string) => void;
+}
+const ReatribuirPaiButton = memo(({ value, opcoes, onChange }: ReatribuirPaiButtonProps) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Mover para outro pai">
+          <MoveRight className="w-3 h-3" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-1 w-64 max-h-60 overflow-auto" align="start" sideOffset={4}>
+        {opcoes.map(o => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => { onChange(o.id); setOpen(false); }}
+            className="w-full text-left text-xs px-2 py-1 rounded hover:bg-muted flex items-center gap-2"
+          >
+            <span className="w-3 shrink-0">
+              {o.id === value && <Check className="w-3 h-3" />}
+            </span>
+            <span className="truncate">{o.nome}</span>
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+});
+ReatribuirPaiButton.displayName = 'ReatribuirPaiButton';
+
+// ---------- Linha memoizada do painel direito (Hierarquia) ----------
+interface HierarquiaRowProps {
+  item: VisualizacaoItem;
+  idx: number;
+  nome: string;
+  colapsado: boolean;
+  podeColapsar: boolean;
+  podeRenomear: boolean;
+  opcoesPai: ReatribuirPaiOption[];
+  onToggleCollapse: (tipo: string, id: string) => void;
+  onMove: (idx: number, dir: -1 | 1) => void;
+  onRemove: (idx: number) => void;
+  onRename: (tipo: 'departamento' | 'grupo' | 'subgrupo', id: string, nomeAtual: string) => void;
+  onReatribuir: (idx: number, novoParentId: string) => void;
+}
+const HierarquiaRow = memo(({
+  item, idx, nome, colapsado, podeColapsar, podeRenomear, opcoesPai,
+  onToggleCollapse, onMove, onRemove, onRename, onReatribuir,
+}: HierarquiaRowProps) => {
+  const indent = item.tipo === 'departamento' ? 0
+    : item.tipo === 'grupo' ? 4
+    : item.tipo === 'subgrupo' ? 8
+    : 12;
+  const rowClass = item.tipo === 'departamento' ? 'bg-muted font-bold'
+    : item.tipo === 'grupo' ? 'bg-muted/60 font-semibold'
+    : item.tipo === 'subgrupo' ? 'bg-muted/30' : '';
+  return (
+    <div
+      className={`flex items-center gap-1 p-1 rounded text-xs ${rowClass}`}
+      style={{ paddingLeft: indent + 4 }}
+    >
+      {podeColapsar ? (
+        <button
+          type="button"
+          onClick={() => onToggleCollapse(item.tipo, item.id)}
+          className="p-0 hover:bg-muted rounded shrink-0"
+          title={colapsado ? 'Expandir' : 'Contrair'}
+        >
+          {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+      ) : (
+        <span className="w-3 shrink-0" />
+      )}
+      <span className="flex-1 truncate">
+        <span className="text-muted-foreground mr-1">[{item.tipo[0].toUpperCase()}]</span>
+        {nome}
+      </span>
+      {podeRenomear && (
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+          onClick={() => onRename(item.tipo as any, item.id, nome)}
+          title="Renomear">
+          <Pencil className="w-3 h-3" />
+        </Button>
+      )}
+      {opcoesPai.length > 0 && item.tipo !== 'departamento' && (
+        <ReatribuirPaiButton
+          value={item.parentId}
+          opcoes={opcoesPai}
+          onChange={(v) => onReatribuir(idx, v)}
+        />
+      )}
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+        onClick={() => onMove(idx, -1)} title="Mover para cima">
+        <ArrowUp className="w-3 h-3" />
+      </Button>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+        onClick={() => onMove(idx, 1)} title="Mover para baixo">
+        <ArrowDown className="w-3 h-3" />
+      </Button>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+        onClick={() => onRemove(idx)} title="Remover">
+        <X className="w-3 h-3" />
+      </Button>
+    </div>
+  );
+});
+HierarquiaRow.displayName = 'HierarquiaRow';
+
+
 export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
   const { items, loading, create, update, remove } = useRelatoriosPersonalizados();
   const { departamentos } = useDepartamentos();
