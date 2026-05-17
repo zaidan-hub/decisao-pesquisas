@@ -454,11 +454,24 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     });
   };
 
-  const toggleSet = (set: Set<string>, setter: (s: Set<string>) => void, id: string) => {
-    const n = new Set(set);
-    if (n.has(id)) n.delete(id); else n.add(id);
-    setter(n);
-  };
+  // Toggle estável usando setter funcional — não depende do Set atual
+  const toggleSetStable = useCallback((setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) => {
+    setter(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }, []);
+  // Wrapper para manter chamadas atuais (toggleSet(set, setter, id))
+  const toggleSet = useCallback((_set: Set<string>, setter: any, id: string) => {
+    toggleSetStable(setter, id);
+  }, [toggleSetStable]);
+
+  const toggleCollapseRow = useCallback((tipo: string, id: string) => {
+    if (tipo === 'departamento') toggleSetStable(setCollapsedDeps, id);
+    else if (tipo === 'grupo') toggleSetStable(setCollapsedGrupos, id);
+    else if (tipo === 'subgrupo') toggleSetStable(setCollapsedSubs, id);
+  }, [toggleSetStable]);
 
   const handleAdicionarSelecionados = () => {
     if (selectedItems.size === 0) return;
