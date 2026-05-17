@@ -607,6 +607,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     return { subParent, grupoParent, depOpts, grupoOpts, subOpts };
   }, [items, nomes, departamentosMap, gruposMap, subgruposMap]);
 
+  const handleSalvar = () => {
     if (!nome.trim()) {
       toast({ title: 'Nome obrigatório', description: 'Informe o nome do relatório.', variant: 'destructive' });
       return;
