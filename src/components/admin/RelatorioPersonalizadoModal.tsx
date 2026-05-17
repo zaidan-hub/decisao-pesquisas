@@ -460,39 +460,48 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setter(n);
   };
 
-  // Adicionar produto à visualização (já cria a cadeia dep/grupo/subgrupo)
-  const adicionarProduto = (produtoId: string, base?: VisualizacaoItem[]) => {
-    const produto = produtosMap.get(produtoId);
-    if (!produto) return base ?? items;
-    const arr = base ? [...base] : [...items];
-    if (arr.some(i => i.tipo === 'produto' && i.id === produtoId)) return arr;
-
-    const subgrupo = subgruposMap.get(produto.subgrupoId);
-    const grupo = subgrupo ? gruposMap.get(subgrupo.grupoId) : undefined;
-    const depId = grupo?.departamentoId;
-
-    if (depId && !arr.some(i => i.tipo === 'departamento' && i.id === depId)) {
-      arr.push({ tipo: 'departamento', id: depId });
-    }
-    if (grupo && !arr.some(i => i.tipo === 'grupo' && i.id === grupo.id)) {
-      arr.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
-    }
-    if (subgrupo && !arr.some(i => i.tipo === 'subgrupo' && i.id === subgrupo.id)) {
-      arr.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
-    }
-    arr.push({ tipo: 'produto', id: produtoId, parentId: subgrupo?.id });
-    return arr;
-  };
-
   const handleAdicionarSelecionados = () => {
     if (selectedItems.size === 0) return;
-    let next = [...items];
-    // Coletar IDs de produtos das chaves "produto:..."
-    const produtosAdicionar = Array.from(selectedItems)
-      .filter(k => k.startsWith('produto:'))
-      .map(k => k.split(':')[1]);
-    produtosAdicionar.forEach(pid => { next = adicionarProduto(pid, next) ?? next; });
-    setItems(next);
+    const produtosAdicionar: string[] = [];
+    selectedItems.forEach(k => { if (k.startsWith('produto:')) produtosAdicionar.push(k.slice(8)); });
+    if (produtosAdicionar.length === 0) { setSelectedItems(new Set()); return; }
+
+    setItems(prev => {
+      const next = [...prev];
+      const hasProduto = new Set<string>();
+      const hasSubgrupo = new Set<string>();
+      const hasGrupo = new Set<string>();
+      const hasDep = new Set<string>();
+      for (const it of next) {
+        if (it.tipo === 'produto') hasProduto.add(it.id);
+        else if (it.tipo === 'subgrupo') hasSubgrupo.add(it.id);
+        else if (it.tipo === 'grupo') hasGrupo.add(it.id);
+        else if (it.tipo === 'departamento') hasDep.add(it.id);
+      }
+      for (const pid of produtosAdicionar) {
+        if (hasProduto.has(pid)) continue;
+        const produto = produtosMap.get(pid);
+        if (!produto) continue;
+        const subgrupo = subgruposMap.get(produto.subgrupoId);
+        const grupo = subgrupo ? gruposMap.get(subgrupo.grupoId) : undefined;
+        const depId = grupo?.departamentoId;
+        if (depId && !hasDep.has(depId)) {
+          next.push({ tipo: 'departamento', id: depId });
+          hasDep.add(depId);
+        }
+        if (grupo && !hasGrupo.has(grupo.id)) {
+          next.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
+          hasGrupo.add(grupo.id);
+        }
+        if (subgrupo && !hasSubgrupo.has(subgrupo.id)) {
+          next.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
+          hasSubgrupo.add(subgrupo.id);
+        }
+        next.push({ tipo: 'produto', id: pid, parentId: subgrupo?.id });
+        hasProduto.add(pid);
+      }
+      return next;
+    });
     setSelectedItems(new Set());
   };
 
