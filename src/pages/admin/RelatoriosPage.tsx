@@ -536,6 +536,10 @@ export const RelatoriosPage = () => {
                       <FileDown className="w-4 h-4 mr-1" />
                       Compradores
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => setShowPersonalizadoModal(true)} title="Relatório Personalizado">
+                      <Settings2 className="w-4 h-4 mr-1" />
+                      Personalizado
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => setDeletingId(rel.id)} title="Excluir">
                       <Trash2 className="w-4 h-4" />
                     </Button>
