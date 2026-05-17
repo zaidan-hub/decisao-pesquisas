@@ -625,7 +625,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
         ];
       }
     });
-  };
+  }, []);
 
   const reatribuirParent = (idx: number, novoParentId: string) => {
     setItems(prev => {
