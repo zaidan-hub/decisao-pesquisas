@@ -1,41 +1,58 @@
-## Objetivo
+## Diagnóstico
 
-Na lista "Hierarquia" (painel direito) do modal de Relatórios Personalizados, adicionar:
+O modal `RelatorioPersonalizadoModal.tsx` (~950 linhas) renderiza dois grandes painéis em árvore. Os gargalos atuais que explicam a lentidão (5–6s para ações simples) são:
 
-1. Contrair/expandir nós (departamento, grupo, subgrupo) — ocultando os filhos na visualização.
-2. Corrigir os botões ↑ / ↓ para que cada item só troque de lugar com um item do mesmo tipo (departamento ↔ departamento, grupo ↔ grupo, subgrupo ↔ subgrupo, produto ↔ produto), em vez de simplesmente trocar com o item adjacente no array.
+1. **Painel direito re-renderiza tudo a cada clique.** Toda a lista `items` é re-mapeada e cada linha cria do zero: um `<Select>` Radix com **N opções** de pai, 3–4 `<Button>` Radix, ícones, handlers inline. Em listas com centenas de itens isso vira milhares de componentes Radix sendo desmontados/remontados a cada `setItems`, `setCollapsedX`, `setRenomeando`, etc.
+2. **Filtragem por ancestral é feita dentro do `.map`.** Mesmo itens "escondidos" passam pelo cálculo `getAncestors` + `return null` — paga-se o custo de iterar todos os itens em toda renderização.
+3. **`Select` (Radix) sempre montado em cada linha.** O `SelectTrigger` é leve, mas a árvore inteira de subscrições/refs do Radix Select multiplicada por centenas de linhas é cara — e o `SelectContent` é re-criado a cada render. Para uma ação que 99% do tempo nem é usada (mover pai), pagamos esse custo o tempo todo.
+4. **`ScrollArea` (Radix) com listas grandes.** Adiciona observers e wrappers caros versus um `div` com `overflow-auto`.
+5. **Painel esquerdo: nós sempre montam `Checkbox` Radix mesmo quando colapsados** — ok, mas departamentos/grupos visíveis (mesmo sem filhos expandidos) também passam pelo mapeamento inteiro a cada keystroke/clique.
+6. **Sets imutáveis recriados** (`toggleSet`) → mudança de identidade em todo render → memos sem efeito.
+7. **Handlers inline em cada linha** impedem qualquer `React.memo` de funcionar.
 
-## Mudanças (apenas em `src/components/admin/RelatorioPersonalizadoModal.tsx`)
+## Plano de otimização (apenas em `src/components/admin/RelatorioPersonalizadoModal.tsx`)
 
-### 1. Estado de collapse no editor
-- Adicionar `collapsedDeps`, `collapsedGrupos`, `collapsedSubs` (`Set<string>`) ao `RelatorioEditor`.
-- Render: em cada linha de departamento/grupo/subgrupo, prefixar um botão chevron (`ChevronDown` quando expandido, `ChevronRight` quando contraído) que alterna o respectivo Set. Para `produto`, manter um pequeno espaçador para alinhar.
-- No `.map` da `items`, esconder a renderização de qualquer item cujo ancestral esteja colapsado:
-  - produto escondido se seu `parentId` (subgrupo) estiver em `collapsedSubs`, OU se o grupo pai do subgrupo estiver em `collapsedGrupos`, OU se o departamento avô estiver em `collapsedDeps`.
-  - subgrupo escondido se seu grupo pai estiver em `collapsedGrupos` ou o departamento avô estiver em `collapsedDeps`.
-  - grupo escondido se seu departamento pai estiver em `collapsedDeps`.
-- Para resolver os ancestrais, derivar de `items` (cada item tem `parentId`) — fazer um helper `getAncestors(item)` que retorna `{ depId, grupoId, subId }`.
+### 1. Pré-filtrar itens visíveis no painel direito
+- Criar `useMemo` `itensVisiveis` que produz `[{ item, idx }]` já sem os escondidos por ancestral colapsado, usando os mapas `subParent`/`grupoParent`. O `.map` da UI passa a iterar só os visíveis.
+- Mantém `idx` original para `moverItem`/`removerItem` continuarem funcionando.
 
-### 2. Mover apenas com vizinhos do mesmo tipo (mantendo subárvore)
+### 2. Extrair `HierarquiaRow` como componente `React.memo`
+- Props: `item`, `idx`, `nome`, `colapsado`, `opcoesPai`, e callbacks **estáveis** (`onToggleCollapse`, `onMove`, `onRemove`, `onRename`, `onReatribuir`).
+- No componente pai, tornar todos os callbacks `useCallback` lendo state via `useRef` (ou via `setItems(prev => ...)`) para que sua identidade não mude. Resultado: ao colapsar um nó, só a linha do nó re-renderiza — não as centenas restantes.
+- O nome do item (`getNome`) também passa pré-computado para cada linha visível, evitando lookup repetido.
 
-Substituir `moverItem(idx, dir)` por uma versão que opera em "blocos":
+### 3. Lazy-mount do `<Select>` de "mover pai"
+- Substituir o `<Select>` sempre-montado por um botão `MoveRight` que, ao clicar, abre um `<Popover>` simples com a lista de opções (renderizado só enquanto aberto), **ou** por um `<DropdownMenu>` com `modal={false}` montado on-demand.
+- Implementação proposta: um sub-componente `ReatribuirPaiButton` controlado por estado `open` local. Enquanto fechado, renderiza apenas um `<Button>` simples — sem Radix Select, sem 100 `<SelectItem>` criados por linha.
+- Ganho típico: 5–10× menos nodes/refs por linha.
 
-- Um **bloco** de um item começa no seu índice e termina antes do próximo item de tipo de mesma profundidade-ou-maior (ou seja, inclui todos os descendentes consecutivos com nível de tipo > nível do alvo). Níveis: departamento=0, grupo=1, subgrupo=2, produto=3.
-- Algoritmo `moveSameType(idx, dir)`:
-  1. Identificar o bloco do item alvo (`[start, end)`).
-  2. Procurar o **próximo bloco de mesmo `tipo`** na direção `dir`:
-     - `dir = +1`: começar no índice `end`, varrer adiante até achar item com `tipo === alvo.tipo` (será o início do bloco vizinho); calcular o `end` desse bloco. Trocar os dois blocos consecutivos ou não.
-     - `dir = -1`: varrer de trás pra frente a partir de `start-1` até achar item com `tipo === alvo.tipo`; esse é o início do bloco anterior; o `end` dele é `start`.
-  3. Se não existir vizinho do mesmo tipo, não faz nada.
-  4. Reordenar o array juntando: prefixo + (bloco vizinho) + (itens entre blocos, se houver) + (bloco alvo) + sufixo — para o caso `+1`; espelhado para `-1`.
-- Resultado: um subgrupo trocará de posição com o próximo/anterior subgrupo, levando seus produtos junto; idem para grupo (leva subgrupos + produtos) e departamento (leva tudo abaixo).
+### 4. Trocar `ScrollArea` por `div` com `overflow-auto`
+- Tanto no painel esquerdo quanto no direito. Mantém scroll nativo, elimina os ResizeObservers do Radix.
 
-Manter `parentId` inalterado (a operação só reordena, não muda hierarquia).
+### 5. Otimizar painel esquerdo
+- Extrair `DepartamentoNode`, `GrupoNode`, `SubgrupoNode`, `ProdutoRow` como componentes `React.memo`, recebendo `selectedItems`/`expanded*` via contexto leve (`useContext`) — ou via props já memoizadas. Assim, expandir um grupo só re-renderiza aquele grupo.
+- `toggleSet` passa a usar `setExpandedDeps(prev => { const n = new Set(prev); ... })` (já faz isso indiretamente) e os componentes filhos só re-renderizam se a chave deles muda — usar booleano direto via props evita comparar Set inteiro.
 
-### 3. UI / acessibilidade
+### 6. Estabilizar callbacks e memos
+- `useCallback` em: `handleSelectItem`, `moverItem`, `removerItem`, `reatribuirParent`, `toggleCollapse*`, `aplicarRenomeio`, `handleAdicionarSelecionados`.
+- `itemMeta` continua memoizado, mas suas dependências (`departamentosMap`, etc.) já são estáveis.
 
-- Botão chevron ocupa ~16px à esquerda da linha (antes do `[D]/[G]/[S]/[P]`).
-- Para `produto`, renderizar um `<span className="w-4" />` no lugar do chevron para manter alinhamento.
-- Tooltip dos botões ↑/↓ continua "Mover para cima/baixo".
+### 7. (Opcional, se necessário após 1–6) Virtualização
+- Se ainda houver listas com 1000+ itens lentas, adicionar `@tanstack/react-virtual` apenas no painel direito (mais alto ROI). Não introduzir antes — as 6 mudanças acima devem resolver o caso comum sem virtualização.
 
-Nada mais é tocado: árvore esquerda, persistência, seleção e renomear ficam como estão.
+## Ordem de implementação
+
+1. Extrair `HierarquiaRow` + `ReatribuirPaiButton` lazy (passos 2 e 3) — maior ganho.
+2. Pré-filtrar `itensVisiveis` (passo 1).
+3. Estabilizar callbacks (passo 6).
+4. Trocar `ScrollArea` por `div overflow-auto` (passo 4).
+5. Memoizar nodes do painel esquerdo (passo 5).
+6. Medir; aplicar virtualização só se ainda houver lentidão (passo 7).
+
+## Resultado esperado
+
+- Clique para colapsar/expandir: re-render localizado em 1 linha (atualmente ~todas as linhas).
+- Abrir dropdown de pai: única hora em que a lista de opções é criada (atualmente sempre).
+- Buscar/digitar: já usa `useDeferredValue`, mas com `React.memo` corretamente aplicado as linhas do painel direito (que não mudam com a busca esquerda) deixam de re-renderizar.
+
+Nenhuma mudança de comportamento, persistência, RLS ou esquema — somente arquitetura de render do componente.
