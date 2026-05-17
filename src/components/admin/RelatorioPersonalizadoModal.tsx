@@ -541,7 +541,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   const parentTipo = (t: VisualizacaoItem['tipo']): VisualizacaoItem['tipo'] | null =>
     t === 'grupo' ? 'departamento' : t === 'subgrupo' ? 'grupo' : t === 'produto' ? 'subgrupo' : null;
 
-  const moverItem = (idx: number, dir: -1 | 1) => {
+  const moverItem = useCallback((idx: number, dir: -1 | 1) => {
     setItems(prev => {
       const arr = [...prev];
       const alvo = arr[idx];
