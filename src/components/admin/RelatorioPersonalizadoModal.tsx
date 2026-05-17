@@ -323,6 +323,48 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   const subgruposMap = useMemo(() => new Map(subgrupos.map(s => [s.id, s])), [subgrupos]);
   const produtosMap = useMemo(() => new Map(produtos.map(p => [p.id, p])), [produtos]);
 
+  // Índices pré-computados (uma vez por mudança das listas-base)
+  const gruposByDep = useMemo(() => {
+    const m = new Map<string, any[]>();
+    grupos.forEach(g => {
+      const arr = m.get(g.departamentoId) || [];
+      arr.push(g); m.set(g.departamentoId, arr);
+    });
+    return m;
+  }, [grupos]);
+  const subsByGrupo = useMemo(() => {
+    const m = new Map<string, any[]>();
+    subgrupos.forEach(s => {
+      const arr = m.get(s.grupoId) || [];
+      arr.push(s); m.set(s.grupoId, arr);
+    });
+    return m;
+  }, [subgrupos]);
+  const prodsBySub = useMemo(() => {
+    const m = new Map<string, any[]>();
+    produtos.forEach(p => {
+      const arr = m.get(p.subgrupoId) || [];
+      arr.push(p); m.set(p.subgrupoId, arr);
+    });
+    return m;
+  }, [produtos]);
+  // Nomes em lowercase em cache (evita recomputar a cada keystroke)
+  const produtoLower = useMemo(() => {
+    const m = new Map<string, { nome: string; codigo: string }>();
+    produtos.forEach(p => m.set(p.id, { nome: (p.nome || '').toLowerCase(), codigo: (p.codigo || '').toLowerCase() }));
+    return m;
+  }, [produtos]);
+  const subLower = useMemo(() => {
+    const m = new Map<string, string>();
+    subgrupos.forEach(s => m.set(s.id, (s.nome || '').toLowerCase()));
+    return m;
+  }, [subgrupos]);
+  const grupoLower = useMemo(() => {
+    const m = new Map<string, string>();
+    grupos.forEach(g => m.set(g.id, (g.nome || '').toLowerCase()));
+    return m;
+  }, [grupos]);
+
   const getNome = (tipo: string, id: string) => {
     if (tipo === 'departamento') return nomes?.departamentos?.[id] || departamentosMap.get(id)?.nome || '?';
     if (tipo === 'grupo') return nomes?.grupos?.[id] || gruposMap.get(id)?.nome || '?';
@@ -331,40 +373,42 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     return '?';
   };
 
-  // Construir hierarquia completa (departamento → grupo → subgrupo → produtos), filtrada por busca
-  const departamentoHierarchy = useMemo(() => {
-    const term = busca.trim().toLowerCase();
-    const matchProduto = (p: any) =>
-      !term || p.nome.toLowerCase().includes(term) || (p.codigo || '').toLowerCase().includes(term);
+  // Busca deferida — mantém o input responsivo enquanto a árvore recomputa em background
+  const buscaDeferred = useDeferredValue(busca);
 
+  // Construir hierarquia completa, usando índices pré-computados
+  const departamentoHierarchy = useMemo(() => {
+    const term = buscaDeferred.trim().toLowerCase();
     return departamentos.map(dep => {
-      const gruposDoDep = grupos
-        .filter(g => g.departamentoId === dep.id)
-        .map(g => {
-          const subsDoGrupo = subgrupos
-            .filter(s => s.grupoId === g.id)
-            .map(s => {
-              const prods = produtos.filter(p => p.subgrupoId === s.id && matchProduto(p));
-              const matchSub = !term || s.nome.toLowerCase().includes(term);
-              return { ...s, produtos: matchSub ? produtos.filter(p => p.subgrupoId === s.id) : prods };
-            })
-            .filter(s => {
-              if (!term) return true;
-              return s.nome.toLowerCase().includes(term) || s.produtos.length > 0;
-            });
-          return { ...g, subgrupos: subsDoGrupo };
-        })
-        .filter(g => {
+      const gruposDoDep = (gruposByDep.get(dep.id) || []).map(g => {
+        const subsDoGrupo = (subsByGrupo.get(g.id) || []).map(s => {
+          const allProds = prodsBySub.get(s.id) || [];
+          const matchSub = !term || (subLower.get(s.id) || '').includes(term);
+          const prods = !term
+            ? allProds
+            : matchSub
+              ? allProds
+              : allProds.filter(p => {
+                  const low = produtoLower.get(p.id);
+                  return !!low && (low.nome.includes(term) || low.codigo.includes(term));
+                });
+          return { ...s, produtos: prods };
+        }).filter(s => {
           if (!term) return true;
-          return g.nome.toLowerCase().includes(term) || g.subgrupos.length > 0;
+          return (subLower.get(s.id) || '').includes(term) || s.produtos.length > 0;
         });
+        return { ...g, subgrupos: subsDoGrupo };
+      }).filter(g => {
+        if (!term) return true;
+        return (grupoLower.get(g.id) || '').includes(term) || g.subgrupos.length > 0;
+      });
       return { departamento: dep, grupos: gruposDoDep };
     });
-  }, [departamentos, grupos, subgrupos, produtos, busca]);
+  }, [departamentos, gruposByDep, subsByGrupo, prodsBySub, produtoLower, subLower, grupoLower, buscaDeferred]);
 
   // Auto-expandir nós que casam com a busca
   useEffect(() => {
-    if (!busca.trim()) return;
+    if (!buscaDeferred.trim()) return;
     const deps = new Set<string>();
     const grps = new Set<string>();
     const subs = new Set<string>();
@@ -380,32 +424,31 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     setExpandedDeps(deps);
     setExpandedGrupos(grps);
     setExpandedSubs(subs);
-  }, [busca, departamentoHierarchy]);
+  }, [buscaDeferred, departamentoHierarchy]);
 
-  // Cascata de seleção (idêntica à de Listas)
+  // Cascata de seleção (idêntica à de Listas) — usa índices pré-computados
   const handleSelectItem = (tipo: 'departamento' | 'grupo' | 'subgrupo' | 'produto', id: string) => {
     const key = `${tipo}:${id}`;
     setSelectedItems(prev => {
       const next = new Set(prev);
       const add = !next.has(key);
       if (add) next.add(key); else next.delete(key);
-
       const op = (k: string) => add ? next.add(k) : next.delete(k);
       if (tipo === 'departamento') {
-        grupos.filter(g => g.departamentoId === id).forEach(g => {
+        (gruposByDep.get(id) || []).forEach(g => {
           op(`grupo:${g.id}`);
-          subgrupos.filter(s => s.grupoId === g.id).forEach(s => {
+          (subsByGrupo.get(g.id) || []).forEach(s => {
             op(`subgrupo:${s.id}`);
-            produtos.filter(p => p.subgrupoId === s.id).forEach(p => op(`produto:${p.id}`));
+            (prodsBySub.get(s.id) || []).forEach(p => op(`produto:${p.id}`));
           });
         });
       } else if (tipo === 'grupo') {
-        subgrupos.filter(s => s.grupoId === id).forEach(s => {
+        (subsByGrupo.get(id) || []).forEach(s => {
           op(`subgrupo:${s.id}`);
-          produtos.filter(p => p.subgrupoId === s.id).forEach(p => op(`produto:${p.id}`));
+          (prodsBySub.get(s.id) || []).forEach(p => op(`produto:${p.id}`));
         });
       } else if (tipo === 'subgrupo') {
-        produtos.filter(p => p.subgrupoId === id).forEach(p => op(`produto:${p.id}`));
+        (prodsBySub.get(id) || []).forEach(p => op(`produto:${p.id}`));
       }
       return next;
     });
