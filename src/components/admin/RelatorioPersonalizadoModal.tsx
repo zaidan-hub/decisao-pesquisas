@@ -610,7 +610,22 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
   };
 
   const reatribuirParent = (idx: number, novoParentId: string) => {
-    setItems(prev => prev.map((it, i) => i === idx ? { ...it, parentId: novoParentId } : it));
+    setItems(prev => {
+      const arr = [...prev];
+      const alvo = arr[idx];
+      if (!alvo || alvo.parentId === novoParentId) return prev;
+      const Ptype = parentTipo(alvo.tipo);
+      if (!Ptype) return prev;
+      const [aStart, aEnd] = getBlocoRange(arr, idx);
+      const bloco = arr.slice(aStart, aEnd).map((it, i) =>
+        i === 0 ? { ...it, parentId: novoParentId } : it
+      );
+      const semBloco = [...arr.slice(0, aStart), ...arr.slice(aEnd)];
+      const pIdx = semBloco.findIndex(it => it.tipo === Ptype && it.id === novoParentId);
+      if (pIdx === -1) return prev;
+      const [, pEnd] = getBlocoRange(semBloco, pIdx);
+      return [...semBloco.slice(0, pEnd), ...bloco, ...semBloco.slice(pEnd)];
+    });
   };
 
   const aplicarRenomeio = () => {
