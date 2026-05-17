@@ -520,50 +520,90 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     return [start, end];
   };
 
+  const parentTipo = (t: VisualizacaoItem['tipo']): VisualizacaoItem['tipo'] | null =>
+    t === 'grupo' ? 'departamento' : t === 'subgrupo' ? 'grupo' : t === 'produto' ? 'subgrupo' : null;
+
   const moverItem = (idx: number, dir: -1 | 1) => {
     setItems(prev => {
       const arr = [...prev];
       const alvo = arr[idx];
       if (!alvo) return prev;
+      const Tlvl = tipoNivel(alvo.tipo);
+      const Ptype = parentTipo(alvo.tipo);
       const [aStart, aEnd] = getBlocoRange(arr, idx);
 
       if (dir === 1) {
-        // próximo bloco de mesmo tipo a partir de aEnd
+        // 1) próximo irmão do mesmo tipo dentro do mesmo pai
         let nStart = -1;
         for (let i = aEnd; i < arr.length; i++) {
           if (arr[i].tipo === alvo.tipo) { nStart = i; break; }
-          if (tipoNivel(arr[i].tipo) < tipoNivel(alvo.tipo)) break; // saiu do escopo
+          if (tipoNivel(arr[i].tipo) < Tlvl) break; // saiu do pai atual
         }
-        if (nStart === -1) return prev;
-        const [, nEnd] = getBlocoRange(arr, nStart);
-        const blocoAlvo = arr.slice(aStart, aEnd);
-        const entre = arr.slice(aEnd, nStart);
-        const blocoViz = arr.slice(nStart, nEnd);
+        if (nStart !== -1) {
+          const [, nEnd] = getBlocoRange(arr, nStart);
+          const blocoAlvo = arr.slice(aStart, aEnd);
+          const entre = arr.slice(aEnd, nStart);
+          const blocoViz = arr.slice(nStart, nEnd);
+          return [
+            ...arr.slice(0, aStart),
+            ...blocoViz,
+            ...entre,
+            ...blocoAlvo,
+            ...arr.slice(nEnd),
+          ];
+        }
+        // 2) cross-parent: vai pro próximo pai como PRIMEIRO filho
+        if (!Ptype) return prev;
+        let pIdx = -1;
+        for (let i = aEnd; i < arr.length; i++) {
+          if (arr[i].tipo === Ptype && arr[i].id !== alvo.parentId) { pIdx = i; break; }
+        }
+        if (pIdx === -1) return prev;
+        const blocoAlvo = arr.slice(aStart, aEnd).map((it, i) =>
+          i === 0 ? { ...it, parentId: arr[pIdx].id } : it
+        );
+        const removed = [...arr.slice(0, aStart), ...arr.slice(aEnd)];
+        const newPIdx = pIdx - (aEnd - aStart); // pIdx > aEnd, então desloca
         return [
-          ...arr.slice(0, aStart),
-          ...blocoViz,
-          ...entre,
+          ...removed.slice(0, newPIdx + 1),
           ...blocoAlvo,
-          ...arr.slice(nEnd),
+          ...removed.slice(newPIdx + 1),
         ];
       } else {
-        // bloco anterior de mesmo tipo
+        // 1) irmão anterior do mesmo tipo dentro do mesmo pai
         let pStart = -1;
         for (let i = aStart - 1; i >= 0; i--) {
-          if (tipoNivel(arr[i].tipo) < tipoNivel(alvo.tipo)) break;
+          if (tipoNivel(arr[i].tipo) < Tlvl) break;
           if (arr[i].tipo === alvo.tipo) { pStart = i; break; }
         }
-        if (pStart === -1) return prev;
-        const [, pEnd] = getBlocoRange(arr, pStart);
-        const blocoPrev = arr.slice(pStart, pEnd);
-        const entre = arr.slice(pEnd, aStart);
-        const blocoAlvo = arr.slice(aStart, aEnd);
+        if (pStart !== -1) {
+          const pEnd = aStart; // bloco do irmão termina onde alvo começa
+          const blocoPrev = arr.slice(pStart, pEnd);
+          const blocoAlvo = arr.slice(aStart, aEnd);
+          return [
+            ...arr.slice(0, pStart),
+            ...blocoAlvo,
+            ...blocoPrev,
+            ...arr.slice(aEnd),
+          ];
+        }
+        // 2) cross-parent: vai pro pai anterior como ÚLTIMO filho
+        if (!Ptype) return prev;
+        let pIdx = -1;
+        for (let i = aStart - 1; i >= 0; i--) {
+          if (arr[i].tipo === Ptype && arr[i].id !== alvo.parentId) { pIdx = i; break; }
+        }
+        if (pIdx === -1) return prev;
+        const [, pEnd] = getBlocoRange(arr, pIdx);
+        const blocoAlvo = arr.slice(aStart, aEnd).map((it, i) =>
+          i === 0 ? { ...it, parentId: arr[pIdx].id } : it
+        );
+        const removed = [...arr.slice(0, aStart), ...arr.slice(aEnd)];
+        // pEnd <= aStart, então não desloca
         return [
-          ...arr.slice(0, pStart),
+          ...removed.slice(0, pEnd),
           ...blocoAlvo,
-          ...entre,
-          ...blocoPrev,
-          ...arr.slice(aEnd),
+          ...removed.slice(pEnd),
         ];
       }
     });
