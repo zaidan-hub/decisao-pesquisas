@@ -594,6 +594,9 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     selectedItems.forEach(k => { if (k.startsWith('produto:')) produtosAdicionar.push(k.slice(8)); });
     if (produtosAdicionar.length === 0) { setSelectedItems(new Set()); return; }
 
+    const novosDeps: string[] = [];
+    const novosGrupos: string[] = [];
+    const novosSubs: string[] = [];
     setItems(prev => {
       const next = [...prev];
       const hasProduto = new Set<string>();
@@ -616,20 +619,27 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
         if (depId && !hasDep.has(depId)) {
           next.push({ tipo: 'departamento', id: depId });
           hasDep.add(depId);
+          novosDeps.push(depId);
         }
         if (grupo && !hasGrupo.has(grupo.id)) {
           next.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
           hasGrupo.add(grupo.id);
+          novosGrupos.push(grupo.id);
         }
         if (subgrupo && !hasSubgrupo.has(subgrupo.id)) {
           next.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
           hasSubgrupo.add(subgrupo.id);
+          novosSubs.push(subgrupo.id);
         }
         next.push({ tipo: 'produto', id: pid, parentId: subgrupo?.id });
         hasProduto.add(pid);
       }
       return next;
     });
+    // Importa nós novos já contraídos
+    if (novosDeps.length) setCollapsedDeps(prev => { const n = new Set(prev); novosDeps.forEach(id => n.add(id)); return n; });
+    if (novosGrupos.length) setCollapsedGrupos(prev => { const n = new Set(prev); novosGrupos.forEach(id => n.add(id)); return n; });
+    if (novosSubs.length) setCollapsedSubs(prev => { const n = new Set(prev); novosSubs.forEach(id => n.add(id)); return n; });
     setSelectedItems(new Set());
   };
 
