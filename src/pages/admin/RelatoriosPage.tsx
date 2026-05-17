@@ -371,10 +371,6 @@ export const RelatoriosPage = () => {
         </div>
         
         <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setShowPersonalizadoModal(true)}>
-          <Settings2 className="w-4 h-4 mr-2" />
-          Personalizado
-        </Button>
         <Dialog open={showRelatorioDialog} onOpenChange={setShowRelatorioDialog}>
           <DialogTrigger asChild>
             <Button onClick={() => resetRelatorioForm()}>
