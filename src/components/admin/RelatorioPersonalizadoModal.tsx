@@ -884,7 +884,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
               />
             </div>
           </div>
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-auto">
             <div className="p-2 space-y-1">
               {departamentoHierarchy.map(deptData => {
                 const hasContent = deptData.grupos.length > 0;
