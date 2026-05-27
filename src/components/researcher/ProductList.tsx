@@ -515,28 +515,15 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                             <div key={produto.id} className="border rounded-lg p-3">
                               <div className="flex items-start gap-3">
                                 <div className="flex-1 min-w-0">
-                                  <h5
-                                    className={`font-medium text-sm leading-snug break-words cursor-pointer ${isExpanded ? '' : 'line-clamp-2'}`}
-                                    onClick={() => toggleExpandName(produto.id)}
-                                    title={nomeCompleto}
-                                  >
+                                  <h5 className="font-medium text-sm leading-snug break-words">
                                     {produto.nome}
                                     {(produto.quantidade || produto.unidadeMedida) && (
                                       <span className="text-muted-foreground font-normal"> {produto.quantidade}{produto.unidadeMedida}</span>
                                     )}
                                   </h5>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    {produto.maisBarato && (
-                                      <span className="text-[11px] text-blue-600 font-semibold">+ Barato</span>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleExpandName(produto.id)}
-                                      className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
-                                    >
-                                      {isExpanded ? <><ChevronUp className="w-3 h-3" />Recolher</> : <><ChevronDown className="w-3 h-3" />Ver mais</>}
-                                    </button>
-                                  </div>
+                                  {produto.maisBarato && (
+                                    <span className="text-[11px] text-blue-600 font-semibold mt-0.5 block">+ Barato</span>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
