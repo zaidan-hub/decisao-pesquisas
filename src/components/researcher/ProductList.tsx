@@ -511,8 +511,6 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                           {produtos.map((produto) => {
                             const hasFotos = fotos[produto.id] && fotos[produto.id].length > 0;
                             const hasObs = !!observacoes[produto.id];
-                            const isExpanded = expandedNames.has(produto.id);
-                            const nomeCompleto = `${produto.nome}${(produto.quantidade || produto.unidadeMedida) ? ` ${produto.quantidade || ''}${produto.unidadeMedida || ''}` : ''}`;
                             return (
                             <div key={produto.id} className="border rounded-lg p-3">
                               <div className="flex items-start gap-3">
