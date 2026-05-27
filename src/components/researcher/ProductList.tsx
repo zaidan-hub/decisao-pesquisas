@@ -44,17 +44,6 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [gruposCarregando, setGruposCarregando] = useState<{ [grupoId: string]: boolean }>({});
   const [gruposComProdutos, setGruposComProdutos] = useState<string[]>([]);
   const [produtosCache, setProdutosCache] = useState<{ [grupoId: string]: boolean }>({});
-  const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
-
-  const toggleExpandName = useCallback((produtoId: string) => {
-    setExpandedNames(prev => {
-      const next = new Set(prev);
-      if (next.has(produtoId)) next.delete(produtoId);
-      else next.add(produtoId);
-      return next;
-    });
-  }, []);
-
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
 
