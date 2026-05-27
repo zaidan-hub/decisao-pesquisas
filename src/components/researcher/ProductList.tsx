@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ArrowLeft, Search, MessageSquare, CheckCircle, Camera } from 'lucide-react';
+import { ArrowLeft, Search, MessageSquare, CheckCircle, Camera, MoreVertical, ChevronDown, ChevronUp } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Coleta, Produto, Grupo, Subgrupo } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
@@ -43,6 +44,16 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [gruposCarregando, setGruposCarregando] = useState<{ [grupoId: string]: boolean }>({});
   const [gruposComProdutos, setGruposComProdutos] = useState<string[]>([]);
   const [produtosCache, setProdutosCache] = useState<{ [grupoId: string]: boolean }>({});
+  const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
+
+  const toggleExpandName = useCallback((produtoId: string) => {
+    setExpandedNames(prev => {
+      const next = new Set(prev);
+      if (next.has(produtoId)) next.delete(produtoId);
+      else next.add(produtoId);
+      return next;
+    });
+  }, []);
 
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
@@ -508,23 +519,41 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                           {subgrupoNome}
                         </h4>
                         <div className="space-y-3">
-                          {produtos.map((produto) => (
-                            <div key={produto.id} className="border rounded-lg p-2">
-                              <div className="flex items-start gap-2">
+                          {produtos.map((produto) => {
+                            const hasFotos = fotos[produto.id] && fotos[produto.id].length > 0;
+                            const hasObs = !!observacoes[produto.id];
+                            const isExpanded = expandedNames.has(produto.id);
+                            const nomeCompleto = `${produto.nome}${(produto.quantidade || produto.unidadeMedida) ? ` ${produto.quantidade || ''}${produto.unidadeMedida || ''}` : ''}`;
+                            return (
+                            <div key={produto.id} className="border rounded-lg p-3">
+                              <div className="flex items-start gap-3">
                                 <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-xs leading-tight break-words">
+                                  <h5
+                                    className={`font-medium text-sm leading-snug break-words cursor-pointer ${isExpanded ? '' : 'line-clamp-2'}`}
+                                    onClick={() => toggleExpandName(produto.id)}
+                                    title={nomeCompleto}
+                                  >
                                     {produto.nome}
                                     {(produto.quantidade || produto.unidadeMedida) && (
                                       <span className="text-muted-foreground font-normal"> {produto.quantidade}{produto.unidadeMedida}</span>
                                     )}
                                   </h5>
-                                  {produto.maisBarato && (
-                                    <span className="text-[10px] text-blue-600 font-semibold">+ Barato</span>
-                                  )}
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {produto.maisBarato && (
+                                      <span className="text-[11px] text-blue-600 font-semibold">+ Barato</span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleExpandName(produto.id)}
+                                      className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
+                                    >
+                                      {isExpanded ? <><ChevronUp className="w-3 h-3" />Recolher</> : <><ChevronDown className="w-3 h-3" />Ver mais</>}
+                                    </button>
+                                  </div>
                                 </div>
-                                
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <div className="w-20">
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="w-24">
                                     <Input
                                       id={`preco-${produto.id}`}
                                       type="number"
@@ -533,27 +562,43 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                                       placeholder="0,00"
                                       value={precos[produto.id] || ''}
                                       onChange={(e) => handlePrecoChange(produto.id, e.target.value)}
-                                      className="text-center text-xs h-8 px-1"
+                                      className="text-center text-sm h-9"
                                     />
                                   </div>
-                                  
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className={`h-8 w-8 shrink-0 ${fotos[produto.id] && fotos[produto.id].length > 0 ? 'bg-blue-50 border-blue-200' : ''}`}
-                                    onClick={() => handleFotoCapture(produto.id)}
-                                  >
-                                    <Camera className="w-3.5 h-3.5" />
-                                  </Button>
-                                  
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className={`h-8 w-8 shrink-0 ${observacoes[produto.id] ? 'bg-yellow-50 border-yellow-200' : ''}`}
-                                    onClick={() => openObservationDialog(produto.id)}
-                                  >
-                                    <MessageSquare className="w-3.5 h-3.5" />
-                                  </Button>
+
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className={`h-9 w-9 shrink-0 relative ${hasFotos || hasObs ? 'bg-blue-50 border-blue-200' : ''}`}
+                                      >
+                                        <MoreVertical className="w-4 h-4" />
+                                        {(hasFotos || hasObs) && (
+                                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
+                                        )}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-44 p-1" align="end">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleFotoCapture(produto.id)}
+                                        className="w-full flex items-center gap-2 px-2 py-2 text-sm rounded hover:bg-muted text-left"
+                                      >
+                                        <Camera className="w-4 h-4" />
+                                        Adicionar foto
+                                        {hasFotos && <span className="ml-auto text-xs text-blue-600">{fotos[produto.id].length}</span>}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openObservationDialog(produto.id)}
+                                        className="w-full flex items-center gap-2 px-2 py-2 text-sm rounded hover:bg-muted text-left"
+                                      >
+                                        <MessageSquare className="w-4 h-4" />
+                                        {hasObs ? 'Editar observação' : 'Adicionar observação'}
+                                      </button>
+                                    </PopoverContent>
+                                  </Popover>
                                 </div>
                               </div>
                               
@@ -612,7 +657,8 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                                 </div>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
