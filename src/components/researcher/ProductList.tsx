@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ArrowLeft, Search, MessageSquare, CheckCircle, Camera, MoreVertical, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Search, MessageSquare, CheckCircle, Camera, MoreVertical } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Coleta, Produto, Grupo, Subgrupo } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -44,17 +44,6 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const [gruposCarregando, setGruposCarregando] = useState<{ [grupoId: string]: boolean }>({});
   const [gruposComProdutos, setGruposComProdutos] = useState<string[]>([]);
   const [produtosCache, setProdutosCache] = useState<{ [grupoId: string]: boolean }>({});
-  const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
-
-  const toggleExpandName = useCallback((produtoId: string) => {
-    setExpandedNames(prev => {
-      const next = new Set(prev);
-      if (next.has(produtoId)) next.delete(produtoId);
-      else next.add(produtoId);
-      return next;
-    });
-  }, []);
-
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
 
@@ -522,34 +511,19 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                           {produtos.map((produto) => {
                             const hasFotos = fotos[produto.id] && fotos[produto.id].length > 0;
                             const hasObs = !!observacoes[produto.id];
-                            const isExpanded = expandedNames.has(produto.id);
-                            const nomeCompleto = `${produto.nome}${(produto.quantidade || produto.unidadeMedida) ? ` ${produto.quantidade || ''}${produto.unidadeMedida || ''}` : ''}`;
                             return (
                             <div key={produto.id} className="border rounded-lg p-3">
                               <div className="flex items-start gap-3">
                                 <div className="flex-1 min-w-0">
-                                  <h5
-                                    className={`font-medium text-sm leading-snug break-words cursor-pointer ${isExpanded ? '' : 'line-clamp-2'}`}
-                                    onClick={() => toggleExpandName(produto.id)}
-                                    title={nomeCompleto}
-                                  >
+                                  <h5 className="font-medium text-sm leading-snug break-words">
                                     {produto.nome}
                                     {(produto.quantidade || produto.unidadeMedida) && (
                                       <span className="text-muted-foreground font-normal"> {produto.quantidade}{produto.unidadeMedida}</span>
                                     )}
                                   </h5>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    {produto.maisBarato && (
-                                      <span className="text-[11px] text-blue-600 font-semibold">+ Barato</span>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleExpandName(produto.id)}
-                                      className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
-                                    >
-                                      {isExpanded ? <><ChevronUp className="w-3 h-3" />Recolher</> : <><ChevronDown className="w-3 h-3" />Ver mais</>}
-                                    </button>
-                                  </div>
+                                  {produto.maisBarato && (
+                                    <span className="text-[11px] text-blue-600 font-semibold mt-0.5 block">+ Barato</span>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
