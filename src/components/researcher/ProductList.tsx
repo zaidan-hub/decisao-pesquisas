@@ -657,7 +657,8 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
                                 </div>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
