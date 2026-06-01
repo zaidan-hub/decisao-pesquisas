@@ -82,20 +82,22 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
     }
   };
 
-  const handleUpdatePrecos = (
+  // Gravação de preços/observações/marcas — SEM fotos (mantém o payload leve e rápido)
+  const handleUpdatePrecos = async (
     precos: { [produtoId: string]: number }, 
     observacoes: { [produtoId: string]: string }, 
-    fotos?: { [produtoId: string]: string[] },
     textosMaisBarato?: { [produtoId: string]: string }
   ) => {
-    console.log('📸 Salvando fotos:', fotos);
-    console.log('💰 Salvando textos mais barato:', textosMaisBarato);
-    onUpdateColeta(coleta.id, coleta.status, { 
+    await onUpdateColeta(coleta.id, coleta.status, { 
       precos, 
       observacoesProdutos: observacoes,
-      fotos: fotos || {},
       textosMaisBarato: textosMaisBarato || {}
     });
+  };
+
+  // Gravação isolada das fotos — só ocorre quando as fotos mudam
+  const handleUpdateFotos = async (fotos: { [produtoId: string]: string[] }) => {
+    await onUpdateColeta(coleta.id, coleta.status, { fotos });
   };
 
   if (showProductList) {
