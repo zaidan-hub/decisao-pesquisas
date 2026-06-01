@@ -23,20 +23,31 @@ interface ProductListProps {
   onUpdatePrecos: (
     precos: { [produtoId: string]: number }, 
     observacoes: { [produtoId: string]: string }, 
-    fotos?: { [produtoId: string]: string[] },
     textosMaisBarato?: { [produtoId: string]: string }
-  ) => void;
+  ) => void | Promise<void>;
+  onUpdateFotos: (fotos: { [produtoId: string]: string[] }) => void | Promise<void>;
   onFinalizarColeta: () => void;
   onOpenConfirmDialog: () => void;
 }
 
-export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinalizarColeta, onOpenConfirmDialog }: ProductListProps) => {
+export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdateFotos, onFinalizarColeta, onOpenConfirmDialog }: ProductListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openGroups, setOpenGroups] = useState<string[]>([]);
-  const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(coleta.precos || {});
-  const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(coleta.observacoesProdutos || {});
-  const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>(coleta.fotos || {});
-  const [textosMaisBarato, setTextosMaisBarato] = useState<{ [produtoId: string]: string }>(coleta.textosMaisBarato || {});
+
+  // Hidratação: estado inicial = dados do servidor + rascunho local (rascunho vence por ser o mais recente)
+  const draftInicial = useMemo(() => loadColetaDraft(coleta.id), [coleta.id]);
+  const [precos, setPrecos] = useState<{ [produtoId: string]: number }>(
+    () => ({ ...(coleta.precos || {}), ...(draftInicial?.precos || {}) })
+  );
+  const [observacoes, setObservacoes] = useState<{ [produtoId: string]: string }>(
+    () => ({ ...(coleta.observacoesProdutos || {}), ...(draftInicial?.observacoes || {}) })
+  );
+  const [fotos, setFotos] = useState<{ [produtoId: string]: string[] }>(
+    () => ({ ...(coleta.fotos || {}), ...(draftInicial?.fotos || {}) })
+  );
+  const [textosMaisBarato, setTextosMaisBarato] = useState<{ [produtoId: string]: string }>(
+    () => ({ ...(coleta.textosMaisBarato || {}), ...(draftInicial?.textosMaisBarato || {}) })
+  );
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [tempObservacao, setTempObservacao] = useState('');
@@ -47,23 +58,90 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onFinal
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
 
-  // Auto-save com debounce
+  // Carregar fotos reais da coleta (não vêm no fetch da lista por performance).
+  // Faz merge: fotos do servidor + fotos do rascunho local (rascunho vence).
+  const fotosCarregadasRef = useRef(false);
+  useEffect(() => {
+    let ativo = true;
+    const carregarFotos = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('coletas')
+          .select('fotos')
+          .eq('id', coleta.id)
+          .single();
+        if (error) throw error;
+        if (!ativo) return;
+        const fotosServidor = (data?.fotos as { [k: string]: string[] }) || {};
+        setFotos(prev => ({ ...fotosServidor, ...prev }));
+      } catch (e) {
+        console.error('Erro ao carregar fotos da coleta:', e);
+      } finally {
+        fotosCarregadasRef.current = true;
+      }
+    };
+    carregarFotos();
+    return () => { ativo = false; };
+  }, [coleta.id]);
+
+  // Auto-save de preços/observações/marcas com debounce (SEM fotos)
   const autoSaveData = useMemo(() => ({
     precos,
     observacoes_produtos: observacoes,
-    fotos,
     textos_mais_barato: textosMaisBarato
-  }), [precos, observacoes, fotos, textosMaisBarato]);
+  }), [precos, observacoes, textosMaisBarato]);
 
   const handleAutoSave = useCallback(async (data: any) => {
-    await onUpdatePrecos(data.precos, data.observacoes_produtos, data.fotos, data.textos_mais_barato);
+    await onUpdatePrecos(data.precos, data.observacoes_produtos, data.textos_mais_barato);
   }, [onUpdatePrecos]);
 
-  const { isSaving, lastSaved } = useAutoSave({
+  const { isSaving, lastSaved, saveError, hasUnsaved, flush } = useAutoSave({
     data: autoSaveData,
     onSave: handleAutoSave,
     delay: 2000
   });
+
+  // Persistir rascunho local a cada mudança (instantâneo, resiste a refresh/queda)
+  useEffect(() => {
+    saveColetaDraft(coleta.id, { precos, observacoes, textosMaisBarato, fotos });
+  }, [coleta.id, precos, observacoes, textosMaisBarato, fotos]);
+
+  // Limpar rascunho local quando tudo estiver confirmado no servidor
+  useEffect(() => {
+    if (!hasUnsaved && !saveError && lastSaved) {
+      clearColetaDraft(coleta.id);
+    }
+  }, [hasUnsaved, saveError, lastSaved, coleta.id]);
+
+  // Gravação isolada das fotos: só dispara quando as fotos mudam (após carregamento inicial)
+  const fotosSnapshotRef = useRef<string>(JSON.stringify(fotos));
+  useEffect(() => {
+    if (!fotosCarregadasRef.current) return;
+    const serialized = JSON.stringify(fotos);
+    if (serialized === fotosSnapshotRef.current) return;
+    fotosSnapshotRef.current = serialized;
+    const t = setTimeout(() => { onUpdateFotos(fotos); }, 800);
+    return () => clearTimeout(t);
+  }, [fotos, onUpdateFotos]);
+
+  // Avisar ao recarregar/fechar com alterações ainda não confirmadas
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsaved || saveError) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsaved, saveError]);
+
+  // Gravar imediatamente ao sair da tela de produtos
+  useEffect(() => {
+    return () => {
+      flush();
+    };
+  }, [flush]);
 
   // Mapa subgrupo -> grupo (para inferir ordem de grupos a partir da hierarquia)
   const [subgrupoToGrupoMap, setSubgrupoToGrupoMap] = useState<Record<string, string>>({});
