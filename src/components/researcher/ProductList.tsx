@@ -62,6 +62,10 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
   // Carregar fotos reais da coleta (não vêm no fetch da lista por performance).
   // Faz merge: fotos do servidor + fotos do rascunho local (rascunho vence).
   const fotosCarregadasRef = useRef(false);
+  // Última versão das fotos confirmada no servidor (para comparar e detectar pendências)
+  const fotosServidorRef = useRef<string>(JSON.stringify(coleta.fotos || {}));
+  const [fotosPendentes, setFotosPendentes] = useState(false);
+
   useEffect(() => {
     let ativo = true;
     const carregarFotos = async () => {
@@ -74,6 +78,7 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
         if (error) throw error;
         if (!ativo) return;
         const fotosServidor = (data?.fotos as { [k: string]: string[] }) || {};
+        fotosServidorRef.current = JSON.stringify(fotosServidor);
         setFotos(prev => ({ ...fotosServidor, ...prev }));
       } catch (e) {
         console.error('Erro ao carregar fotos da coleta:', e);
@@ -107,23 +112,35 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
     saveColetaDraft(coleta.id, { precos, observacoes, textosMaisBarato, fotos });
   }, [coleta.id, precos, observacoes, textosMaisBarato, fotos]);
 
-  // Limpar rascunho local quando tudo estiver confirmado no servidor
+  // Limpar rascunho local somente quando preços E fotos estiverem confirmados
   useEffect(() => {
-    if (!hasUnsaved && !saveError && lastSaved) {
+    if (!hasUnsaved && !saveError && !fotosPendentes && lastSaved) {
       clearColetaDraft(coleta.id);
     }
-  }, [hasUnsaved, saveError, lastSaved, coleta.id]);
+  }, [hasUnsaved, saveError, fotosPendentes, lastSaved, coleta.id]);
 
-  // Gravação isolada das fotos: só dispara quando as fotos mudam (após carregamento inicial)
-  const fotosSnapshotRef = useRef<string>(JSON.stringify(fotos));
+  // Gravação isolada das fotos: só dispara quando diferem do que está no servidor
   useEffect(() => {
     if (!fotosCarregadasRef.current) return;
     const serialized = JSON.stringify(fotos);
-    if (serialized === fotosSnapshotRef.current) return;
-    fotosSnapshotRef.current = serialized;
-    const t = setTimeout(() => { onUpdateFotos(fotos); }, 800);
+    if (serialized === fotosServidorRef.current) {
+      setFotosPendentes(false);
+      return;
+    }
+    setFotosPendentes(true);
+    const t = setTimeout(async () => {
+      try {
+        await onUpdateFotos(fotos);
+        fotosServidorRef.current = serialized;
+        setFotosPendentes(false);
+      } catch (e) {
+        console.error('Erro ao salvar fotos:', e);
+        // Mantém pendente; será reenviado na próxima alteração e o rascunho local preserva os dados.
+      }
+    }, 800);
     return () => clearTimeout(t);
   }, [fotos, onUpdateFotos]);
+
 
   // Avisar ao recarregar/fechar com alterações ainda não confirmadas
   useEffect(() => {
