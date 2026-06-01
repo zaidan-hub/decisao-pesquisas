@@ -495,16 +495,19 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
               {totalPreenchidos}/{totalProdutos} preenchidos
             </p>
           </div>
-          {isSaving && (
+          {saveError ? (
+            <Badge variant="destructive">
+              Erro ao salvar — tentando novamente
+            </Badge>
+          ) : isSaving || hasUnsaved ? (
             <Badge variant="secondary">
               Salvando...
             </Badge>
-          )}
-          {!isSaving && lastSaved && (
+          ) : lastSaved ? (
             <Badge variant="outline">
-              Salvo
+              Salvo {lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </Badge>
-          )}
+          ) : null}
         </div>
         
         <Button 
