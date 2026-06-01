@@ -107,6 +107,7 @@ export const ColetaDetail = ({ coleta, onBack, onUpdateColeta, supermercados }: 
           coleta={coleta}
           onBack={() => setShowProductList(false)}
           onUpdatePrecos={handleUpdatePrecos}
+          onUpdateFotos={handleUpdateFotos}
           onFinalizarColeta={handleFinalizarColeta}
           onOpenConfirmDialog={() => setShowConfirmDialog(true)}
         />
