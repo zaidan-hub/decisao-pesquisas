@@ -511,13 +511,14 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
         </div>
         
         <Button 
-          onClick={onOpenConfirmDialog}
+          onClick={async () => { await flush(); onOpenConfirmDialog(); }}
           disabled={totalPreenchidos === 0}
         >
           <CheckCircle className="w-4 h-4 mr-2" />
           Finalizar
         </Button>
       </div>
+
 
       {/* Search */}
       <div className="relative">
