@@ -145,14 +145,14 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
   // Avisar ao recarregar/fechar com alterações ainda não confirmadas
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (hasUnsaved || saveError) {
+      if (hasUnsaved || saveError || fotosPendentes) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [hasUnsaved, saveError]);
+  }, [hasUnsaved, saveError, fotosPendentes]);
 
   // Gravar imediatamente ao sair da tela de produtos
   useEffect(() => {
