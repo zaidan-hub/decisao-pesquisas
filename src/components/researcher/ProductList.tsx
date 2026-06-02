@@ -796,6 +796,13 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Sugestões de marcas já preenchidas para autocompletar */}
+      <datalist id="marcas-sugeridas">
+        {marcasSugeridas.map((marca) => (
+          <option key={marca} value={marca} />
+        ))}
+      </datalist>
     </div>
   );
 });
