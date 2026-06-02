@@ -341,8 +341,18 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
   }, []);
 
   const handleTextoMaisBaratoChange = useCallback((produtoId: string, texto: string) => {
-    setTextosMaisBarato(prev => ({ ...prev, [produtoId]: texto }));
+    setTextosMaisBarato(prev => ({ ...prev, [produtoId]: texto.toUpperCase() }));
   }, []);
+
+  // Marcas já preenchidas (distintas) para sugerir como autocompletar
+  const marcasSugeridas = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(textosMaisBarato).forEach((v) => {
+      const m = (v || '').trim().toUpperCase();
+      if (m) set.add(m);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [textosMaisBarato]);
 
   const handleSaveObservation = useCallback(() => {
     if (!selectedProductId) return;
