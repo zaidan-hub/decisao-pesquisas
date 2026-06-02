@@ -695,10 +695,12 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
                                   <Input
                                     id={`texto-${produto.id}`}
                                     type="text"
-                                    placeholder="Ex: Carrijo"
+                                    placeholder="Ex: CARRIJO"
+                                    list="marcas-sugeridas"
+                                    autoCapitalize="characters"
                                     value={textosMaisBarato[produto.id] || ''}
                                     onChange={(e) => handleTextoMaisBaratoChange(produto.id, e.target.value)}
-                                    className="mt-1"
+                                    className="mt-1 uppercase"
                                   />
                                 </div>
                               )}
