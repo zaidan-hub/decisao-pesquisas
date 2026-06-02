@@ -341,8 +341,18 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
   }, []);
 
   const handleTextoMaisBaratoChange = useCallback((produtoId: string, texto: string) => {
-    setTextosMaisBarato(prev => ({ ...prev, [produtoId]: texto }));
+    setTextosMaisBarato(prev => ({ ...prev, [produtoId]: texto.toUpperCase() }));
   }, []);
+
+  // Marcas já preenchidas (distintas) para sugerir como autocompletar
+  const marcasSugeridas = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(textosMaisBarato).forEach((v) => {
+      const m = (v || '').trim().toUpperCase();
+      if (m) set.add(m);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [textosMaisBarato]);
 
   const handleSaveObservation = useCallback(() => {
     if (!selectedProductId) return;
@@ -685,10 +695,12 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
                                   <Input
                                     id={`texto-${produto.id}`}
                                     type="text"
-                                    placeholder="Ex: Carrijo"
+                                    placeholder="Ex: CARRIJO"
+                                    list="marcas-sugeridas"
+                                    autoCapitalize="characters"
                                     value={textosMaisBarato[produto.id] || ''}
                                     onChange={(e) => handleTextoMaisBaratoChange(produto.id, e.target.value)}
-                                    className="mt-1"
+                                    className="mt-1 uppercase"
                                   />
                                 </div>
                               )}
@@ -784,6 +796,13 @@ export const ProductList = React.memo(({ coleta, onBack, onUpdatePrecos, onUpdat
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Sugestões de marcas já preenchidas para autocompletar */}
+      <datalist id="marcas-sugeridas">
+        {marcasSugeridas.map((marca) => (
+          <option key={marca} value={marca} />
+        ))}
+      </datalist>
     </div>
   );
 });
