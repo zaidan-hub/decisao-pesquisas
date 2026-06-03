@@ -419,6 +419,8 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     initial?.hierarquiaCustomizada?.nomes || { departamentos: {}, grupos: {}, subgrupos: {} }
   );
   const [busca, setBusca] = useState('');
+  const [buscaHierarquia, setBuscaHierarquia] = useState('');
+  const buscaHierarquiaDeferred = useDeferredValue(buscaHierarquia);
   const [renomeando, setRenomeando] = useState<{ tipo: 'departamento' | 'grupo' | 'subgrupo'; id: string } | null>(null);
   const [renomeValor, setRenomeValor] = useState('');
 
