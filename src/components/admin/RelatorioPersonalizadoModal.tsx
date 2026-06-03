@@ -1049,7 +1049,18 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
 
         {/* Direita: visualização ordenada */}
         <div className="border rounded-md flex flex-col min-h-0">
-          <div className="p-2 border-b text-sm font-medium">Hierarquia ({items.length} itens)</div>
+          <div className="p-2 border-b space-y-2">
+            <span className="text-sm font-medium">Hierarquia ({items.length} itens)</span>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={buscaHierarquia}
+                onChange={e => setBuscaHierarquia(e.target.value)}
+                placeholder="Buscar na hierarquia..."
+                className="pl-8 h-8"
+              />
+            </div>
+          </div>
           <div className="flex-1 overflow-auto">
             <div className="p-2 space-y-1">
               {items.length === 0 ? (
