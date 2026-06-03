@@ -862,6 +862,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
 
   // Pré-filtra itens visíveis (já com nome computado) — evita iterar tudo no render
   const itensVisiveis = useMemo(() => {
+    const termo = buscaHierarquiaDeferred.trim().toLowerCase();
     const out: { item: VisualizacaoItem; idx: number; nome: string; colapsado: boolean; opcoesPai: ReatribuirPaiOption[] }[] = [];
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];
@@ -878,11 +879,17 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
       } else if (item.tipo === 'grupo') {
         depId = item.parentId;
       }
-      const hidden =
-        (depId && collapsedDeps.has(depId)) ||
-        (grupoId && collapsedGrupos.has(grupoId)) ||
-        (subId && collapsedSubs.has(subId));
-      if (hidden) continue;
+      const rowNome = getNome(item.tipo, item.id);
+      // Quando há busca, mostra apenas itens que casam (ignora colapso)
+      if (termo) {
+        if (!rowNome.toLowerCase().includes(termo)) continue;
+      } else {
+        const hidden =
+          (depId && collapsedDeps.has(depId)) ||
+          (grupoId && collapsedGrupos.has(grupoId)) ||
+          (subId && collapsedSubs.has(subId));
+        if (hidden) continue;
+      }
       const colapsado =
         item.tipo === 'departamento' ? collapsedDeps.has(item.id) :
         item.tipo === 'grupo' ? collapsedGrupos.has(item.id) :
@@ -892,10 +899,10 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
         item.tipo === 'subgrupo' ? itemMeta.grupoOpts :
         item.tipo === 'produto' ? itemMeta.subOpts :
         [];
-      out.push({ item, idx, nome: getNome(item.tipo, item.id), colapsado, opcoesPai });
+      out.push({ item, idx, nome: rowNome, colapsado, opcoesPai });
     }
     return out;
-  }, [items, itemMeta, collapsedDeps, collapsedGrupos, collapsedSubs, nomes, departamentosMap, gruposMap, subgruposMap, produtosMap]);
+  }, [items, itemMeta, collapsedDeps, collapsedGrupos, collapsedSubs, nomes, departamentosMap, gruposMap, subgruposMap, produtosMap, buscaHierarquiaDeferred]);
 
   const handleSalvar = () => {
     if (!nome.trim()) {
