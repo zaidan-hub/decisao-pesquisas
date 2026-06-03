@@ -490,6 +490,13 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     return '?';
   };
 
+  // Produtos já adicionados à hierarquia (painel direito) — devem sumir da lista esquerda
+  const produtosNaHierarquia = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(i => { if (i.tipo === 'produto') set.add(i.id); });
+    return set;
+  }, [items]);
+
   // Busca deferida — mantém o input responsivo enquanto a árvore recomputa em background
   const buscaDeferred = useDeferredValue(busca);
 
@@ -499,7 +506,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     return departamentos.map(dep => {
       const gruposDoDep = (gruposByDep.get(dep.id) || []).map(g => {
         const subsDoGrupo = (subsByGrupo.get(g.id) || []).map(s => {
-          const allProds = prodsBySub.get(s.id) || [];
+          const allProds = (prodsBySub.get(s.id) || []).filter(p => !produtosNaHierarquia.has(p.id));
           const matchSub = !term || (subLower.get(s.id) || '').includes(term);
           const prods = !term
             ? allProds
@@ -521,7 +528,7 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
       });
       return { departamento: dep, grupos: gruposDoDep };
     });
-  }, [departamentos, gruposByDep, subsByGrupo, prodsBySub, produtoLower, subLower, grupoLower, buscaDeferred]);
+  }, [departamentos, gruposByDep, subsByGrupo, prodsBySub, produtoLower, subLower, grupoLower, buscaDeferred, produtosNaHierarquia]);
 
   // Auto-expandir nós que casam com a busca
   useEffect(() => {
