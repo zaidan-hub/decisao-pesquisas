@@ -597,50 +597,103 @@ const RelatorioEditor = ({ initial, onBack, onSaved, departamentos, grupos, subg
     const novosDeps: string[] = [];
     const novosGrupos: string[] = [];
     const novosSubs: string[] = [];
+    // Ancestrais dos produtos adicionados — sempre devem ficar visíveis (expandidos)
+    const expandirDeps: string[] = [];
+    const expandirGrupos: string[] = [];
+    const expandirSubs: string[] = [];
+    let adicionados = 0;
+    let jaExistentes = 0;
+
     setItems(prev => {
       const next = [...prev];
-      const hasProduto = new Set<string>();
-      const hasSubgrupo = new Set<string>();
-      const hasGrupo = new Set<string>();
-      const hasDep = new Set<string>();
-      for (const it of next) {
-        if (it.tipo === 'produto') hasProduto.add(it.id);
-        else if (it.tipo === 'subgrupo') hasSubgrupo.add(it.id);
-        else if (it.tipo === 'grupo') hasGrupo.add(it.id);
-        else if (it.tipo === 'departamento') hasDep.add(it.id);
-      }
+      const findIdx = (tipo: VisualizacaoItem['tipo'], id: string) =>
+        next.findIndex(i => i.tipo === tipo && i.id === id);
+
+      // Garante que um nó exista; se não existir, insere ao final do bloco do pai
+      // (ou ao final da lista quando não há pai). Retorna o índice do nó.
+      const ensureNode = (
+        node: VisualizacaoItem,
+        parentTipo: VisualizacaoItem['tipo'] | null,
+        parentId: string | undefined,
+      ): number => {
+        const existing = findIdx(node.tipo, node.id);
+        if (existing !== -1) return existing;
+        if (!parentTipo || !parentId) {
+          next.push(node);
+          return next.length - 1;
+        }
+        const pIdx = findIdx(parentTipo, parentId);
+        if (pIdx === -1) {
+          next.push(node);
+          return next.length - 1;
+        }
+        const [, pEnd] = getBlocoRange(next, pIdx);
+        next.splice(pEnd, 0, node);
+        return pEnd;
+      };
+
       for (const pid of produtosAdicionar) {
-        if (hasProduto.has(pid)) continue;
+        if (findIdx('produto', pid) !== -1) { jaExistentes++; continue; }
         const produto = produtosMap.get(pid);
         if (!produto) continue;
         const subgrupo = subgruposMap.get(produto.subgrupoId);
         const grupo = subgrupo ? gruposMap.get(subgrupo.grupoId) : undefined;
         const depId = grupo?.departamentoId;
-        if (depId && !hasDep.has(depId)) {
-          next.push({ tipo: 'departamento', id: depId });
-          hasDep.add(depId);
-          novosDeps.push(depId);
+
+        if (depId) {
+          if (findIdx('departamento', depId) === -1) novosDeps.push(depId);
+          ensureNode({ tipo: 'departamento', id: depId }, null, undefined);
+          expandirDeps.push(depId);
         }
-        if (grupo && !hasGrupo.has(grupo.id)) {
-          next.push({ tipo: 'grupo', id: grupo.id, parentId: depId });
-          hasGrupo.add(grupo.id);
-          novosGrupos.push(grupo.id);
+        if (grupo) {
+          if (findIdx('grupo', grupo.id) === -1) novosGrupos.push(grupo.id);
+          ensureNode({ tipo: 'grupo', id: grupo.id, parentId: depId }, 'departamento', depId);
+          expandirGrupos.push(grupo.id);
         }
-        if (subgrupo && !hasSubgrupo.has(subgrupo.id)) {
-          next.push({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id });
-          hasSubgrupo.add(subgrupo.id);
-          novosSubs.push(subgrupo.id);
+        if (subgrupo) {
+          if (findIdx('subgrupo', subgrupo.id) === -1) novosSubs.push(subgrupo.id);
+          ensureNode({ tipo: 'subgrupo', id: subgrupo.id, parentId: grupo?.id }, 'grupo', grupo?.id);
+          expandirSubs.push(subgrupo.id);
         }
-        next.push({ tipo: 'produto', id: pid, parentId: subgrupo?.id });
-        hasProduto.add(pid);
+        ensureNode({ tipo: 'produto', id: pid, parentId: subgrupo?.id }, 'subgrupo', subgrupo?.id);
+        adicionados++;
       }
       return next;
     });
-    // Importa nós novos já contraídos
-    if (novosDeps.length) setCollapsedDeps(prev => { const n = new Set(prev); novosDeps.forEach(id => n.add(id)); return n; });
-    if (novosGrupos.length) setCollapsedGrupos(prev => { const n = new Set(prev); novosGrupos.forEach(id => n.add(id)); return n; });
-    if (novosSubs.length) setCollapsedSubs(prev => { const n = new Set(prev); novosSubs.forEach(id => n.add(id)); return n; });
+
+    // Importa nós inéditos já contraídos, mas garante que a cadeia dos produtos
+    // adicionados fique expandida (visível) — mesmo quando o ancestral já existia.
+    setCollapsedDeps(prev => {
+      const n = new Set(prev);
+      novosDeps.forEach(id => n.add(id));
+      expandirDeps.forEach(id => n.delete(id));
+      return n;
+    });
+    setCollapsedGrupos(prev => {
+      const n = new Set(prev);
+      novosGrupos.forEach(id => n.add(id));
+      expandirGrupos.forEach(id => n.delete(id));
+      return n;
+    });
+    setCollapsedSubs(prev => {
+      const n = new Set(prev);
+      novosSubs.forEach(id => n.add(id));
+      expandirSubs.forEach(id => n.delete(id));
+      return n;
+    });
     setSelectedItems(new Set());
+
+    if (adicionados > 0) {
+      toast({
+        title: `${adicionados} produto(s) adicionado(s)`,
+        description: jaExistentes > 0 ? `${jaExistentes} já estava(m) na hierarquia.` : undefined,
+      });
+    } else if (jaExistentes > 0) {
+      toast({
+        title: 'Nenhum produto novo',
+        description: `Os ${jaExistentes} produto(s) selecionado(s) já estão na hierarquia.`,
+      });
+    }
   };
 
   const removerItem = useCallback((idx: number) => {
