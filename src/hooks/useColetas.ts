@@ -133,6 +133,34 @@ export const useColetas = () => {
     }
   };
 
+  const arquivarColeta = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('coletas' as any)
+        .update({ arquivada: true, arquivada_em: new Date().toISOString() })
+        .eq('id', id) as any;
+
+      if (error) throw error;
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  };
+
+  const desarquivarColeta = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('coletas' as any)
+        .update({ arquivada: false, arquivada_em: null, auto_arquivamento_desativado: true })
+        .eq('id', id) as any;
+
+      if (error) throw error;
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  };
+
   const deleteColeta = async (id: string) => {
     try {
       const { error } = await supabase
@@ -154,6 +182,8 @@ export const useColetas = () => {
     createColeta,
     updateColeta,
     deleteColeta,
+    arquivarColeta,
+    desarquivarColeta,
     refetch: fetchColetas
   };
 };
