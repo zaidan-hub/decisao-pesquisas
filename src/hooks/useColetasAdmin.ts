@@ -12,6 +12,10 @@ export interface ColetaAdmin {
   status: 'não iniciada' | 'iniciada' | 'finalizada';
   produtosCount: number;
   alertasCount?: number;
+  arquivada: boolean;
+  arquivadaEm: string | null;
+  finalizadaEm: string | null;
+  autoArquivamentoDesativado: boolean;
 }
 
 export const useColetasAdmin = () => {
@@ -25,7 +29,7 @@ export const useColetasAdmin = () => {
       // Buscar apenas campos essenciais (sem fotos, otimizado)
       const { data: rows, error } = await supabase
         .from('coletas')
-        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, alertas_variacao')
+        .select('id, data, supermercado_id, pesquisador_id, numero, ano, status, produtos, alertas_variacao, arquivada, arquivada_em, finalizada_em, auto_arquivamento_desativado')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -39,7 +43,11 @@ export const useColetasAdmin = () => {
         ano: coleta.ano,
         status: coleta.status,
         produtosCount: (coleta.produtos || []).length,
-        alertasCount: (coleta.alertas_variacao || []).filter((a: any) => !a.visualizado).length
+        alertasCount: (coleta.alertas_variacao || []).filter((a: any) => !a.visualizado).length,
+        arquivada: coleta.arquivada ?? false,
+        arquivadaEm: coleta.arquivada_em ?? null,
+        finalizadaEm: coleta.finalizada_em ?? null,
+        autoArquivamentoDesativado: coleta.auto_arquivamento_desativado ?? false
       }));
 
       setColetas(coletasFormatadas);
