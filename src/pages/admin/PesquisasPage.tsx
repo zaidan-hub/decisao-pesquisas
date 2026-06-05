@@ -396,6 +396,102 @@ export const PesquisasPage = () => {
     }
   };
 
+  const renderColetaCard = (coleta: any, arquivada: boolean) => (
+    <div
+      key={coleta.id}
+      onClick={() => handleViewColeta(coleta.id)}
+      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+    >
+      <div className="space-y-2">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{formatDate(coleta.data)}</span>
+          </div>
+
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(coleta.status)}`}>
+            {coleta.status.charAt(0).toUpperCase() + coleta.status.slice(1)}
+          </span>
+
+          {coleta.numero && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-muted-foreground">Nº:</span>
+              <span className="text-sm font-medium">{coleta.numero}</span>
+            </div>
+          )}
+
+          {coleta.ano && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-muted-foreground">Ano:</span>
+              <span className="text-sm font-medium">{coleta.ano}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Store className="w-4 h-4" />
+            <span><strong>Supermercado:</strong> {getSupermercadoNome(coleta.supermercadoId)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4" />
+            <span><strong>Pesquisador:</strong> {getPesquisadorNome(coleta.pesquisadorId)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            <span><strong>Produtos:</strong> {coleta.produtosCount} itens</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-3 sm:mt-0">
+        {arquivada ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              title="Desarquivar"
+              onClick={(e) => { e.stopPropagation(); handleDesarquivar(coleta); }}
+            >
+              <ArchiveRestore className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              title="Excluir permanentemente"
+              onClick={(e) => { e.stopPropagation(); handleDeleteColeta(coleta); }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            {coleta.status === 'não iniciada' && (
+              <Button
+                variant="outline"
+                size="sm"
+                title="Editar"
+                onClick={(e) => { e.stopPropagation(); handleEditColeta(coleta); }}
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              title="Arquivar"
+              onClick={(e) => { e.stopPropagation(); handleArquivar(coleta); }}
+            >
+              <Archive className="w-4 h-4" />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+
+
   return (
     <div className="space-y-6">
       <ColetaLoadingDialog 
