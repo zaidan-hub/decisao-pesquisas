@@ -811,22 +811,38 @@ export const PesquisasPage = () => {
       </Dialog>
 
       {/* Dialog de Confirmação de Exclusão */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmText(''); }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Excluir coleta permanentemente</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja deletar esta coleta? Esta ação não pode ser desfeita.
+              Esta ação é irreversível e removerá completamente a coleta
+              {coletaToDelete?.numero ? ` Nº ${coletaToDelete.numero}` : ''} e todos os seus dados.
+              Para confirmar, digite <strong>deletar</strong> abaixo.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="deletar"
+            autoComplete="off"
+          />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteConfirmText.trim().toLowerCase() !== 'deletar'}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Deletar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 };
