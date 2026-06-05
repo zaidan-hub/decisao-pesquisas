@@ -23,7 +23,7 @@ export const PesquisasPage = () => {
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
   const { coletas: coletasAdmin, loading: loadingColetas, refetch: refetchColetas } = useColetasAdmin();
-  const { createColeta, updateColeta, deleteColeta } = useColetas();
+  const { createColeta, updateColeta, deleteColeta, arquivarColeta, desarquivarColeta } = useColetas();
   const { listas } = useListas();
 
   const [showForm, setShowForm] = useState(false);
@@ -31,7 +31,9 @@ export const PesquisasPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
   const [coletaToEdit, setColetaToEdit] = useState<Coleta | null>(null);
-  const [coletaToDelete, setColetaToDelete] = useState<Coleta | null>(null);
+  const [coletaToDelete, setColetaToDelete] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [arquivadasOpen, setArquivadasOpen] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
