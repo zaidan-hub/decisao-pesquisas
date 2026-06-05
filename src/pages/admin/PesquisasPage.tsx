@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Coleta, Supermercado, Pesquisador } from '@/types';
-import { Plus, Search, Calendar, Store, User, FileText, Package, Bell, Edit2, Trash2, Archive, ArchiveRestore, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Calendar, Store, User, FileText, Package, Edit2, Trash2, Archive, ArchiveRestore, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
 import { ColetaLoadingDialog } from '@/components/admin/ColetaLoadingDialog';
