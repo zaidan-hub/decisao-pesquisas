@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Coleta, Supermercado, Pesquisador } from '@/types';
-import { Plus, Search, Calendar, Store, User, FileText, Package, Bell, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Calendar, Store, User, FileText, Package, Edit2, Trash2, Archive, ArchiveRestore, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
 import { ColetaLoadingDialog } from '@/components/admin/ColetaLoadingDialog';
@@ -23,7 +23,7 @@ export const PesquisasPage = () => {
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { pesquisadores, loading: loadingPesquisadores } = usePesquisadores();
   const { coletas: coletasAdmin, loading: loadingColetas, refetch: refetchColetas } = useColetasAdmin();
-  const { createColeta, updateColeta, deleteColeta } = useColetas();
+  const { createColeta, updateColeta, deleteColeta, arquivarColeta, desarquivarColeta } = useColetas();
   const { listas } = useListas();
 
   const [showForm, setShowForm] = useState(false);
@@ -31,7 +31,9 @@ export const PesquisasPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedColeta, setSelectedColeta] = useState<Coleta | null>(null);
   const [coletaToEdit, setColetaToEdit] = useState<Coleta | null>(null);
-  const [coletaToDelete, setColetaToDelete] = useState<Coleta | null>(null);
+  const [coletaToDelete, setColetaToDelete] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [arquivadasOpen, setArquivadasOpen] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
@@ -295,32 +297,49 @@ export const PesquisasPage = () => {
     refetchColetas(); // Atualizar lista otimizada
   };
 
-  const handleDeleteColeta = (coletaAdmin: any) => {
-    if (coletaAdmin.status !== 'não iniciada') {
-      toast({
-        title: "Ação não permitida",
-        description: "Apenas coletas não iniciadas podem ser deletadas.",
-        variant: "destructive"
-      });
+  const handleArquivar = async (coletaAdmin: any) => {
+    const { error } = await arquivarColeta(coletaAdmin.id);
+    if (error) {
+      toast({ title: "Erro", description: error, variant: "destructive" });
       return;
     }
-    
+    toast({ title: "Coleta arquivada", description: `Coleta Nº ${coletaAdmin.numero || ''} foi arquivada.` });
+    refetchColetas();
+  };
+
+  const handleDesarquivar = async (coletaAdmin: any) => {
+    const { error } = await desarquivarColeta(coletaAdmin.id);
+    if (error) {
+      toast({ title: "Erro", description: error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Coleta desarquivada", description: `A coleta não será mais arquivada automaticamente.` });
+    refetchColetas();
+  };
+
+  const handleDeleteColeta = (coletaAdmin: any) => {
     setColetaToDelete(coletaAdmin);
+    setDeleteConfirmText('');
     setShowDeleteDialog(true);
   };
 
   const confirmDelete = async () => {
-    if (!coletaToDelete) return;
+    if (!coletaToDelete || deleteConfirmText.trim().toLowerCase() !== 'deletar') return;
     
-    await deleteColeta(coletaToDelete.id);
+    const { error } = await deleteColeta(coletaToDelete.id);
+    if (error) {
+      toast({ title: "Erro", description: error, variant: "destructive" });
+      return;
+    }
     
     toast({
       title: "Sucesso",
-      description: "Coleta deletada com sucesso!"
+      description: "Coleta excluída permanentemente!"
     });
     
     setShowDeleteDialog(false);
     setColetaToDelete(null);
+    setDeleteConfirmText('');
     refetchColetas(); // Atualizar lista otimizada
   };
 
@@ -337,8 +356,20 @@ export const PesquisasPage = () => {
     return pesquisadores.find(p => p.id === id)?.nome || 'N/A';
   };
 
+  // Determina se a coleta está arquivada (manual ou automaticamente após 2 semanas)
+  const isArquivada = (coleta: any) => {
+    if (coleta.arquivada) return true;
+    if (coleta.autoArquivamentoDesativado) return false;
+    if (coleta.status === 'finalizada' && coleta.finalizadaEm) {
+      const duasSemanas = 14 * 24 * 60 * 60 * 1000;
+      return Date.now() - new Date(coleta.finalizadaEm).getTime() > duasSemanas;
+    }
+    return false;
+  };
+
   // Coletas já vêm ordenadas do hook useColetasAdmin
-  const coletasOrdenadas = coletasAdmin;
+  const coletasAtivas = coletasAdmin.filter(c => !isArquivada(c));
+  const coletasArquivadas = coletasAdmin.filter(c => isArquivada(c));
 
   // Se uma coleta está selecionada, mostrar a visualização admin
   if (selectedColeta) {
@@ -364,6 +395,102 @@ export const PesquisasPage = () => {
         return 'bg-muted text-muted-foreground';
     }
   };
+
+  const renderColetaCard = (coleta: any, arquivada: boolean) => (
+    <div
+      key={coleta.id}
+      onClick={() => handleViewColeta(coleta.id)}
+      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+    >
+      <div className="space-y-2">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">{formatDate(coleta.data)}</span>
+          </div>
+
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(coleta.status)}`}>
+            {coleta.status.charAt(0).toUpperCase() + coleta.status.slice(1)}
+          </span>
+
+          {coleta.numero && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-muted-foreground">Nº:</span>
+              <span className="text-sm font-medium">{coleta.numero}</span>
+            </div>
+          )}
+
+          {coleta.ano && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-muted-foreground">Ano:</span>
+              <span className="text-sm font-medium">{coleta.ano}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Store className="w-4 h-4" />
+            <span><strong>Supermercado:</strong> {getSupermercadoNome(coleta.supermercadoId)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4" />
+            <span><strong>Pesquisador:</strong> {getPesquisadorNome(coleta.pesquisadorId)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            <span><strong>Produtos:</strong> {coleta.produtosCount} itens</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-3 sm:mt-0">
+        {arquivada ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              title="Desarquivar"
+              onClick={(e) => { e.stopPropagation(); handleDesarquivar(coleta); }}
+            >
+              <ArchiveRestore className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              title="Excluir permanentemente"
+              onClick={(e) => { e.stopPropagation(); handleDeleteColeta(coleta); }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            {coleta.status === 'não iniciada' && (
+              <Button
+                variant="outline"
+                size="sm"
+                title="Editar"
+                onClick={(e) => { e.stopPropagation(); handleEditColeta(coleta); }}
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              title="Arquivar"
+              onClick={(e) => { e.stopPropagation(); handleArquivar(coleta); }}
+            >
+              <Archive className="w-4 h-4" />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+
 
   return (
     <div className="space-y-6">
@@ -559,95 +686,43 @@ export const PesquisasPage = () => {
                   </div>
                 ))}
               </div>
-            ) : coletasOrdenadas.length === 0 ? (
+            ) : coletasAtivas.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma coleta cadastrada ainda.
+                Nenhuma coleta ativa no momento.
               </div>
             ) : (
               <div className="space-y-4">
-                {coletasOrdenadas.map((coleta) => (
-                <div 
-                  key={coleta.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium">{formatDate(coleta.data)}</span>
-                      </div>
-                      
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(coleta.status)}`}>
-                        {coleta.status.charAt(0).toUpperCase() + coleta.status.slice(1)}
-                      </span>
-                      
-                      {coleta.numero && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Nº:</span>
-                          <span className="text-sm font-medium">{coleta.numero}</span>
-                        </div>
-                      )}
-                      
-                      {coleta.ano && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Ano:</span>
-                          <span className="text-sm font-medium">{coleta.ano}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Store className="w-4 h-4" />
-                        <span><strong>Supermercado:</strong> {getSupermercadoNome(coleta.supermercadoId)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        <span><strong>Pesquisador:</strong> {getPesquisadorNome(coleta.pesquisadorId)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        <span><strong>Produtos:</strong> {coleta.produtosCount} itens</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 mt-3 sm:mt-0">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleViewColeta(coleta.id)}
-                    >
-                      <Search className="w-4 h-4 mr-1" />
-                      Visualizar
-                    </Button>
-                    
-                    {coleta.status === 'não iniciada' && (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditColeta(coleta)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleDeleteColeta(coleta)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                {coletasAtivas.map((coleta) => renderColetaCard(coleta, false))}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Coletas Arquivadas */}
+        {coletasArquivadas.length > 0 && (
+          <Card>
+            <CardHeader
+              className="cursor-pointer select-none"
+              onClick={() => setArquivadasOpen(o => !o)}
+            >
+              <CardTitle className="flex items-center gap-2">
+                {arquivadasOpen ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                <Archive className="w-5 h-5" />
+                Coletas Arquivadas
+                <span className="text-sm font-normal text-muted-foreground">({coletasArquivadas.length})</span>
+              </CardTitle>
+            </CardHeader>
+            {arquivadasOpen && (
+              <CardContent>
+                <div className="space-y-4">
+                  {coletasArquivadas.map((coleta) => renderColetaCard(coleta, true))}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
       </div>
+
 
       {/* Dialog de Edição */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
@@ -736,22 +811,38 @@ export const PesquisasPage = () => {
       </Dialog>
 
       {/* Dialog de Confirmação de Exclusão */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmText(''); }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Excluir coleta permanentemente</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja deletar esta coleta? Esta ação não pode ser desfeita.
+              Esta ação é irreversível e removerá completamente a coleta
+              {coletaToDelete?.numero ? ` Nº ${coletaToDelete.numero}` : ''} e todos os seus dados.
+              Para confirmar, digite <strong>deletar</strong> abaixo.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="deletar"
+            autoComplete="off"
+          />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteConfirmText.trim().toLowerCase() !== 'deletar'}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Deletar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 };

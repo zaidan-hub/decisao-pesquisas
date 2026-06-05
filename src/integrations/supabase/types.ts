@@ -46,8 +46,12 @@ export type Database = {
           admin_visualizou_observacoes: boolean | null
           alertas_variacao: Json | null
           ano: string | null
+          arquivada: boolean
+          arquivada_em: string | null
+          auto_arquivamento_desativado: boolean
           created_at: string
           data: string
+          finalizada_em: string | null
           fotos: Json | null
           hierarquia_customizada: Json | null
           id: string
@@ -67,8 +71,12 @@ export type Database = {
           admin_visualizou_observacoes?: boolean | null
           alertas_variacao?: Json | null
           ano?: string | null
+          arquivada?: boolean
+          arquivada_em?: string | null
+          auto_arquivamento_desativado?: boolean
           created_at?: string
           data: string
+          finalizada_em?: string | null
           fotos?: Json | null
           hierarquia_customizada?: Json | null
           id?: string
@@ -88,8 +96,12 @@ export type Database = {
           admin_visualizou_observacoes?: boolean | null
           alertas_variacao?: Json | null
           ano?: string | null
+          arquivada?: boolean
+          arquivada_em?: string | null
+          auto_arquivamento_desativado?: boolean
           created_at?: string
           data?: string
+          finalizada_em?: string | null
           fotos?: Json | null
           hierarquia_customizada?: Json | null
           id?: string
