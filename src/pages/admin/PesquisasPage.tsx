@@ -297,32 +297,49 @@ export const PesquisasPage = () => {
     refetchColetas(); // Atualizar lista otimizada
   };
 
-  const handleDeleteColeta = (coletaAdmin: any) => {
-    if (coletaAdmin.status !== 'não iniciada') {
-      toast({
-        title: "Ação não permitida",
-        description: "Apenas coletas não iniciadas podem ser deletadas.",
-        variant: "destructive"
-      });
+  const handleArquivar = async (coletaAdmin: any) => {
+    const { error } = await arquivarColeta(coletaAdmin.id);
+    if (error) {
+      toast({ title: "Erro", description: error, variant: "destructive" });
       return;
     }
-    
+    toast({ title: "Coleta arquivada", description: `Coleta Nº ${coletaAdmin.numero || ''} foi arquivada.` });
+    refetchColetas();
+  };
+
+  const handleDesarquivar = async (coletaAdmin: any) => {
+    const { error } = await desarquivarColeta(coletaAdmin.id);
+    if (error) {
+      toast({ title: "Erro", description: error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Coleta desarquivada", description: `A coleta não será mais arquivada automaticamente.` });
+    refetchColetas();
+  };
+
+  const handleDeleteColeta = (coletaAdmin: any) => {
     setColetaToDelete(coletaAdmin);
+    setDeleteConfirmText('');
     setShowDeleteDialog(true);
   };
 
   const confirmDelete = async () => {
-    if (!coletaToDelete) return;
+    if (!coletaToDelete || deleteConfirmText.trim().toLowerCase() !== 'deletar') return;
     
-    await deleteColeta(coletaToDelete.id);
+    const { error } = await deleteColeta(coletaToDelete.id);
+    if (error) {
+      toast({ title: "Erro", description: error, variant: "destructive" });
+      return;
+    }
     
     toast({
       title: "Sucesso",
-      description: "Coleta deletada com sucesso!"
+      description: "Coleta excluída permanentemente!"
     });
     
     setShowDeleteDialog(false);
     setColetaToDelete(null);
+    setDeleteConfirmText('');
     refetchColetas(); // Atualizar lista otimizada
   };
 
@@ -339,8 +356,20 @@ export const PesquisasPage = () => {
     return pesquisadores.find(p => p.id === id)?.nome || 'N/A';
   };
 
+  // Determina se a coleta está arquivada (manual ou automaticamente após 2 semanas)
+  const isArquivada = (coleta: any) => {
+    if (coleta.arquivada) return true;
+    if (coleta.autoArquivamentoDesativado) return false;
+    if (coleta.status === 'finalizada' && coleta.finalizadaEm) {
+      const duasSemanas = 14 * 24 * 60 * 60 * 1000;
+      return Date.now() - new Date(coleta.finalizadaEm).getTime() > duasSemanas;
+    }
+    return false;
+  };
+
   // Coletas já vêm ordenadas do hook useColetasAdmin
-  const coletasOrdenadas = coletasAdmin;
+  const coletasAtivas = coletasAdmin.filter(c => !isArquivada(c));
+  const coletasArquivadas = coletasAdmin.filter(c => isArquivada(c));
 
   // Se uma coleta está selecionada, mostrar a visualização admin
   if (selectedColeta) {
