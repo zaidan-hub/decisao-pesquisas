@@ -686,95 +686,43 @@ export const PesquisasPage = () => {
                   </div>
                 ))}
               </div>
-            ) : coletasOrdenadas.length === 0 ? (
+            ) : coletasAtivas.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma coleta cadastrada ainda.
+                Nenhuma coleta ativa no momento.
               </div>
             ) : (
               <div className="space-y-4">
-                {coletasOrdenadas.map((coleta) => (
-                <div 
-                  key={coleta.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium">{formatDate(coleta.data)}</span>
-                      </div>
-                      
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(coleta.status)}`}>
-                        {coleta.status.charAt(0).toUpperCase() + coleta.status.slice(1)}
-                      </span>
-                      
-                      {coleta.numero && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Nº:</span>
-                          <span className="text-sm font-medium">{coleta.numero}</span>
-                        </div>
-                      )}
-                      
-                      {coleta.ano && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Ano:</span>
-                          <span className="text-sm font-medium">{coleta.ano}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Store className="w-4 h-4" />
-                        <span><strong>Supermercado:</strong> {getSupermercadoNome(coleta.supermercadoId)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        <span><strong>Pesquisador:</strong> {getPesquisadorNome(coleta.pesquisadorId)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        <span><strong>Produtos:</strong> {coleta.produtosCount} itens</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 mt-3 sm:mt-0">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleViewColeta(coleta.id)}
-                    >
-                      <Search className="w-4 h-4 mr-1" />
-                      Visualizar
-                    </Button>
-                    
-                    {coleta.status === 'não iniciada' && (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditColeta(coleta)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleDeleteColeta(coleta)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                {coletasAtivas.map((coleta) => renderColetaCard(coleta, false))}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Coletas Arquivadas */}
+        {coletasArquivadas.length > 0 && (
+          <Card>
+            <CardHeader
+              className="cursor-pointer select-none"
+              onClick={() => setArquivadasOpen(o => !o)}
+            >
+              <CardTitle className="flex items-center gap-2">
+                {arquivadasOpen ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                <Archive className="w-5 h-5" />
+                Coletas Arquivadas
+                <span className="text-sm font-normal text-muted-foreground">({coletasArquivadas.length})</span>
+              </CardTitle>
+            </CardHeader>
+            {arquivadasOpen && (
+              <CardContent>
+                <div className="space-y-4">
+                  {coletasArquivadas.map((coleta) => renderColetaCard(coleta, true))}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
       </div>
+
 
       {/* Dialog de Edição */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
