@@ -46,24 +46,8 @@ export const generatePDF = (data: RelatorioData) => {
     }
   });
 
-  // Verificar se todas as datas são iguais
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasDataIguais = datas.every(d => d === datas[0]);
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
 
-  if (todasDataIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-    yPos += 5;
-    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  } else {
-    doc.text('Datas e Supermercados:', 14, yPos);
-    yPos += 5;
-    coletasPorSupermercado.forEach(({ data, nome }) => {
-      doc.text(`  • ${nome}: ${data}`, 14, yPos);
-      yPos += 5;
-    });
-  }
-
-  yPos += 3;
 
   // Estatísticas
   const produtosPesquisados = data.produtos.length;
@@ -379,24 +363,8 @@ export const generateProdutosNaoEncontradosPDF = (data: RelatorioData) => {
     }
   });
 
-  // Verificar se todas as datas são iguais
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasDataIguais = datas.every(d => d === datas[0]);
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
 
-  if (todasDataIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-    yPos += 5;
-    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  } else {
-    doc.text('Datas e Supermercados:', 14, yPos);
-    yPos += 5;
-    coletasPorSupermercado.forEach(({ data, nome }) => {
-      doc.text(`  • ${nome}: ${data}`, 14, yPos);
-      yPos += 5;
-    });
-  }
-
-  yPos += 3;
 
   // Identificar produtos não encontrados
   const produtosNaoEncontrados = data.produtos.filter(produto => {
@@ -540,17 +508,9 @@ export const generateComparativoConcorrenciaPDF = (
     }
   });
 
-  // Verificar se todas as datas são iguais
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasDataIguais = datas.every(d => d === datas[0]);
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
 
-  if (todasDataIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-    yPos += 5;
-  }
-  
-  doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  yPos += 10;
+
 
   // Identificar supermercado de referência
   const supermercadoRef = data.supermercados.find(s => s.id === supermercadoReferenciaId);
@@ -867,22 +827,8 @@ export const generateEstatisticasPDF = (
     }
   });
 
-  // Verificar se todas as datas são iguais
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasDataIguais = datas.every(d => d === datas[0]);
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
 
-  if (todasDataIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-    yPos += 5;
-    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  } else {
-    doc.text('Datas e Supermercados:', 14, yPos);
-    yPos += 5;
-    coletasPorSupermercado.forEach(({ data, nome }) => {
-      doc.text(`  • ${nome}: ${data}`, 14, yPos);
-      yPos += 5;
-    });
-  }
 
   yPos += 5;
 
@@ -1060,14 +1006,8 @@ export const generateComparadoresPDF = (
   let yPos = 30;
   doc.setFontSize(9);
 
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasDataIguais = datas.every(d => d === datas[0]);
-  if (todasDataIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-    yPos += 5;
-  }
-  doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  yPos += 10;
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
+
 
   // Cada comprador em sequência
   compradoresOrdenados.forEach((comprador) => {
@@ -1381,18 +1321,8 @@ export const generateRelatorioPersonalizadoPDF = (data: RelatorioPersonalizadoDa
       coletasPorSupermercado.set(s.id, { data: formatDataBR(c.data), nome: s.nome });
     }
   });
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasIguais = datas.every(d => d === datas[0]);
-  if (todasIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos); yPos += 5;
-    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  } else {
-    doc.text('Datas e Supermercados:', 14, yPos); yPos += 5;
-    coletasPorSupermercado.forEach(({ data: dd, nome }) => {
-      doc.text(`  • ${nome}: ${dd}`, 14, yPos); yPos += 5;
-    });
-  }
-  yPos += 6;
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
+
 
   const ordem = data.hierarquia.ordem || [];
   const nomes = data.hierarquia.nomes || {};
