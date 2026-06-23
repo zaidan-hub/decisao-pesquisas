@@ -1321,18 +1321,8 @@ export const generateRelatorioPersonalizadoPDF = (data: RelatorioPersonalizadoDa
       coletasPorSupermercado.set(s.id, { data: formatDataBR(c.data), nome: s.nome });
     }
   });
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasIguais = datas.every(d => d === datas[0]);
-  if (todasIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos); yPos += 5;
-    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  } else {
-    doc.text('Datas e Supermercados:', 14, yPos); yPos += 5;
-    coletasPorSupermercado.forEach(({ data: dd, nome }) => {
-      doc.text(`  • ${nome}: ${dd}`, 14, yPos); yPos += 5;
-    });
-  }
-  yPos += 6;
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
+
 
   const ordem = data.hierarquia.ordem || [];
   const nomes = data.hierarquia.nomes || {};
