@@ -509,7 +509,7 @@ export const generateComparativoConcorrenciaPDF = (
   });
 
   // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
+
 
 
   // Identificar supermercado de referência
