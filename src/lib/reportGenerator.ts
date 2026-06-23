@@ -508,17 +508,9 @@ export const generateComparativoConcorrenciaPDF = (
     }
   });
 
-  // Verificar se todas as datas são iguais
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
   const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasDataIguais = datas.every(d => d === datas[0]);
 
-  if (todasDataIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-    yPos += 5;
-  }
-  
-  doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  yPos += 10;
 
   // Identificar supermercado de referência
   const supermercadoRef = data.supermercados.find(s => s.id === supermercadoReferenciaId);
