@@ -98,6 +98,22 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
     
     console.log('🔍 ADMIN PRODUTOS FILTRADOS:', produtosFiltrados.length);
 
+    // Se houver hierarquia customizada, ordenar exatamente como chega para a pesquisadora
+    const hierarquia = coleta.hierarquiaCustomizada as any;
+    if (hierarquia?.ordem && Array.isArray(hierarquia.ordem) && hierarquia.ordem.length > 0) {
+      const ordemMap: Record<string, number> = {};
+      hierarquia.ordem.forEach((item: any, idx: number) => {
+        if (item.produtoId) ordemMap[item.produtoId] = idx;
+      });
+
+      return produtosFiltrados.sort((a, b) => {
+        const ordemA = ordemMap[a.id] ?? 99999;
+        const ordemB = ordemMap[b.id] ?? 99999;
+        return ordemA - ordemB;
+      });
+    }
+
+    // Ordenação padrão por grupo > subgrupo > produto
     return produtosFiltrados.sort((a, b) => {
       const grupoA = grupos.find(g => g.id === a.grupoId);
       const grupoB = grupos.find(g => g.id === b.grupoId);
@@ -114,7 +130,8 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
       
       return a.nome.localeCompare(b.nome);
     });
-  }, [coleta.produtos, produtos, grupos, subgrupos]);
+  }, [coleta.produtos, coleta.hierarquiaCustomizada, produtos, grupos, subgrupos]);
+
 
   // Agrupar produtos por grupo/subgrupo para exibição
   const produtosAgrupados = useMemo(() => {
