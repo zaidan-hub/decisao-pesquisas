@@ -363,24 +363,8 @@ export const generateProdutosNaoEncontradosPDF = (data: RelatorioData) => {
     }
   });
 
-  // Verificar se todas as datas são iguais
-  const datas = Array.from(coletasPorSupermercado.values()).map(c => c.data);
-  const todasDataIguais = datas.every(d => d === datas[0]);
+  // (Informações de Datas e Supermercados removidas do cabeçalho do relatório)
 
-  if (todasDataIguais && datas.length > 0) {
-    doc.text(`Data da coleta: ${datas[0]}`, 14, yPos);
-    yPos += 5;
-    doc.text(`Supermercados: ${Array.from(coletasPorSupermercado.values()).map(c => c.nome).join(', ')}`, 14, yPos);
-  } else {
-    doc.text('Datas e Supermercados:', 14, yPos);
-    yPos += 5;
-    coletasPorSupermercado.forEach(({ data, nome }) => {
-      doc.text(`  • ${nome}: ${data}`, 14, yPos);
-      yPos += 5;
-    });
-  }
-
-  yPos += 3;
 
   // Identificar produtos não encontrados
   const produtosNaoEncontrados = data.produtos.filter(produto => {
