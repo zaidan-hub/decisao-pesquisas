@@ -174,13 +174,27 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
   const [editing, setEditing] = useState<RelatorioPersonalizado | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showTipoDialog, setShowTipoDialog] = useState(false);
+  const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('personalizado');
   const [showColetasDialog, setShowColetasDialog] = useState(false);
   const [coletasSelecionadas, setColetasSelecionadas] = useState<Set<string>>(new Set());
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [supermercadoRef, setSupermercadoRef] = useState('');
+  const [percentualMinimo, setPercentualMinimo] = useState('');
+  const [gerando, setGerando] = useState(false);
 
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
     [coletas]
   );
+
+  // Supermercados presentes nas coletas selecionadas (para os relatórios que exigem referência)
+  const supermercadosDisponiveis = useMemo(() => {
+    const ids = new Set(
+      coletas.filter(c => coletasSelecionadas.has(c.id)).map(c => c.supermercadoId)
+    );
+    return supermercados.filter(s => ids.has(s.id));
+  }, [coletas, coletasSelecionadas, supermercados]);
 
   useEffect(() => {
     if (!open) {
@@ -188,6 +202,12 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       setEditing(null);
       setSelected(new Set());
       setColetasSelecionadas(new Set());
+      setShowTipoDialog(false);
+      setShowColetasDialog(false);
+      setShowInfoDialog(false);
+      setTipoRelatorio('personalizado');
+      setSupermercadoRef('');
+      setPercentualMinimo('');
     }
   }, [open]);
 
@@ -204,32 +224,69 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
     });
   };
 
+  // Produtos do relatório personalizado na ordem definida na hierarquia
+  const getProdutosOrdenados = (rel: RelatorioPersonalizado) => {
+    const ordem = rel.hierarquiaCustomizada?.ordem || [];
+    const result: NonNullable<ReturnType<typeof produtos.find>>[] = [];
+    const usados = new Set<string>();
+    ordem.forEach(item => {
+      if (item.tipo === 'produto') {
+        const p = produtos.find(x => x.id === item.id);
+        if (p && !usados.has(p.id)) { result.push(p); usados.add(p.id); }
+      }
+    });
+    rel.produtos.forEach(id => {
+      if (!usados.has(id)) {
+        const p = produtos.find(x => x.id === id);
+        if (p) { result.push(p); usados.add(p.id); }
+      }
+    });
+    return result;
+  };
+
+  // Etapa 1: escolher o tipo de relatório
   const handleGerar = () => {
     if (selected.size === 0) {
       toast({ title: 'Selecione', description: 'Escolha pelo menos um relatório.', variant: 'destructive' });
       return;
     }
+    setTipoRelatorio('personalizado');
+    setShowTipoDialog(true);
+  };
+
+  // Etapa 2: escolher as coletas
+  const handleConfirmTipo = () => {
+    setShowTipoDialog(false);
     setColetasSelecionadas(new Set(coletasFinalizadas.map(c => c.id)));
     setShowColetasDialog(true);
   };
 
-  const handleConfirmGerar = () => {
+  // Etapa 3: gerar (ou pedir informação adicional)
+  const handleConfirmColetas = () => {
     if (coletasSelecionadas.size === 0) {
       toast({ title: 'Selecione coletas', description: 'Escolha pelo menos uma coleta.', variant: 'destructive' });
       return;
     }
+    if (tipoRelatorio === 'personalizado') {
+      gerarPersonalizado();
+      return;
+    }
+    setSupermercadoRef('');
+    setPercentualMinimo('');
+    setShowColetasDialog(false);
+    setShowInfoDialog(true);
+  };
+
+  const gerarPersonalizado = () => {
     const coletasUsadas = coletas.filter(c => coletasSelecionadas.has(c.id));
     const today = new Date().toISOString().split('T')[0];
     items
       .filter(r => selected.has(r.id))
       .forEach(rel => {
-        const produtosRel = rel.produtos
-          .map(id => produtos.find(p => p.id === id))
-          .filter((p): p is NonNullable<typeof p> => !!p);
         generateRelatorioPersonalizadoPDF({
           nome: rel.nome,
           data: today,
-          produtos: produtosRel,
+          produtos: getProdutosOrdenados(rel),
           coletas: coletasUsadas,
           supermercados,
           grupos,
@@ -241,6 +298,74 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
     setShowColetasDialog(false);
     onOpenChange(false);
     toast({ title: 'Sucesso', description: `${selected.size} PDF(s) gerado(s).` });
+  };
+
+  // Etapa 4: gerar relatórios que exigem informação adicional
+  const handleConfirmInfo = async () => {
+    if ((tipoRelatorio === 'comparativo' || tipoRelatorio === 'compradores') && !supermercadoRef) {
+      toast({ title: 'Erro', description: 'Selecione um supermercado de referência.', variant: 'destructive' });
+      return;
+    }
+    let percentual = 0;
+    if (tipoRelatorio === 'estatisticas') {
+      percentual = parseFloat(percentualMinimo);
+      if (isNaN(percentual) || percentual < 0) {
+        toast({ title: 'Erro', description: 'Informe um percentual mínimo válido.', variant: 'destructive' });
+        return;
+      }
+    }
+
+    const coletasUsadas = coletas.filter(c => coletasSelecionadas.has(c.id));
+    const today = new Date().toISOString().split('T')[0];
+    const relsSelecionados = items.filter(r => selected.has(r.id));
+
+    const buildBase = (rel: RelatorioPersonalizado) => ({
+      nome: rel.nome,
+      nomeCliente: rel.nome,
+      data: today,
+      produtos: getProdutosOrdenados(rel),
+      coletas: coletasUsadas,
+      supermercados,
+      grupos,
+      subgrupos,
+      departamentos,
+      hierarquiaCustomizada: rel.hierarquiaCustomizada?.nomes || {},
+    });
+
+    setGerando(true);
+    try {
+      if (tipoRelatorio === 'compradores') {
+        const { data: compradoresData, error } = await supabase
+          .from('compradores' as any)
+          .select('*')
+          .eq('supermercado_id', supermercadoRef)
+          .order('nome') as any;
+        if (error) throw error;
+        if (!compradoresData || compradoresData.length === 0) {
+          toast({ title: 'Erro', description: 'Nenhum comprador cadastrado para este supermercado.', variant: 'destructive' });
+          return;
+        }
+        const compradores = compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }));
+        relsSelecionados.forEach(rel => {
+          generateComparadoresPDF(buildBase(rel), supermercadoRef, compradores);
+        });
+      } else if (tipoRelatorio === 'comparativo') {
+        relsSelecionados.forEach(rel => {
+          generateComparativoConcorrenciaPDF(buildBase(rel), supermercadoRef);
+        });
+      } else if (tipoRelatorio === 'estatisticas') {
+        relsSelecionados.forEach(rel => {
+          generateEstatisticasPDF(buildBase(rel), percentual);
+        });
+      }
+      setShowInfoDialog(false);
+      onOpenChange(false);
+      toast({ title: 'Sucesso', description: `${selected.size} PDF(s) gerado(s).` });
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message || 'Erro ao gerar relatório.', variant: 'destructive' });
+    } finally {
+      setGerando(false);
+    }
   };
 
   return (
