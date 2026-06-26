@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
+import { useListas } from '@/hooks/useListas';
 import { AlertaVariacaoPrecos } from '@/components/admin/AlertaVariacaoPrecos';
 
 interface AdminColetaViewProps {
