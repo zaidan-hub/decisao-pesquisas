@@ -21,7 +21,15 @@ import {
   VisualizacaoItem,
   HierarquiaPersonalizada,
 } from '@/hooks/useRelatoriosPersonalizados';
-import { generateRelatorioPersonalizadoPDF } from '@/lib/reportGenerator';
+import {
+  generateRelatorioPersonalizadoPDF,
+  generateComparativoConcorrenciaPDF,
+  generateEstatisticasPDF,
+  generateComparadoresPDF,
+} from '@/lib/reportGenerator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -29,6 +37,14 @@ interface Props {
 }
 
 type ViewMode = 'list' | 'editor';
+type TipoRelatorio = 'personalizado' | 'comparativo' | 'estatisticas' | 'compradores';
+
+const TIPOS_RELATORIO: { value: TipoRelatorio; label: string; descricao: string }[] = [
+  { value: 'personalizado', label: 'Personalizado (listagem de preços)', descricao: 'Tabela de produtos na ordem personalizada.' },
+  { value: 'comparativo', label: 'Comparativo da Concorrência', descricao: 'Requer um supermercado de referência.' },
+  { value: 'estatisticas', label: 'Estatísticas', descricao: 'Requer o percentual mínimo.' },
+  { value: 'compradores', label: 'Compradores', descricao: 'Requer um supermercado de referência.' },
+];
 
 // ---------- Lazy popover para reatribuir pai (evita montar centenas de Selects Radix) ----------
 interface ReatribuirPaiOption { id: string; nome: string; }
