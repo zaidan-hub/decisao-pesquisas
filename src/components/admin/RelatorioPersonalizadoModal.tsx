@@ -576,8 +576,8 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowColetasDialog(false)}>Cancelar</Button>
             <Button onClick={handleConfirmColetas}>
-              {tipoRelatorio === 'personalizado' ? (
-                <><FileDown className="w-4 h-4 mr-2" />Gerar PDFs</>
+              {TIPOS_SEM_INFO.includes(tipoRelatorio) ? (
+                <><FileDown className="w-4 h-4 mr-2" />Gerar</>
               ) : (
                 <>Continuar</>
               )}
