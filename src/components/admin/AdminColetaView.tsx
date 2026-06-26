@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
+import { useListas } from '@/hooks/useListas';
 import { AlertaVariacaoPrecos } from '@/components/admin/AlertaVariacaoPrecos';
 
 interface AdminColetaViewProps {
@@ -38,8 +39,10 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
   const { produtos } = useProdutos();
+  const { listas } = useListas();
 
   const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
+  const lista = listas.find(l => l.id === coleta.listaId);
 
   // Carregar informação de existência de fotos
   useEffect(() => {
@@ -366,6 +369,12 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
               <label className="text-sm font-medium text-muted-foreground">Supermercado</label>
               <p className="text-sm">{supermercado?.nome || 'N/A'}</p>
             </div>
+
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Lista utilizada</label>
+              <p className="text-sm">{lista?.nome || 'N/A'}</p>
+            </div>
+
             
             {coleta.numero && (
               <div>
