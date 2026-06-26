@@ -26,6 +26,8 @@ import {
   generateComparativoConcorrenciaPDF,
   generateEstatisticasPDF,
   generateComparadoresPDF,
+  generateTXT,
+  generateProdutosNaoEncontradosPDF,
 } from '@/lib/reportGenerator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,14 +39,19 @@ interface Props {
 }
 
 type ViewMode = 'list' | 'editor';
-type TipoRelatorio = 'personalizado' | 'comparativo' | 'estatisticas' | 'compradores';
+type TipoRelatorio = 'personalizado' | 'txt' | 'naoencontrados' | 'comparativo' | 'estatisticas' | 'compradores';
 
 const TIPOS_RELATORIO: { value: TipoRelatorio; label: string; descricao: string }[] = [
   { value: 'personalizado', label: 'Personalizado (listagem de preços)', descricao: 'Tabela de produtos na ordem personalizada.' },
+  { value: 'txt', label: 'TXT', descricao: 'Arquivo de texto com os produtos na ordem personalizada.' },
+  { value: 'naoencontrados', label: 'Não Encontrados', descricao: 'Produtos sem preço informado na ordem personalizada.' },
   { value: 'comparativo', label: 'Comparativo da Concorrência', descricao: 'Requer um supermercado de referência.' },
   { value: 'estatisticas', label: 'Estatísticas', descricao: 'Requer o percentual mínimo.' },
   { value: 'compradores', label: 'Compradores', descricao: 'Requer um supermercado de referência.' },
 ];
+
+// Tipos que não exigem informação adicional (referência/percentual)
+const TIPOS_SEM_INFO: TipoRelatorio[] = ['personalizado', 'txt', 'naoencontrados'];
 
 // ---------- Lazy popover para reatribuir pai (evita montar centenas de Selects Radix) ----------
 interface ReatribuirPaiOption { id: string; nome: string; }
@@ -267,8 +274,8 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       toast({ title: 'Selecione coletas', description: 'Escolha pelo menos uma coleta.', variant: 'destructive' });
       return;
     }
-    if (tipoRelatorio === 'personalizado') {
-      gerarPersonalizado();
+    if (TIPOS_SEM_INFO.includes(tipoRelatorio)) {
+      gerarSemInfo();
       return;
     }
     setSupermercadoRef('');
@@ -277,27 +284,45 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
     setShowInfoDialog(true);
   };
 
-  const gerarPersonalizado = () => {
+  const gerarSemInfo = () => {
     const coletasUsadas = coletas.filter(c => coletasSelecionadas.has(c.id));
     const today = new Date().toISOString().split('T')[0];
     items
       .filter(r => selected.has(r.id))
       .forEach(rel => {
-        generateRelatorioPersonalizadoPDF({
-          nome: rel.nome,
-          data: today,
-          produtos: getProdutosOrdenados(rel),
-          coletas: coletasUsadas,
-          supermercados,
-          grupos,
-          subgrupos,
-          departamentos,
-          hierarquia: rel.hierarquiaCustomizada || {},
-        });
+        const produtosOrdenados = getProdutosOrdenados(rel);
+        if (tipoRelatorio === 'personalizado') {
+          generateRelatorioPersonalizadoPDF({
+            nome: rel.nome,
+            data: today,
+            produtos: produtosOrdenados,
+            coletas: coletasUsadas,
+            supermercados,
+            grupos,
+            subgrupos,
+            departamentos,
+            hierarquia: rel.hierarquiaCustomizada || {},
+          });
+        } else {
+          const base = {
+            nome: rel.nome,
+            nomeCliente: rel.nome,
+            data: today,
+            produtos: produtosOrdenados,
+            coletas: coletasUsadas,
+            supermercados,
+            grupos,
+            subgrupos,
+            departamentos,
+            hierarquiaCustomizada: rel.hierarquiaCustomizada?.nomes || {},
+          };
+          if (tipoRelatorio === 'txt') generateTXT(base);
+          else if (tipoRelatorio === 'naoencontrados') generateProdutosNaoEncontradosPDF(base);
+        }
       });
     setShowColetasDialog(false);
     onOpenChange(false);
-    toast({ title: 'Sucesso', description: `${selected.size} PDF(s) gerado(s).` });
+    toast({ title: 'Sucesso', description: `${selected.size} arquivo(s) gerado(s).` });
   };
 
   // Etapa 4: gerar relatórios que exigem informação adicional
@@ -551,8 +576,8 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowColetasDialog(false)}>Cancelar</Button>
             <Button onClick={handleConfirmColetas}>
-              {tipoRelatorio === 'personalizado' ? (
-                <><FileDown className="w-4 h-4 mr-2" />Gerar PDFs</>
+              {TIPOS_SEM_INFO.includes(tipoRelatorio) ? (
+                <><FileDown className="w-4 h-4 mr-2" />Gerar</>
               ) : (
                 <>Continuar</>
               )}
