@@ -39,8 +39,10 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const { grupos } = useGrupos();
   const { subgrupos } = useSubgrupos();
   const { produtos } = useProdutos();
+  const { listas } = useListas();
 
   const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
+  const lista = listas.find(l => l.id === coleta.listaId);
 
   // Carregar informação de existência de fotos
   useEffect(() => {
