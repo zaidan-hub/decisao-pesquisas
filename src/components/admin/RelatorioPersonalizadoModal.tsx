@@ -274,8 +274,8 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       toast({ title: 'Selecione coletas', description: 'Escolha pelo menos uma coleta.', variant: 'destructive' });
       return;
     }
-    if (tipoRelatorio === 'personalizado') {
-      gerarPersonalizado();
+    if (TIPOS_SEM_INFO.includes(tipoRelatorio)) {
+      gerarSemInfo();
       return;
     }
     setSupermercadoRef('');
@@ -284,27 +284,45 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
     setShowInfoDialog(true);
   };
 
-  const gerarPersonalizado = () => {
+  const gerarSemInfo = () => {
     const coletasUsadas = coletas.filter(c => coletasSelecionadas.has(c.id));
     const today = new Date().toISOString().split('T')[0];
     items
       .filter(r => selected.has(r.id))
       .forEach(rel => {
-        generateRelatorioPersonalizadoPDF({
-          nome: rel.nome,
-          data: today,
-          produtos: getProdutosOrdenados(rel),
-          coletas: coletasUsadas,
-          supermercados,
-          grupos,
-          subgrupos,
-          departamentos,
-          hierarquia: rel.hierarquiaCustomizada || {},
-        });
+        const produtosOrdenados = getProdutosOrdenados(rel);
+        if (tipoRelatorio === 'personalizado') {
+          generateRelatorioPersonalizadoPDF({
+            nome: rel.nome,
+            data: today,
+            produtos: produtosOrdenados,
+            coletas: coletasUsadas,
+            supermercados,
+            grupos,
+            subgrupos,
+            departamentos,
+            hierarquia: rel.hierarquiaCustomizada || {},
+          });
+        } else {
+          const base = {
+            nome: rel.nome,
+            nomeCliente: rel.nome,
+            data: today,
+            produtos: produtosOrdenados,
+            coletas: coletasUsadas,
+            supermercados,
+            grupos,
+            subgrupos,
+            departamentos,
+            hierarquiaCustomizada: rel.hierarquiaCustomizada?.nomes || {},
+          };
+          if (tipoRelatorio === 'txt') generateTXT(base);
+          else if (tipoRelatorio === 'naoencontrados') generateProdutosNaoEncontradosPDF(base);
+        }
       });
     setShowColetasDialog(false);
     onOpenChange(false);
-    toast({ title: 'Sucesso', description: `${selected.size} PDF(s) gerado(s).` });
+    toast({ title: 'Sucesso', description: `${selected.size} arquivo(s) gerado(s).` });
   };
 
   // Etapa 4: gerar relatórios que exigem informação adicional
