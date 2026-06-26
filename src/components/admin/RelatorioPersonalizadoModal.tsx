@@ -550,8 +550,68 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
           </ScrollArea>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowColetasDialog(false)}>Cancelar</Button>
-            <Button onClick={handleConfirmGerar}>
-              <FileDown className="w-4 h-4 mr-2" />Gerar PDFs
+            <Button onClick={handleConfirmColetas}>
+              {tipoRelatorio === 'personalizado' ? (
+                <><FileDown className="w-4 h-4 mr-2" />Gerar PDFs</>
+              ) : (
+                <>Continuar</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de informação adicional (comparativo / estatísticas / compradores) */}
+      <Dialog open={showInfoDialog} onOpenChange={setShowInfoDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Informação Adicional</DialogTitle>
+            <DialogDescription>
+              {tipoRelatorio === 'estatisticas'
+                ? 'Informe o percentual mínimo para o relatório de estatísticas.'
+                : 'Selecione o supermercado de referência.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {tipoRelatorio === 'estatisticas' ? (
+            <div className="space-y-2 py-2">
+              <Label htmlFor="percentualMinimo">Percentual mínimo (%)</Label>
+              <Input
+                id="percentualMinimo"
+                type="number"
+                min="0"
+                step="0.01"
+                value={percentualMinimo}
+                onChange={(e) => setPercentualMinimo(e.target.value)}
+                placeholder="Ex.: 5"
+              />
+            </div>
+          ) : (
+            <div className="space-y-2 py-2">
+              <Label>Supermercado de referência</Label>
+              <Select value={supermercadoRef} onValueChange={setSupermercadoRef}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um supermercado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {supermercadosDisponiveis.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setShowInfoDialog(false); setShowColetasDialog(true); }}
+              disabled={gerando}
+            >
+              Voltar
+            </Button>
+            <Button onClick={handleConfirmInfo} disabled={gerando}>
+              <FileDown className="w-4 h-4 mr-2" />{gerando ? 'Gerando...' : 'Gerar PDFs'}
             </Button>
           </div>
         </DialogContent>
