@@ -477,6 +477,41 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog de seleção do tipo de relatório */}
+      <Dialog open={showTipoDialog} onOpenChange={setShowTipoDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Tipo de Relatório</DialogTitle>
+            <DialogDescription>
+              Escolha o tipo de relatório a ser gerado com o ordenamento personalizado.
+            </DialogDescription>
+          </DialogHeader>
+          <RadioGroup
+            value={tipoRelatorio}
+            onValueChange={(v) => setTipoRelatorio(v as TipoRelatorio)}
+            className="gap-3 py-2"
+          >
+            {TIPOS_RELATORIO.map(t => (
+              <label
+                key={t.value}
+                htmlFor={`tipo-${t.value}`}
+                className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50"
+              >
+                <RadioGroupItem value={t.value} id={`tipo-${t.value}`} className="mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">{t.label}</p>
+                  <p className="text-xs text-muted-foreground">{t.descricao}</p>
+                </div>
+              </label>
+            ))}
+          </RadioGroup>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowTipoDialog(false)}>Cancelar</Button>
+            <Button onClick={handleConfirmTipo}>Continuar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog de seleção de coletas para geração */}
       <Dialog open={showColetasDialog} onOpenChange={setShowColetasDialog}>
         <DialogContent className="max-w-lg">
