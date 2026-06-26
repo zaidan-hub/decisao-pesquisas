@@ -369,6 +369,12 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
               <label className="text-sm font-medium text-muted-foreground">Supermercado</label>
               <p className="text-sm">{supermercado?.nome || 'N/A'}</p>
             </div>
+
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Lista utilizada</label>
+              <p className="text-sm">{lista?.nome || 'N/A'}</p>
+            </div>
+
             
             {coleta.numero && (
               <div>
