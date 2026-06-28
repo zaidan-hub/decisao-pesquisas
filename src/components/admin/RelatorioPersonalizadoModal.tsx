@@ -395,7 +395,11 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
         });
       } else if (tipoRelatorio === 'comparativo') {
         relsSelecionados.forEach(rel => {
-          generateComparativoConcorrenciaPDF(buildBase(rel), supermercadoRef);
+          if (comparativoModo === 'departamento') {
+            generateComparativoPorDepartamentoPDF(buildBase(rel), supermercadoRef);
+          } else {
+            generateComparativoConcorrenciaPDF(buildBase(rel), supermercadoRef);
+          }
         });
       } else if (tipoRelatorio === 'estatisticas') {
         relsSelecionados.forEach(rel => {
