@@ -546,6 +546,49 @@ export const RelatoriosPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Comparativo - escolha do tipo (geral / comprador / departamento) */}
+      <Dialog open={showComparativoModoDialog} onOpenChange={setShowComparativoModoDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Comparativo da Concorrência</DialogTitle>
+            <DialogDescription>
+              Escolha como o comparativo deve ser gerado.
+            </DialogDescription>
+          </DialogHeader>
+          <RadioGroup
+            value={comparativoModo}
+            onValueChange={(v) => setComparativoModo(v as 'geral' | 'comprador' | 'departamento')}
+            className="gap-3 py-2"
+          >
+            <label htmlFor="rmodo-geral" className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50">
+              <RadioGroupItem value="geral" id="rmodo-geral" className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Geral</p>
+                <p className="text-xs text-muted-foreground">Comparativo consolidado da concorrência.</p>
+              </div>
+            </label>
+            <label htmlFor="rmodo-comprador" className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50">
+              <RadioGroupItem value="comprador" id="rmodo-comprador" className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Por Comprador</p>
+                <p className="text-xs text-muted-foreground">Usa as listas dos compradores cadastrados.</p>
+              </div>
+            </label>
+            <label htmlFor="rmodo-departamento" className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50">
+              <RadioGroupItem value="departamento" id="rmodo-departamento" className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Por Departamento</p>
+                <p className="text-xs text-muted-foreground">Mesmos cálculos, segmentados por departamento.</p>
+              </div>
+            </label>
+          </RadioGroup>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowComparativoModoDialog(false)}>Cancelar</Button>
+            <Button onClick={handleConfirmComparativoModo}>Continuar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Comparativo Concorrência Dialog */}
       <Dialog open={showComparativoDialog} onOpenChange={setShowComparativoDialog}>
         <DialogContent>
@@ -555,6 +598,7 @@ export const RelatoriosPage = () => {
               Selecione o supermercado de referência para gerar o relatório comparativo
             </DialogDescription>
           </DialogHeader>
+
           
           <div className="space-y-4">
             <div className="space-y-2">
