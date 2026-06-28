@@ -24,6 +24,7 @@ import {
 import {
   generateRelatorioPersonalizadoPDF,
   generateComparativoConcorrenciaPDF,
+  generateComparativoPorDepartamentoPDF,
   generateEstatisticasPDF,
   generateComparadoresPDF,
   generateTXT,
