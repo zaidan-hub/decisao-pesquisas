@@ -189,6 +189,8 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
   const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [supermercadoRef, setSupermercadoRef] = useState('');
   const [percentualMinimo, setPercentualMinimo] = useState('');
+  const [showComparativoModoDialog, setShowComparativoModoDialog] = useState(false);
+  const [comparativoModo, setComparativoModo] = useState<'comprador' | 'departamento'>('comprador');
   const [gerando, setGerando] = useState(false);
 
   const coletasFinalizadas = useMemo(
