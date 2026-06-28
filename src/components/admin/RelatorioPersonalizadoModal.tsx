@@ -40,15 +40,15 @@ interface Props {
 }
 
 type ViewMode = 'list' | 'editor';
-type TipoRelatorio = 'personalizado' | 'txt' | 'naoencontrados' | 'comparativo' | 'estatisticas' | 'compradores';
+type TipoRelatorio = 'personalizado' | 'txt' | 'naoencontrados' | 'comparativo' | 'estatisticas';
+type ComparativoModo = 'geral' | 'comprador' | 'departamento';
 
 const TIPOS_RELATORIO: { value: TipoRelatorio; label: string; descricao: string }[] = [
   { value: 'personalizado', label: 'Personalizado (listagem de preços)', descricao: 'Tabela de produtos na ordem personalizada.' },
   { value: 'txt', label: 'TXT', descricao: 'Arquivo de texto com os produtos na ordem personalizada.' },
   { value: 'naoencontrados', label: 'Não Encontrados', descricao: 'Produtos sem preço informado na ordem personalizada.' },
-  { value: 'comparativo', label: 'Comparativo da Concorrência', descricao: 'Requer um supermercado de referência.' },
+  { value: 'comparativo', label: 'Comparativo da Concorrência', descricao: 'Geral, por comprador ou por departamento.' },
   { value: 'estatisticas', label: 'Estatísticas', descricao: 'Requer o percentual mínimo.' },
-  { value: 'compradores', label: 'Compradores', descricao: 'Requer um supermercado de referência.' },
 ];
 
 // Tipos que não exigem informação adicional (referência/percentual)
