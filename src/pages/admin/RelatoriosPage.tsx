@@ -269,7 +269,7 @@ export const RelatoriosPage = () => {
     });
   }, [relatorioEstatisticas, percentualMinimo, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
-  const handleExportComparativo = useCallback(() => {
+  const handleExportComparativo = useCallback(async () => {
     if (!relatorioComparativo || !supermercadoRefSelecionado) {
       toast({
         title: "Erro",
@@ -284,85 +284,54 @@ export const RelatoriosPage = () => {
       .filter((p): p is typeof produtos[0] => !!p);
     const coletasRelatorio = coletas.filter(c => relatorioComparativo.coletas.includes(c.id));
 
-    generateComparativoConcorrenciaPDF(
-      {
-        nome: relatorioComparativo.nome,
-        nomeCliente: relatorioComparativo.nome_cliente,
-        data: relatorioComparativo.data,
-        produtos: produtosRelatorio,
-        coletas: coletasRelatorio,
-        supermercados,
-        grupos,
-        subgrupos,
-        departamentos
-      },
-      supermercadoRefSelecionado
-    );
+    const base = {
+      nome: relatorioComparativo.nome,
+      nomeCliente: relatorioComparativo.nome_cliente,
+      data: relatorioComparativo.data,
+      produtos: produtosRelatorio,
+      coletas: coletasRelatorio,
+      supermercados,
+      grupos,
+      subgrupos,
+      departamentos
+    };
 
-    setShowComparativoDialog(false);
-    toast({
-      title: "Sucesso",
-      description: "Relatório comparativo gerado com sucesso!"
-    });
-  }, [relatorioComparativo, supermercadoRefSelecionado, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
-
-  const handleOpenCompradores = useCallback((relatorio: Relatorio) => {
-    setRelatorioCompradores(relatorio);
-    setSupermercadoRefCompradores('');
-    setShowCompradoresDialog(true);
-  }, []);
-
-  const handleExportCompradores = useCallback(async () => {
-    if (!relatorioCompradores || !supermercadoRefCompradores) {
-      toast({ title: "Erro", description: "Selecione um supermercado de referência", variant: "destructive" });
-      return;
-    }
-
-    setLoadingCompradores(true);
+    setGerandoComparativo(true);
     try {
-      // Fetch compradores for selected supermarket
-      const { data: compradoresData, error } = await supabase
-        .from('compradores' as any)
-        .select('*')
-        .eq('supermercado_id', supermercadoRefCompradores)
-        .order('nome') as any;
-
-      if (error) throw error;
-
-      if (!compradoresData || compradoresData.length === 0) {
-        toast({ title: "Erro", description: "Nenhum comprador cadastrado para este supermercado", variant: "destructive" });
-        return;
+      if (comparativoModo === 'comprador') {
+        const { data: compradoresData, error } = await supabase
+          .from('compradores' as any)
+          .select('*')
+          .eq('supermercado_id', supermercadoRefSelecionado)
+          .order('nome') as any;
+        if (error) throw error;
+        if (!compradoresData || compradoresData.length === 0) {
+          toast({ title: "Erro", description: "Nenhum comprador cadastrado para este supermercado", variant: "destructive" });
+          return;
+        }
+        generateComparadoresPDF(
+          base,
+          supermercadoRefSelecionado,
+          compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }))
+        );
+      } else if (comparativoModo === 'departamento') {
+        generateComparativoPorDepartamentoPDF(base, supermercadoRefSelecionado);
+      } else {
+        generateComparativoConcorrenciaPDF(base, supermercadoRefSelecionado);
       }
 
-      const produtosRelatorio = relatorioCompradores.produtos
-        .map(id => produtos.find(p => p.id === id))
-        .filter((p): p is typeof produtos[0] => !!p);
-      const coletasRelatorio = coletas.filter(c => relatorioCompradores.coletas.includes(c.id));
-
-      generateComparadoresPDF(
-        {
-          nome: relatorioCompradores.nome,
-          nomeCliente: relatorioCompradores.nome_cliente,
-          data: relatorioCompradores.data,
-          produtos: produtosRelatorio,
-          coletas: coletasRelatorio,
-          supermercados,
-          grupos,
-          subgrupos,
-          departamentos
-        },
-        supermercadoRefCompradores,
-        compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }))
-      );
-
-      setShowCompradoresDialog(false);
-      toast({ title: "Sucesso", description: "Relatório de compradores gerado com sucesso!" });
+      setShowComparativoDialog(false);
+      toast({
+        title: "Sucesso",
+        description: "Relatório comparativo gerado com sucesso!"
+      });
     } catch (error: any) {
       toast({ title: "Erro", description: error.message || "Erro ao gerar relatório", variant: "destructive" });
     } finally {
-      setLoadingCompradores(false);
+      setGerandoComparativo(false);
     }
-  }, [relatorioCompradores, supermercadoRefCompradores, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
+  }, [relatorioComparativo, supermercadoRefSelecionado, comparativoModo, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
+
 
   return (
     <div className="space-y-6">
