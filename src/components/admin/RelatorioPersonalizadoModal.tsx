@@ -283,9 +283,23 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       gerarSemInfo();
       return;
     }
+    // Comparativo: perguntar antes se é por comprador ou por departamento
+    if (tipoRelatorio === 'comparativo') {
+      setComparativoModo('comprador');
+      setShowColetasDialog(false);
+      setShowComparativoModoDialog(true);
+      return;
+    }
     setSupermercadoRef('');
     setPercentualMinimo('');
     setShowColetasDialog(false);
+    setShowInfoDialog(true);
+  };
+
+  // Etapa 3b: escolher o modo do comparativo (comprador / departamento)
+  const handleConfirmComparativoModo = () => {
+    setSupermercadoRef('');
+    setShowComparativoModoDialog(false);
     setShowInfoDialog(true);
   };
 
