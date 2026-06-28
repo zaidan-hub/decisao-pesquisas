@@ -40,15 +40,15 @@ interface Props {
 }
 
 type ViewMode = 'list' | 'editor';
-type TipoRelatorio = 'personalizado' | 'txt' | 'naoencontrados' | 'comparativo' | 'estatisticas' | 'compradores';
+type TipoRelatorio = 'personalizado' | 'txt' | 'naoencontrados' | 'comparativo' | 'estatisticas';
+type ComparativoModo = 'geral' | 'comprador' | 'departamento';
 
 const TIPOS_RELATORIO: { value: TipoRelatorio; label: string; descricao: string }[] = [
   { value: 'personalizado', label: 'Personalizado (listagem de preços)', descricao: 'Tabela de produtos na ordem personalizada.' },
   { value: 'txt', label: 'TXT', descricao: 'Arquivo de texto com os produtos na ordem personalizada.' },
   { value: 'naoencontrados', label: 'Não Encontrados', descricao: 'Produtos sem preço informado na ordem personalizada.' },
-  { value: 'comparativo', label: 'Comparativo da Concorrência', descricao: 'Requer um supermercado de referência.' },
+  { value: 'comparativo', label: 'Comparativo da Concorrência', descricao: 'Geral, por comprador ou por departamento.' },
   { value: 'estatisticas', label: 'Estatísticas', descricao: 'Requer o percentual mínimo.' },
-  { value: 'compradores', label: 'Compradores', descricao: 'Requer um supermercado de referência.' },
 ];
 
 // Tipos que não exigem informação adicional (referência/percentual)
@@ -190,7 +190,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
   const [supermercadoRef, setSupermercadoRef] = useState('');
   const [percentualMinimo, setPercentualMinimo] = useState('');
   const [showComparativoModoDialog, setShowComparativoModoDialog] = useState(false);
-  const [comparativoModo, setComparativoModo] = useState<'comprador' | 'departamento'>('comprador');
+  const [comparativoModo, setComparativoModo] = useState<ComparativoModo>('geral');
   const [gerando, setGerando] = useState(false);
 
   const coletasFinalizadas = useMemo(
@@ -216,7 +216,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       setShowColetasDialog(false);
       setShowInfoDialog(false);
       setShowComparativoModoDialog(false);
-      setComparativoModo('comprador');
+      setComparativoModo('geral');
       setTipoRelatorio('personalizado');
       setSupermercadoRef('');
       setPercentualMinimo('');
@@ -283,9 +283,9 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       gerarSemInfo();
       return;
     }
-    // Comparativo: perguntar antes se é por comprador ou por departamento
+    // Comparativo: perguntar antes se é geral, por comprador ou por departamento
     if (tipoRelatorio === 'comparativo') {
-      setComparativoModo('comprador');
+      setComparativoModo('geral');
       setShowColetasDialog(false);
       setShowComparativoModoDialog(true);
       return;
@@ -346,7 +346,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
 
   // Etapa 4: gerar relatórios que exigem informação adicional
   const handleConfirmInfo = async () => {
-    if ((tipoRelatorio === 'comparativo' || tipoRelatorio === 'compradores') && !supermercadoRef) {
+    if (tipoRelatorio === 'comparativo' && !supermercadoRef) {
       toast({ title: 'Erro', description: 'Selecione um supermercado de referência.', variant: 'destructive' });
       return;
     }
@@ -378,29 +378,31 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
 
     setGerando(true);
     try {
-      if (tipoRelatorio === 'compradores') {
-        const { data: compradoresData, error } = await supabase
-          .from('compradores' as any)
-          .select('*')
-          .eq('supermercado_id', supermercadoRef)
-          .order('nome') as any;
-        if (error) throw error;
-        if (!compradoresData || compradoresData.length === 0) {
-          toast({ title: 'Erro', description: 'Nenhum comprador cadastrado para este supermercado.', variant: 'destructive' });
-          return;
-        }
-        const compradores = compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }));
-        relsSelecionados.forEach(rel => {
-          generateComparadoresPDF(buildBase(rel), supermercadoRef, compradores);
-        });
-      } else if (tipoRelatorio === 'comparativo') {
-        relsSelecionados.forEach(rel => {
-          if (comparativoModo === 'departamento') {
-            generateComparativoPorDepartamentoPDF(buildBase(rel), supermercadoRef);
-          } else {
-            generateComparativoConcorrenciaPDF(buildBase(rel), supermercadoRef);
+      if (tipoRelatorio === 'comparativo') {
+        if (comparativoModo === 'comprador') {
+          const { data: compradoresData, error } = await supabase
+            .from('compradores' as any)
+            .select('*')
+            .eq('supermercado_id', supermercadoRef)
+            .order('nome') as any;
+          if (error) throw error;
+          if (!compradoresData || compradoresData.length === 0) {
+            toast({ title: 'Erro', description: 'Nenhum comprador cadastrado para este supermercado.', variant: 'destructive' });
+            return;
           }
-        });
+          const compradores = compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }));
+          relsSelecionados.forEach(rel => {
+            generateComparadoresPDF(buildBase(rel), supermercadoRef, compradores);
+          });
+        } else if (comparativoModo === 'departamento') {
+          relsSelecionados.forEach(rel => {
+            generateComparativoPorDepartamentoPDF(buildBase(rel), supermercadoRef);
+          });
+        } else {
+          relsSelecionados.forEach(rel => {
+            generateComparativoConcorrenciaPDF(buildBase(rel), supermercadoRef);
+          });
+        }
       } else if (tipoRelatorio === 'estatisticas') {
         relsSelecionados.forEach(rel => {
           generateEstatisticasPDF(buildBase(rel), percentual);
@@ -620,9 +622,19 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
           </DialogHeader>
           <RadioGroup
             value={comparativoModo}
-            onValueChange={(v) => setComparativoModo(v as 'comprador' | 'departamento')}
+            onValueChange={(v) => setComparativoModo(v as ComparativoModo)}
             className="gap-3 py-2"
           >
+            <label
+              htmlFor="modo-geral"
+              className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50"
+            >
+              <RadioGroupItem value="geral" id="modo-geral" className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Geral</p>
+                <p className="text-xs text-muted-foreground">Comparativo consolidado da concorrência.</p>
+              </div>
+            </label>
             <label
               htmlFor="modo-comprador"
               className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50"
@@ -630,7 +642,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
               <RadioGroupItem value="comprador" id="modo-comprador" className="mt-0.5" />
               <div>
                 <p className="text-sm font-medium">Por Comprador</p>
-                <p className="text-xs text-muted-foreground">Comparativo consolidado da concorrência.</p>
+                <p className="text-xs text-muted-foreground">Usa as listas dos compradores cadastrados.</p>
               </div>
             </label>
             <label
