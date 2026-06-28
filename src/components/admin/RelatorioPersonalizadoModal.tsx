@@ -283,9 +283,9 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       gerarSemInfo();
       return;
     }
-    // Comparativo: perguntar antes se é por comprador ou por departamento
+    // Comparativo: perguntar antes se é geral, por comprador ou por departamento
     if (tipoRelatorio === 'comparativo') {
-      setComparativoModo('comprador');
+      setComparativoModo('geral');
       setShowColetasDialog(false);
       setShowComparativoModoDialog(true);
       return;
