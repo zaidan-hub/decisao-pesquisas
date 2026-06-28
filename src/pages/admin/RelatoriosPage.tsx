@@ -629,51 +629,7 @@ export const RelatoriosPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Compradores Dialog */}
-      <Dialog open={showCompradoresDialog} onOpenChange={setShowCompradoresDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Comparativo por Compradores</DialogTitle>
-            <DialogDescription>
-              Selecione o supermercado de referência. O sistema usará as listas dos compradores cadastrados para gerar o comparativo.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Supermercado de Referência *</Label>
-              <Select value={supermercadoRefCompradores} onValueChange={setSupermercadoRefCompradores}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um supermercado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {relatorioCompradores && coletas
-                    .filter(c => relatorioCompradores.coletas.includes(c.id))
-                    .map(coleta => {
-                      const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
-                      return supermercado ? (
-                        <SelectItem key={supermercado.id} value={supermercado.id}>
-                          {supermercado.nome}
-                        </SelectItem>
-                      ) : null;
-                    })
-                  }
-                </SelectContent>
-              </Select>
-            </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowCompradoresDialog(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleExportCompradores} disabled={!supermercadoRefCompradores || loadingCompradores}>
-                <FileDown className="w-4 h-4 mr-2" />
-                {loadingCompradores ? 'Gerando...' : 'Gerar PDF'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
       {/* Modal de Detalhes do Relatório */}
       <Dialog open={!!relatorioDetalhe} onOpenChange={() => setRelatorioDetalhe(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
