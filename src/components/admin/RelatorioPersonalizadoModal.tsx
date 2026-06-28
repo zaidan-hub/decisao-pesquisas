@@ -346,7 +346,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
 
   // Etapa 4: gerar relatórios que exigem informação adicional
   const handleConfirmInfo = async () => {
-    if ((tipoRelatorio === 'comparativo' || tipoRelatorio === 'compradores') && !supermercadoRef) {
+    if (tipoRelatorio === 'comparativo' && !supermercadoRef) {
       toast({ title: 'Erro', description: 'Selecione um supermercado de referência.', variant: 'destructive' });
       return;
     }
@@ -378,29 +378,31 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
 
     setGerando(true);
     try {
-      if (tipoRelatorio === 'compradores') {
-        const { data: compradoresData, error } = await supabase
-          .from('compradores' as any)
-          .select('*')
-          .eq('supermercado_id', supermercadoRef)
-          .order('nome') as any;
-        if (error) throw error;
-        if (!compradoresData || compradoresData.length === 0) {
-          toast({ title: 'Erro', description: 'Nenhum comprador cadastrado para este supermercado.', variant: 'destructive' });
-          return;
-        }
-        const compradores = compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }));
-        relsSelecionados.forEach(rel => {
-          generateComparadoresPDF(buildBase(rel), supermercadoRef, compradores);
-        });
-      } else if (tipoRelatorio === 'comparativo') {
-        relsSelecionados.forEach(rel => {
-          if (comparativoModo === 'departamento') {
-            generateComparativoPorDepartamentoPDF(buildBase(rel), supermercadoRef);
-          } else {
-            generateComparativoConcorrenciaPDF(buildBase(rel), supermercadoRef);
+      if (tipoRelatorio === 'comparativo') {
+        if (comparativoModo === 'comprador') {
+          const { data: compradoresData, error } = await supabase
+            .from('compradores' as any)
+            .select('*')
+            .eq('supermercado_id', supermercadoRef)
+            .order('nome') as any;
+          if (error) throw error;
+          if (!compradoresData || compradoresData.length === 0) {
+            toast({ title: 'Erro', description: 'Nenhum comprador cadastrado para este supermercado.', variant: 'destructive' });
+            return;
           }
-        });
+          const compradores = compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }));
+          relsSelecionados.forEach(rel => {
+            generateComparadoresPDF(buildBase(rel), supermercadoRef, compradores);
+          });
+        } else if (comparativoModo === 'departamento') {
+          relsSelecionados.forEach(rel => {
+            generateComparativoPorDepartamentoPDF(buildBase(rel), supermercadoRef);
+          });
+        } else {
+          relsSelecionados.forEach(rel => {
+            generateComparativoConcorrenciaPDF(buildBase(rel), supermercadoRef);
+          });
+        }
       } else if (tipoRelatorio === 'estatisticas') {
         relsSelecionados.forEach(rel => {
           generateEstatisticasPDF(buildBase(rel), percentual);
