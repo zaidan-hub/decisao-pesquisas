@@ -49,20 +49,17 @@ export const RelatoriosPage = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
   // Estados para comparativo de concorrência
+  const [showComparativoModoDialog, setShowComparativoModoDialog] = useState(false);
+  const [comparativoModo, setComparativoModo] = useState<'geral' | 'comprador' | 'departamento'>('geral');
   const [showComparativoDialog, setShowComparativoDialog] = useState(false);
   const [relatorioComparativo, setRelatorioComparativo] = useState<Relatorio | null>(null);
   const [supermercadoRefSelecionado, setSupermercadoRefSelecionado] = useState('');
+  const [gerandoComparativo, setGerandoComparativo] = useState(false);
   
   // Estados para estatísticas
   const [showEstatisticasDialog, setShowEstatisticasDialog] = useState(false);
   const [relatorioEstatisticas, setRelatorioEstatisticas] = useState<Relatorio | null>(null);
   const [percentualMinimo, setPercentualMinimo] = useState('');
-
-  // Estados para compradores
-  const [showCompradoresDialog, setShowCompradoresDialog] = useState(false);
-  const [relatorioCompradores, setRelatorioCompradores] = useState<Relatorio | null>(null);
-  const [supermercadoRefCompradores, setSupermercadoRefCompradores] = useState('');
-  const [loadingCompradores, setLoadingCompradores] = useState(false);
 
   // Estado para modal de detalhes do relatório
   const [relatorioDetalhe, setRelatorioDetalhe] = useState<Relatorio | null>(null);
