@@ -625,12 +625,12 @@ export const RelatoriosPage = () => {
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowComparativoDialog(false)}>
-                Cancelar
+              <Button variant="outline" onClick={() => { setShowComparativoDialog(false); setShowComparativoModoDialog(true); }} disabled={gerandoComparativo}>
+                Voltar
               </Button>
-              <Button onClick={handleExportComparativo}>
+              <Button onClick={handleExportComparativo} disabled={!supermercadoRefSelecionado || gerandoComparativo}>
                 <FileDown className="w-4 h-4 mr-2" />
-                Gerar PDF
+                {gerandoComparativo ? 'Gerando...' : 'Gerar PDF'}
               </Button>
             </div>
           </div>
