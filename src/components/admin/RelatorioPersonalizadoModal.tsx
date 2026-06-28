@@ -701,7 +701,11 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={() => { setShowInfoDialog(false); setShowColetasDialog(true); }}
+              onClick={() => {
+                setShowInfoDialog(false);
+                if (tipoRelatorio === 'comparativo') setShowComparativoModoDialog(true);
+                else setShowColetasDialog(true);
+              }}
               disabled={gerando}
             >
               Voltar
