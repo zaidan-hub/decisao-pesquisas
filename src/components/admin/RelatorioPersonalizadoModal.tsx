@@ -622,9 +622,19 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
           </DialogHeader>
           <RadioGroup
             value={comparativoModo}
-            onValueChange={(v) => setComparativoModo(v as 'comprador' | 'departamento')}
+            onValueChange={(v) => setComparativoModo(v as ComparativoModo)}
             className="gap-3 py-2"
           >
+            <label
+              htmlFor="modo-geral"
+              className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50"
+            >
+              <RadioGroupItem value="geral" id="modo-geral" className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Geral</p>
+                <p className="text-xs text-muted-foreground">Comparativo consolidado da concorrência.</p>
+              </div>
+            </label>
             <label
               htmlFor="modo-comprador"
               className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50"
@@ -632,7 +642,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
               <RadioGroupItem value="comprador" id="modo-comprador" className="mt-0.5" />
               <div>
                 <p className="text-sm font-medium">Por Comprador</p>
-                <p className="text-xs text-muted-foreground">Comparativo consolidado da concorrência.</p>
+                <p className="text-xs text-muted-foreground">Usa as listas dos compradores cadastrados.</p>
               </div>
             </label>
             <label
