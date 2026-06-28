@@ -215,6 +215,8 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       setShowTipoDialog(false);
       setShowColetasDialog(false);
       setShowInfoDialog(false);
+      setShowComparativoModoDialog(false);
+      setComparativoModo('comprador');
       setTipoRelatorio('personalizado');
       setSupermercadoRef('');
       setPercentualMinimo('');
