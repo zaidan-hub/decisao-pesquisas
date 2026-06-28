@@ -206,6 +206,12 @@ export const RelatoriosPage = () => {
 
   const handleOpenComparativo = useCallback((relatorio: Relatorio) => {
     setRelatorioComparativo(relatorio);
+    setComparativoModo('geral');
+    setShowComparativoModoDialog(true);
+  }, []);
+
+  const handleConfirmComparativoModo = useCallback(() => {
+    setShowComparativoModoDialog(false);
     setSupermercadoRefSelecionado('');
     setShowComparativoDialog(true);
   }, []);
