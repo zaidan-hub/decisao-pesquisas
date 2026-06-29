@@ -31,6 +31,7 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const [loadingFotos, setLoadingFotos] = useState<{ [produtoId: string]: boolean }>({});
   const [alertasAtivos, setAlertasAtivos] = useState(coleta.alertasVariacao || []);
   const [produtosComFotos, setProdutosComFotos] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Refs para scroll até produtos
   const produtoRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
