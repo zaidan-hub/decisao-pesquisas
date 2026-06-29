@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Edit2, Save, X, MessageSquare, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, X, MessageSquare, Camera, Loader2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Coleta, Produto, Grupo, Subgrupo, Supermercado } from '@/types';
 import { toast } from '@/hooks/use-toast';
