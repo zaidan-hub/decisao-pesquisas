@@ -399,8 +399,25 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
         </CardContent>
       </Card>
 
+      {/* Barra de pesquisa de produtos */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Pesquisar produto pelo nome..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       {/* Products */}
       <div className="space-y-4">
+        {Object.keys(produtosAgrupados).length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-6">
+            Nenhum produto encontrado.
+          </p>
+        )}
         {Object.entries(produtosAgrupados).map(([grupoNome, subgrupos]) => (
           <Card key={grupoNome}>
             <CardHeader className="pb-3">
