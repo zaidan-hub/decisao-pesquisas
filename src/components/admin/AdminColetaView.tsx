@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Edit2, Save, X, MessageSquare, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, X, MessageSquare, Camera, Loader2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Coleta, Produto, Grupo, Subgrupo, Supermercado } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -31,6 +31,7 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   const [loadingFotos, setLoadingFotos] = useState<{ [produtoId: string]: boolean }>({});
   const [alertasAtivos, setAlertasAtivos] = useState(coleta.alertasVariacao || []);
   const [produtosComFotos, setProdutosComFotos] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Refs para scroll até produtos
   const produtoRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -139,8 +140,13 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   // Agrupar produtos por grupo/subgrupo para exibição
   const produtosAgrupados = useMemo(() => {
     const gruposMap: { [key: string]: { [key: string]: Produto[] } } = {};
-    
-    produtosDaColeta.forEach(produto => {
+
+    const termo = searchTerm.trim().toLowerCase();
+    const produtosVisiveis = termo
+      ? produtosDaColeta.filter(p => p.nome.toLowerCase().includes(termo))
+      : produtosDaColeta;
+
+    produtosVisiveis.forEach(produto => {
       const grupo = grupos.find(g => g.id === produto.grupoId);
       const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
       
@@ -157,7 +163,7 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
     });
     
     return gruposMap;
-  }, [produtosDaColeta, grupos, subgrupos]);
+  }, [produtosDaColeta, grupos, subgrupos, searchTerm]);
 
   const handleStartEdit = () => {
     setIsEditing(true);
@@ -393,8 +399,25 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
         </CardContent>
       </Card>
 
+      {/* Barra de pesquisa de produtos */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Pesquisar produto pelo nome..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       {/* Products */}
       <div className="space-y-4">
+        {Object.keys(produtosAgrupados).length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-6">
+            Nenhum produto encontrado.
+          </p>
+        )}
         {Object.entries(produtosAgrupados).map(([grupoNome, subgrupos]) => (
           <Card key={grupoNome}>
             <CardHeader className="pb-3">
