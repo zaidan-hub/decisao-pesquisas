@@ -140,8 +140,13 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
   // Agrupar produtos por grupo/subgrupo para exibição
   const produtosAgrupados = useMemo(() => {
     const gruposMap: { [key: string]: { [key: string]: Produto[] } } = {};
-    
-    produtosDaColeta.forEach(produto => {
+
+    const termo = searchTerm.trim().toLowerCase();
+    const produtosVisiveis = termo
+      ? produtosDaColeta.filter(p => p.nome.toLowerCase().includes(termo))
+      : produtosDaColeta;
+
+    produtosVisiveis.forEach(produto => {
       const grupo = grupos.find(g => g.id === produto.grupoId);
       const subgrupo = subgrupos.find(s => s.id === produto.subgrupoId);
       
@@ -158,7 +163,7 @@ export const AdminColetaView = ({ coleta, onBack, onUpdateColeta, supermercados 
     });
     
     return gruposMap;
-  }, [produtosDaColeta, grupos, subgrupos]);
+  }, [produtosDaColeta, grupos, subgrupos, searchTerm]);
 
   const handleStartEdit = () => {
     setIsEditing(true);
