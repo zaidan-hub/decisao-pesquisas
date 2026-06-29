@@ -1161,28 +1161,28 @@ export const generateEstatisticasPDF = (
   doc.text(`Produtos com diferença superior a ${percentualMinimo}%:`, 14, yPos);
   yPos += 7;
 
-  const produtosComDiferenca: any[] = [];
+  // Colunas: uma por coleta/supermercado (usar abreviação)
+  const colunasColetas = Array.from(coletasPorSupermercado.values());
+
+  const produtosComDiferenca: { nome: string; precos: (number | null)[]; diferenca: string }[] = [];
 
   data.produtos.forEach((produto) => {
-    const precos: number[] = [];
-
-    data.coletas.forEach(coleta => {
+    const precosPorColeta: (number | null)[] = colunasColetas.map(({ coleta }) => {
       const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
-      if (preco && preco > 0) {
-        precos.push(preco);
-      }
+      return preco && preco > 0 ? preco : null;
     });
 
-    if (precos.length >= 2) {
-      const menorPreco = Math.min(...precos);
-      const maiorPreco = Math.max(...precos);
+    const precosValidos = precosPorColeta.filter((p): p is number => p !== null);
+
+    if (precosValidos.length >= 2) {
+      const menorPreco = Math.min(...precosValidos);
+      const maiorPreco = Math.max(...precosValidos);
       const diferencaPercentual = ((maiorPreco - menorPreco) / menorPreco) * 100;
 
       if (diferencaPercentual >= percentualMinimo) {
         produtosComDiferenca.push({
           nome: produto.nome,
-          menorPreco: menorPreco.toFixed(2),
-          maiorPreco: maiorPreco.toFixed(2),
+          precos: precosPorColeta,
           diferenca: diferencaPercentual.toFixed(2)
         });
       }
@@ -1194,16 +1194,30 @@ export const generateEstatisticasPDF = (
     doc.setFontSize(9);
     doc.text('Nenhum produto encontrado com essa diferença.', 14, yPos);
   } else {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    produtosComDiferenca.forEach((prod) => {
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = 20;
+    const headers = [
+      'Produto',
+      ...colunasColetas.map(({ nome, coleta }) => {
+        const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+        return supermercado?.abreviacao || nome;
+      }),
+      'Diferença'
+    ];
+
+    const body = produtosComDiferenca.map((prod) => [
+      prod.nome,
+      ...prod.precos.map((p) => (p !== null ? 'R$ ' + p.toFixed(2) : '-')),
+      prod.diferenca + '%'
+    ]);
+
+    autoTable(doc, {
+      head: [headers],
+      body,
+      startY: yPos,
+      styles: { fontSize: 8, cellPadding: 2, halign: 'right' },
+      headStyles: { fillColor: [66, 66, 66], halign: 'center' },
+      columnStyles: {
+        0: { halign: 'left', fontStyle: 'bold' }
       }
-      doc.text(`${prod.nome}:`, 14, yPos);
-      doc.text(`  Menor: R$ ${prod.menorPreco} | Maior: R$ ${prod.maiorPreco} | Diferença: ${prod.diferenca}%`, 14, yPos + 5);
-      yPos += 12;
     });
   }
 
