@@ -521,14 +521,20 @@ export const PesquisasPage = () => {
           <h2 className="text-2xl font-bold">Coletas</h2>
         </div>
         
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Coleta
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowListasColeta(true)}>
+            <List className="w-4 h-4 mr-2" />
+            Listas de Coleta
+          </Button>
+
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Coleta
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Nova Coleta</DialogTitle>
               <DialogDescription>
