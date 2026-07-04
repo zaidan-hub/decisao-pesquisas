@@ -550,6 +550,7 @@ export const ProdutosPage = () => {
                 <FolderOpen className="w-5 h-5" />
                 <CardTitle>Grupos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredGrupos.length}</span>
             </div>
             {selectedDepartamento && (
               <div className="text-xs text-muted-foreground mt-1">
