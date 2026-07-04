@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Coleta, Supermercado, Pesquisador } from '@/types';
-import { Plus, Calendar, Store, User, FileText, Package, Edit2, Trash2, Archive, ArchiveRestore, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Calendar, Store, User, FileText, Package, Edit2, Trash2, Archive, ArchiveRestore, ChevronDown, ChevronRight, List, ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdminColetaView } from '@/components/admin/AdminColetaView';
+import { ListasColetaPage } from '@/pages/admin/ListasColetaPage';
 import { ColetaLoadingDialog } from '@/components/admin/ColetaLoadingDialog';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { usePesquisadores } from '@/hooks/usePesquisadores';
@@ -34,6 +35,7 @@ export const PesquisasPage = () => {
   const [coletaToDelete, setColetaToDelete] = useState<any>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [arquivadasOpen, setArquivadasOpen] = useState(false);
+  const [showListasColeta, setShowListasColeta] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
@@ -371,6 +373,19 @@ export const PesquisasPage = () => {
   const coletasAtivas = coletasAdmin.filter(c => !isArquivada(c));
   const coletasArquivadas = coletasAdmin.filter(c => isArquivada(c));
 
+  // Tela de Listas de Coleta
+  if (showListasColeta) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" size="sm" onClick={() => setShowListasColeta(false)} className="flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Voltar para Coletas
+        </Button>
+        <ListasColetaPage />
+      </div>
+    );
+  }
+
   // Se uma coleta está selecionada, mostrar a visualização admin
   if (selectedColeta) {
     return (
@@ -506,14 +521,20 @@ export const PesquisasPage = () => {
           <h2 className="text-2xl font-bold">Coletas</h2>
         </div>
         
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Coleta
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowListasColeta(true)}>
+            <List className="w-4 h-4 mr-2" />
+            Listas de Coleta
+          </Button>
+
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Coleta
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Nova Coleta</DialogTitle>
               <DialogDescription>
@@ -650,8 +671,9 @@ export const PesquisasPage = () => {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Lista de Coletas */}
