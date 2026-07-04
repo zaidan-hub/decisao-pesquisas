@@ -670,6 +670,7 @@ export const ProdutosPage = () => {
                 <Package className="w-5 h-5" />
                 <CardTitle>Produtos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredProdutos.length}</span>
             </div>
             {selectedSubgrupo && (
               <div className="text-xs text-muted-foreground mt-1">
