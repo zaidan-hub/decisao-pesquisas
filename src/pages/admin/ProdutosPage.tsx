@@ -107,27 +107,39 @@ export const ProdutosPage = () => {
     item: Departamento | Grupo | Subgrupo | Produto;
   } | null>(null);
 
-  // Filtered data
-  const filteredDepartamentos = departamentos.filter(d => 
-    d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
+  // Filtered data (ordenado conforme a LISTA COLETA GERAL)
+  const filteredDepartamentos = sortByOrder(
+    departamentos.filter(d =>
+      d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
+    ),
+    ordering.departamentoOrder
   );
 
-  const filteredGrupos = grupos.filter(g => 
-    g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
-    (!selectedDepartamento || g.departamentoId === selectedDepartamento)
+  const filteredGrupos = sortByOrder(
+    grupos.filter(g =>
+      g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
+      (!selectedDepartamento || g.departamentoId === selectedDepartamento)
+    ),
+    ordering.grupoOrder
   );
 
-  const filteredSubgrupos = subgrupos.filter(sg => 
-    sg.nome.toLowerCase().includes(searchTerms.subgrupos.toLowerCase()) &&
-    (!selectedGrupo || sg.grupoId === selectedGrupo)
+  const filteredSubgrupos = sortByOrder(
+    subgrupos.filter(sg =>
+      sg.nome.toLowerCase().includes(searchTerms.subgrupos.toLowerCase()) &&
+      (!selectedGrupo || sg.grupoId === selectedGrupo)
+    ),
+    ordering.subgrupoOrder
   );
 
-  const filteredProdutos = produtos.filter(p => {
-    const term = searchTerms.produtos.toLowerCase();
-    const matchesSearch = p.nome.toLowerCase().includes(term) || 
-                          p.codigo.toLowerCase().includes(term);
-    return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
-  });
+  const filteredProdutos = sortByOrder(
+    produtos.filter(p => {
+      const term = searchTerms.produtos.toLowerCase();
+      const matchesSearch = p.nome.toLowerCase().includes(term) ||
+                            p.codigo.toLowerCase().includes(term);
+      return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
+    }),
+    ordering.produtoIndex
+  );
 
   // Handlers
   const handleDepartamentoClick = (departamentoId: string) => {
