@@ -610,6 +610,7 @@ export const ProdutosPage = () => {
                 <Layers className="w-5 h-5" />
                 <CardTitle>Subgrupos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredSubgrupos.length}</span>
             </div>
             {selectedGrupo && (
               <div className="text-xs text-muted-foreground mt-1">
