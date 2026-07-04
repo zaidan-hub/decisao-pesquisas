@@ -35,6 +35,7 @@ export const PesquisasPage = () => {
   const [coletaToDelete, setColetaToDelete] = useState<any>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [arquivadasOpen, setArquivadasOpen] = useState(false);
+  const [showListasColeta, setShowListasColeta] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
