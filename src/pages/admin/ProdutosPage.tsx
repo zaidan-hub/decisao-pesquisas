@@ -23,6 +23,52 @@ export const ProdutosPage = () => {
   const { grupos, loading: loadingGrupos, refetch: refetchGrupos } = useGrupos();
   const { subgrupos, loading: loadingSubgrupos, refetch: refetchSubgrupos } = useSubgrupos();
   const { produtos, loading: loadingProdutos, refetch: refetchProdutos } = useProdutos();
+  const { ordemProdutos } = useListaColetaGeralOrdem();
+
+  // Ordenação baseada na "LISTA COLETA GERAL"
+  const ordering = useMemo(() => {
+    const produtoIndex = new Map<string, number>();
+    ordemProdutos.forEach((id, i) => {
+      if (!produtoIndex.has(id)) produtoIndex.set(id, i);
+    });
+
+    const produtoById = new Map(produtos.map(p => [p.id, p]));
+    const subgrupoById = new Map(subgrupos.map(s => [s.id, s]));
+    const grupoById = new Map(grupos.map(g => [g.id, g]));
+
+    const subgrupoOrder = new Map<string, number>();
+    const grupoOrder = new Map<string, number>();
+    const departamentoOrder = new Map<string, number>();
+
+    ordemProdutos.forEach((pid, i) => {
+      const prod = produtoById.get(pid);
+      if (!prod) return;
+      const sgId = prod.subgrupoId;
+      if (sgId && !subgrupoOrder.has(sgId)) subgrupoOrder.set(sgId, i);
+      const sg = sgId ? subgrupoById.get(sgId) : undefined;
+      const gId = sg?.grupoId;
+      if (gId && !grupoOrder.has(gId)) grupoOrder.set(gId, i);
+      const grupo = gId ? grupoById.get(gId) : undefined;
+      const dId = grupo?.departamentoId;
+      if (dId && !departamentoOrder.has(dId)) departamentoOrder.set(dId, i);
+    });
+
+    return { produtoIndex, subgrupoOrder, grupoOrder, departamentoOrder };
+  }, [ordemProdutos, produtos, subgrupos, grupos]);
+
+  const BIG = Number.MAX_SAFE_INTEGER;
+  const sortByOrder = <T extends { id: string; nome: string }>(
+    items: T[],
+    orderMap: Map<string, number>
+  ) =>
+    [...items].sort((a, b) => {
+      const oa = orderMap.get(a.id) ?? BIG;
+      const ob = orderMap.get(b.id) ?? BIG;
+      if (oa !== ob) return oa - ob;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+
 
   const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
   const [selectedGrupo, setSelectedGrupo] = useState<string | null>(null);
