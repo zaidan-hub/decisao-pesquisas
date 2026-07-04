@@ -671,8 +671,9 @@ export const PesquisasPage = () => {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Lista de Coletas */}
