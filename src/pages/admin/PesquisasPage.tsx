@@ -373,6 +373,19 @@ export const PesquisasPage = () => {
   const coletasAtivas = coletasAdmin.filter(c => !isArquivada(c));
   const coletasArquivadas = coletasAdmin.filter(c => isArquivada(c));
 
+  // Tela de Listas de Coleta
+  if (showListasColeta) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" size="sm" onClick={() => setShowListasColeta(false)} className="flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Voltar para Coletas
+        </Button>
+        <ListasColetaPage />
+      </div>
+    );
+  }
+
   // Se uma coleta está selecionada, mostrar a visualização admin
   if (selectedColeta) {
     return (
