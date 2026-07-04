@@ -500,6 +500,7 @@ export const ProdutosPage = () => {
                 <Building2 className="w-5 h-5" />
                 <CardTitle>Departamentos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredDepartamentos.length}</span>
             </div>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
