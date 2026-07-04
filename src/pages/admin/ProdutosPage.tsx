@@ -480,6 +480,9 @@ export const ProdutosPage = () => {
           <p className="text-sm text-muted-foreground mt-1">
             Visualize e gerencie os produtos cadastrados no sistema
           </p>
+          <p className="text-sm font-medium mt-1">
+            Total de produtos cadastrados: {produtos.length}
+          </p>
         </div>
         <Button onClick={() => setShowAddDialog(true)}>
           <Plus className="w-4 h-4 mr-2" />
