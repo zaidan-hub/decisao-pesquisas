@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Departamento, Grupo, Subgrupo, Produto } from '@/types';
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useListaColetaGeralOrdem } from '@/hooks/useListaColetaGeralOrdem';
 
 export const ProdutosPage = () => {
   // Buscar dados do banco
@@ -22,6 +23,52 @@ export const ProdutosPage = () => {
   const { grupos, loading: loadingGrupos, refetch: refetchGrupos } = useGrupos();
   const { subgrupos, loading: loadingSubgrupos, refetch: refetchSubgrupos } = useSubgrupos();
   const { produtos, loading: loadingProdutos, refetch: refetchProdutos } = useProdutos();
+  const { ordemProdutos } = useListaColetaGeralOrdem();
+
+  // Ordenação baseada na "LISTA COLETA GERAL"
+  const ordering = useMemo(() => {
+    const produtoIndex = new Map<string, number>();
+    ordemProdutos.forEach((id, i) => {
+      if (!produtoIndex.has(id)) produtoIndex.set(id, i);
+    });
+
+    const produtoById = new Map(produtos.map(p => [p.id, p]));
+    const subgrupoById = new Map(subgrupos.map(s => [s.id, s]));
+    const grupoById = new Map(grupos.map(g => [g.id, g]));
+
+    const subgrupoOrder = new Map<string, number>();
+    const grupoOrder = new Map<string, number>();
+    const departamentoOrder = new Map<string, number>();
+
+    ordemProdutos.forEach((pid, i) => {
+      const prod = produtoById.get(pid);
+      if (!prod) return;
+      const sgId = prod.subgrupoId;
+      if (sgId && !subgrupoOrder.has(sgId)) subgrupoOrder.set(sgId, i);
+      const sg = sgId ? subgrupoById.get(sgId) : undefined;
+      const gId = sg?.grupoId;
+      if (gId && !grupoOrder.has(gId)) grupoOrder.set(gId, i);
+      const grupo = gId ? grupoById.get(gId) : undefined;
+      const dId = grupo?.departamentoId;
+      if (dId && !departamentoOrder.has(dId)) departamentoOrder.set(dId, i);
+    });
+
+    return { produtoIndex, subgrupoOrder, grupoOrder, departamentoOrder };
+  }, [ordemProdutos, produtos, subgrupos, grupos]);
+
+  const BIG = Number.MAX_SAFE_INTEGER;
+  const sortByOrder = <T extends { id: string; nome: string }>(
+    items: T[],
+    orderMap: Map<string, number>
+  ) =>
+    [...items].sort((a, b) => {
+      const oa = orderMap.get(a.id) ?? BIG;
+      const ob = orderMap.get(b.id) ?? BIG;
+      if (oa !== ob) return oa - ob;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+
 
   const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
   const [selectedGrupo, setSelectedGrupo] = useState<string | null>(null);
@@ -60,27 +107,39 @@ export const ProdutosPage = () => {
     item: Departamento | Grupo | Subgrupo | Produto;
   } | null>(null);
 
-  // Filtered data
-  const filteredDepartamentos = departamentos.filter(d => 
-    d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
+  // Filtered data (ordenado conforme a LISTA COLETA GERAL)
+  const filteredDepartamentos = sortByOrder(
+    departamentos.filter(d =>
+      d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
+    ),
+    ordering.departamentoOrder
   );
 
-  const filteredGrupos = grupos.filter(g => 
-    g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
-    (!selectedDepartamento || g.departamentoId === selectedDepartamento)
+  const filteredGrupos = sortByOrder(
+    grupos.filter(g =>
+      g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
+      (!selectedDepartamento || g.departamentoId === selectedDepartamento)
+    ),
+    ordering.grupoOrder
   );
 
-  const filteredSubgrupos = subgrupos.filter(sg => 
-    sg.nome.toLowerCase().includes(searchTerms.subgrupos.toLowerCase()) &&
-    (!selectedGrupo || sg.grupoId === selectedGrupo)
+  const filteredSubgrupos = sortByOrder(
+    subgrupos.filter(sg =>
+      sg.nome.toLowerCase().includes(searchTerms.subgrupos.toLowerCase()) &&
+      (!selectedGrupo || sg.grupoId === selectedGrupo)
+    ),
+    ordering.subgrupoOrder
   );
 
-  const filteredProdutos = produtos.filter(p => {
-    const term = searchTerms.produtos.toLowerCase();
-    const matchesSearch = p.nome.toLowerCase().includes(term) || 
-                          p.codigo.toLowerCase().includes(term);
-    return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
-  });
+  const filteredProdutos = sortByOrder(
+    produtos.filter(p => {
+      const term = searchTerms.produtos.toLowerCase();
+      const matchesSearch = p.nome.toLowerCase().includes(term) ||
+                            p.codigo.toLowerCase().includes(term);
+      return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
+    }),
+    ordering.produtoIndex
+  );
 
   // Handlers
   const handleDepartamentoClick = (departamentoId: string) => {
@@ -421,6 +480,9 @@ export const ProdutosPage = () => {
           <p className="text-sm text-muted-foreground mt-1">
             Visualize e gerencie os produtos cadastrados no sistema
           </p>
+          <p className="text-sm font-medium mt-1">
+            Total de produtos cadastrados: {produtos.length}
+          </p>
         </div>
         <Button onClick={() => setShowAddDialog(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -438,6 +500,7 @@ export const ProdutosPage = () => {
                 <Building2 className="w-5 h-5" />
                 <CardTitle>Departamentos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredDepartamentos.length}</span>
             </div>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -487,6 +550,7 @@ export const ProdutosPage = () => {
                 <FolderOpen className="w-5 h-5" />
                 <CardTitle>Grupos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredGrupos.length}</span>
             </div>
             {selectedDepartamento && (
               <div className="text-xs text-muted-foreground mt-1">
@@ -546,6 +610,7 @@ export const ProdutosPage = () => {
                 <Layers className="w-5 h-5" />
                 <CardTitle>Subgrupos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredSubgrupos.length}</span>
             </div>
             {selectedGrupo && (
               <div className="text-xs text-muted-foreground mt-1">
@@ -605,6 +670,7 @@ export const ProdutosPage = () => {
                 <Package className="w-5 h-5" />
                 <CardTitle>Produtos</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-muted-foreground">{filteredProdutos.length}</span>
             </div>
             {selectedSubgrupo && (
               <div className="text-xs text-muted-foreground mt-1">
