@@ -1009,11 +1009,18 @@ export const generateComparativoPorDepartamentoPDF = (
       ['Diferença',
         ...outrasColetas.flatMap(({ coleta }) => {
           const valores = valoresFinanceiro.get(coleta.supermercadoId)!;
-          const percDiferenca = valores.concorrencia > 0 ? ((valores.diferenca / valores.concorrencia) * 100).toFixed(1) : '0.0';
+          const rawPerc = valores.concorrencia > 0 ? (valores.diferenca / valores.concorrencia) * 100 : 0;
+          // referência mais cara (diferenca < 0) => "+", referência mais barata (diferenca > 0) => "-"
+          const sinal = rawPerc < 0 ? '+' : rawPerc > 0 ? '-' : '';
+          const percDiferenca = sinal + Math.abs(rawPerc).toFixed(1);
           return ['R$ ' + valores.diferenca.toFixed(2), percDiferenca + '%'];
         }),
         'R$ ' + resumoFinanceiro.diferenca.toFixed(2),
-        resumoFinanceiro.concorrencia > 0 ? ((resumoFinanceiro.diferenca / resumoFinanceiro.concorrencia) * 100).toFixed(1) + '%' : '0.0%']
+        (() => {
+          const rawPerc = resumoFinanceiro.concorrencia > 0 ? (resumoFinanceiro.diferenca / resumoFinanceiro.concorrencia) * 100 : 0;
+          const sinal = rawPerc < 0 ? '+' : rawPerc > 0 ? '-' : '';
+          return sinal + Math.abs(rawPerc).toFixed(1) + '%';
+        })()]
     ];
 
     autoTable(doc, {
