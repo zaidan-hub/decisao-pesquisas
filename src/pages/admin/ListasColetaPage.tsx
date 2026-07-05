@@ -43,7 +43,7 @@ const TriCheckbox = ({
       onToggle();
     }}
     className={cn(
-      'peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background',
+      'peer h-4 w-4 shrink-0 rounded-[4px] border border-primary ring-offset-background',
       'data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
       'data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
