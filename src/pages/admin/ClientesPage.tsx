@@ -403,6 +403,15 @@ export const ClientesPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Guia de Preços Personalizado */}
+      <GuiaPrecosEditor
+        open={showGuia}
+        onOpenChange={setShowGuia}
+        cliente={guiaCliente}
+        onSaved={handleSaveGuia}
+      />
     </div>
+
   );
 };
