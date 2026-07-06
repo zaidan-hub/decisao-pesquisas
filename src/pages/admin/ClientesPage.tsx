@@ -288,22 +288,40 @@ export const ClientesPage = () => {
                 ))}
               </div>
 
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingCliente(null);
-                    resetForm();
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingCliente ? 'Atualizar' : 'Cadastrar'}
-                </Button>
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 pt-4">
+                <div>
+                  {editingCliente && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setGuiaCliente(editingCliente);
+                        setShowGuia(true);
+                      }}
+                    >
+                      <Tags className="w-4 h-4 mr-2" />
+                      Guia de Preços Personalizado
+                    </Button>
+                  )}
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingCliente(null);
+                      resetForm();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    {editingCliente ? 'Atualizar' : 'Cadastrar'}
+                  </Button>
+                </div>
               </div>
+
             </form>
           </DialogContent>
         </Dialog>
