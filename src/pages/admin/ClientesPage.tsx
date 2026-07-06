@@ -143,6 +143,25 @@ export const ClientesPage = () => {
     }
   };
 
+  const handleSaveGuia = async (produtos: string[], hierarquia: HierarquiaPersonalizada) => {
+    if (!guiaCliente) return;
+    const guiaPrecos: GuiaPrecos = { produtos, hierarquiaCustomizada: hierarquia };
+    try {
+      const { error } = await supabase
+        .from('clientes' as any)
+        .update({ guia_precos: guiaPrecos as any })
+        .eq('id', guiaCliente.id) as any;
+      if (error) throw error;
+      await refetch();
+      setGuiaCliente(prev => (prev ? { ...prev, guiaPrecos } : prev));
+      toast({ title: 'Guia de preços salvo', description: `${produtos.length} produto(s) no guia.` });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message || 'Erro ao salvar guia de preços', variant: 'destructive' });
+      throw error;
+    }
+  };
+
+
   const addContato = () => {
     const newContato: Contato = {
       id: Date.now().toString(),
