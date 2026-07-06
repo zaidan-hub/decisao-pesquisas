@@ -6,11 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Cliente, Contato } from '@/types';
-import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
+import { Cliente, Contato, GuiaPrecos } from '@/types';
+import { Plus, Search, Edit, Trash2, Phone, Mail, User, Tags } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useClientes } from '@/hooks/useClientes';
 import { supabase } from '@/integrations/supabase/client';
+import { GuiaPrecosEditor } from '@/components/admin/GuiaPrecosEditor';
+import { HierarquiaPersonalizada } from '@/hooks/useRelatoriosPersonalizados';
 
 // Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
