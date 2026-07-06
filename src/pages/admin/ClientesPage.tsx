@@ -27,6 +27,9 @@ export const ClientesPage = () => {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [deleteCliente, setDeleteCliente] = useState<Cliente | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showGuia, setShowGuia] = useState(false);
+  const [guiaCliente, setGuiaCliente] = useState<Cliente | null>(null);
+
 
   // Form state
   const [formData, setFormData] = useState({
