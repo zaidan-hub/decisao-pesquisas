@@ -19,6 +19,7 @@ export type Database = {
           contatos: Json | null
           created_at: string
           data_inicio_contrato: string | null
+          guia_precos: Json | null
           id: string
           nome: string
           situacao: string
@@ -27,6 +28,7 @@ export type Database = {
           contatos?: Json | null
           created_at?: string
           data_inicio_contrato?: string | null
+          guia_precos?: Json | null
           id?: string
           nome: string
           situacao: string
@@ -35,6 +37,7 @@ export type Database = {
           contatos?: Json | null
           created_at?: string
           data_inicio_contrato?: string | null
+          guia_precos?: Json | null
           id?: string
           nome?: string
           situacao?: string

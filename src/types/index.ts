@@ -5,12 +5,25 @@ export interface User {
   role: 'admin' | 'pesquisador';
 }
 
+export interface GuiaPrecos {
+  produtos: string[]; // Array de IDs dos produtos
+  hierarquiaCustomizada?: {
+    ordem?: Array<{ tipo: 'departamento' | 'grupo' | 'subgrupo' | 'produto'; id: string; parentId?: string }>;
+    nomes?: {
+      departamentos?: { [id: string]: string };
+      grupos?: { [id: string]: string };
+      subgrupos?: { [id: string]: string };
+    };
+  };
+}
+
 export interface Cliente {
   id: string;
   nome: string;
   situacao: 'Ativo' | 'Inativo';
   dataInicioContrato?: string;
   contatos: Contato[];
+  guiaPrecos?: GuiaPrecos;
 }
 
 export interface Supermercado {

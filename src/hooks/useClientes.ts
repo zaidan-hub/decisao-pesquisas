@@ -24,7 +24,8 @@ export const useClientes = () => {
         nome: item.nome,
         situacao: item.situacao,
         dataInicioContrato: item.data_inicio_contrato,
-        contatos: item.contatos || []
+        contatos: item.contatos || [],
+        guiaPrecos: item.guia_precos || undefined
       }));
       
       setClientes(mappedData);

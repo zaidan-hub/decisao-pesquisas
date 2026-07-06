@@ -6,11 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Cliente, Contato } from '@/types';
-import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
+import { Cliente, Contato, GuiaPrecos } from '@/types';
+import { Plus, Search, Edit, Trash2, Phone, Mail, User, Tags } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useClientes } from '@/hooks/useClientes';
 import { supabase } from '@/integrations/supabase/client';
+import { GuiaPrecosEditor } from '@/components/admin/GuiaPrecosEditor';
+import { HierarquiaPersonalizada } from '@/hooks/useRelatoriosPersonalizados';
 
 // Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
@@ -25,6 +27,9 @@ export const ClientesPage = () => {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [deleteCliente, setDeleteCliente] = useState<Cliente | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showGuia, setShowGuia] = useState(false);
+  const [guiaCliente, setGuiaCliente] = useState<Cliente | null>(null);
+
 
   // Form state
   const [formData, setFormData] = useState({
@@ -137,6 +142,25 @@ export const ClientesPage = () => {
       }
     }
   };
+
+  const handleSaveGuia = async (produtos: string[], hierarquia: HierarquiaPersonalizada) => {
+    if (!guiaCliente) return;
+    const guiaPrecos: GuiaPrecos = { produtos, hierarquiaCustomizada: hierarquia };
+    try {
+      const { error } = await supabase
+        .from('clientes' as any)
+        .update({ guia_precos: guiaPrecos as any })
+        .eq('id', guiaCliente.id) as any;
+      if (error) throw error;
+      await refetch();
+      setGuiaCliente(prev => (prev ? { ...prev, guiaPrecos } : prev));
+      toast({ title: 'Guia de preços salvo', description: `${produtos.length} produto(s) no guia.` });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message || 'Erro ao salvar guia de preços', variant: 'destructive' });
+      throw error;
+    }
+  };
+
 
   const addContato = () => {
     const newContato: Contato = {
@@ -283,22 +307,40 @@ export const ClientesPage = () => {
                 ))}
               </div>
 
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingCliente(null);
-                    resetForm();
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingCliente ? 'Atualizar' : 'Cadastrar'}
-                </Button>
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 pt-4">
+                <div>
+                  {editingCliente && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setGuiaCliente(editingCliente);
+                        setShowGuia(true);
+                      }}
+                    >
+                      <Tags className="w-4 h-4 mr-2" />
+                      Guia de Preços Personalizado
+                    </Button>
+                  )}
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingCliente(null);
+                      resetForm();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    {editingCliente ? 'Atualizar' : 'Cadastrar'}
+                  </Button>
+                </div>
               </div>
+
             </form>
           </DialogContent>
         </Dialog>
@@ -318,79 +360,30 @@ export const ClientesPage = () => {
       {/* List */}
       <div className="grid gap-4">
         {filteredClientes.map((cliente) => (
-          <Card key={cliente.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-lg">{cliente.nome}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      cliente.situacao === 'Ativo' 
-                        ? 'bg-success/10 text-success' 
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {cliente.situacao}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-                    {cliente.dataInicioContrato && (
-                      <div>
-                        <strong>Contrato:</strong> {formatDate(cliente.dataInicioContrato)}
-                      </div>
-                    )}
-                    <div>
-                      <strong>Contatos:</strong> {cliente.contatos.length}
-                    </div>
-                  </div>
-
-                  {cliente.contatos.length > 0 && (
-                    <div className="mt-3 space-y-1">
-                      {cliente.contatos.map((contato) => (
-                        <div key={contato.id} className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {contato.nome}
-                          </div>
-                          {contato.telefone && (
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {contato.telefone}
-                            </div>
-                          )}
-                          {contato.email && (
-                            <div className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              {contato.email}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(cliente)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDeleteCliente(cliente)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+          <Card
+            key={cliente.id}
+            className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleEdit(cliente)}
+          >
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-lg truncate">{cliente.nome}</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteCliente(cliente);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteCliente} onOpenChange={() => setDeleteCliente(null)}>
@@ -410,6 +403,15 @@ export const ClientesPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Guia de Preços Personalizado */}
+      <GuiaPrecosEditor
+        open={showGuia}
+        onOpenChange={setShowGuia}
+        cliente={guiaCliente}
+        onSaved={handleSaveGuia}
+      />
     </div>
+
   );
 };
