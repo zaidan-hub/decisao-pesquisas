@@ -17,13 +17,13 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { useListas } from '@/hooks/useListas';
+import { useClientes } from '@/hooks/useClientes';
+import { useListaColetaGeralOrdem } from '@/hooks/useListaColetaGeralOrdem';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
 import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateComparativoPorDepartamentoPDF, generateEstatisticasPDF, generateComparadoresPDF } from '@/lib/reportGenerator';
 import { supabase } from '@/integrations/supabase/client';
-import { RelatorioPersonalizadoModal } from '@/components/admin/RelatorioPersonalizadoModal';
-import { Settings2 } from 'lucide-react';
 
 // Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
@@ -38,13 +38,14 @@ export const RelatoriosPage = () => {
   const { departamentos, loading: loadingDepartamentos } = useDepartamentos();
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { listas, loading: loadingListas } = useListas();
+  const { clientes, loading: loadingClientes } = useClientes();
+  const { ordemProdutos } = useListaColetaGeralOrdem();
   const { relatorios, loading: loadingRelatorios, createRelatorio, deleteRelatorio } = useRelatorios();
   const { coletas, loading: loadingColetas } = useColetas();
 
   // Estados para relatório
   const [showRelatorioDialog, setShowRelatorioDialog] = useState(false);
-  const [listaSelecionada, setListaSelecionada] = useState('');
-  const [nomeCliente, setNomeCliente] = useState('');
+  const [clienteSelecionado, setClienteSelecionado] = useState('');
   const [dataRelatorio, setDataRelatorio] = useState(new Date().toISOString().split('T')[0]);
   const [coletasSelecionadas, setColetasSelecionadas] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -64,7 +65,6 @@ export const RelatoriosPage = () => {
 
   // Estado para modal de detalhes do relatório
   const [relatorioDetalhe, setRelatorioDetalhe] = useState<Relatorio | null>(null);
-  const [showPersonalizadoModal, setShowPersonalizadoModal] = useState(false);
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
@@ -73,23 +73,14 @@ export const RelatoriosPage = () => {
 
   // Loading geral
   const isLoading = loadingProdutos || loadingGrupos || loadingSubgrupos || loadingDepartamentos ||
-                    loadingSupermercados || loadingListas || loadingRelatorios || loadingColetas;
+                    loadingSupermercados || loadingListas || loadingClientes || loadingRelatorios || loadingColetas;
 
   // Handlers para relatório (otimizados com useCallback)
   const handleCreateRelatorio = useCallback(async () => {
-    if (!listaSelecionada) {
+    if (!clienteSelecionado) {
       toast({
         title: "Campo obrigatório",
-        description: "Selecione uma lista.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!nomeCliente.trim()) {
-      toast({
-        title: "Campo obrigatório",
-        description: "O nome do cliente é obrigatório.",
+        description: "Selecione um cliente.",
         variant: "destructive"
       });
       return;
@@ -104,18 +95,56 @@ export const RelatoriosPage = () => {
       return;
     }
 
-    const lista = listas.find(l => l.id === listaSelecionada);
-    const produtosLista = lista?.produtos || [];
-    const nomeRelatorioFinal = `${nomeCliente} - ${formatDate(dataRelatorio)}`;
+    const cliente = clientes.find(c => c.id === clienteSelecionado);
+    if (!cliente) {
+      toast({
+        title: "Erro",
+        description: "Cliente não encontrado.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    let produtosLista: string[] = [];
+    let hierarquiaNomes: {
+      departamentos?: { [id: string]: string };
+      grupos?: { [id: string]: string };
+      subgrupos?: { [id: string]: string };
+    } = {};
+
+    const guia = cliente.guiaPrecos;
+    if (guia && guia.produtos && guia.produtos.length > 0) {
+      // Cliente possui Guia de Preços Personalizado -> usa produtos, nomes e ordem do guia
+      const ordem = guia.hierarquiaCustomizada?.ordem || [];
+      const seen = new Set<string>();
+      ordem.forEach(item => {
+        if (item.tipo === 'produto' && guia.produtos.includes(item.id) && !seen.has(item.id)) {
+          produtosLista.push(item.id);
+          seen.add(item.id);
+        }
+      });
+      guia.produtos.forEach(id => {
+        if (!seen.has(id)) {
+          produtosLista.push(id);
+          seen.add(id);
+        }
+      });
+      hierarquiaNomes = guia.hierarquiaCustomizada?.nomes || {};
+    } else {
+      // Sem guia -> usa a lista padrão de produtos (LISTA COLETA GERAL)
+      produtosLista = ordemProdutos.length > 0 ? ordemProdutos : produtos.map(p => p.id);
+    }
+
+    const nomeRelatorioFinal = `${cliente.nome} - ${formatDate(dataRelatorio)}`;
 
     const { error } = await createRelatorio(
       nomeRelatorioFinal,
-      nomeCliente,
+      cliente.nome,
       dataRelatorio,
       produtosLista,
       coletasSelecionadas,
       undefined,
-      lista?.hierarquiaCustomizada // Passar hierarquia customizada da lista
+      hierarquiaNomes
     );
 
     if (error) {
@@ -127,15 +156,14 @@ export const RelatoriosPage = () => {
     } else {
       toast({
         title: "Sucesso",
-        description: "Relatório criado com sucesso!"
+        description: "Guia de preços criado com sucesso!"
       });
       resetRelatorioForm();
     }
-  }, [listaSelecionada, nomeCliente, coletasSelecionadas, listas, dataRelatorio, createRelatorio]);
+  }, [clienteSelecionado, clientes, coletasSelecionadas, dataRelatorio, createRelatorio, ordemProdutos, produtos]);
 
   const resetRelatorioForm = useCallback(() => {
-    setListaSelecionada('');
-    setNomeCliente('');
+    setClienteSelecionado('');
     setDataRelatorio(new Date().toISOString().split('T')[0]);
     setColetasSelecionadas([]);
     setShowRelatorioDialog(false);
@@ -348,43 +376,40 @@ export const RelatoriosPage = () => {
           <DialogTrigger asChild>
             <Button onClick={() => resetRelatorioForm()}>
               <Plus className="w-4 h-4 mr-2" />
-              Novo Relatório
+              Novo Guia de Preços
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Novo Relatório</DialogTitle>
+              <DialogTitle>Novo Guia de Preços</DialogTitle>
               <DialogDescription>
-                Selecione uma lista e as coletas para gerar o relatório
+                Selecione o cliente e as coletas para gerar o guia de preços
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Lista *</Label>
-                <Select value={listaSelecionada} onValueChange={setListaSelecionada}>
+                <Label>Clientes *</Label>
+                <Select value={clienteSelecionado} onValueChange={setClienteSelecionado}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma lista" />
+                    <SelectValue placeholder="Selecione um cliente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {listas.map(lista => (
-                      <SelectItem key={lista.id} value={lista.id}>
-                        {lista.nome} ({lista.produtos.length} produtos)
+                    {clientes.map(cliente => (
+                      <SelectItem key={cliente.id} value={cliente.id}>
+                        {cliente.nome}
+                        {cliente.guiaPrecos && cliente.guiaPrecos.produtos.length > 0
+                          ? ` (guia personalizado: ${cliente.guiaPrecos.produtos.length} produtos)`
+                          : ' (lista padrão)'}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-muted-foreground">
+                  Escolha o cliente que receberá o guia
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nomeCliente">Nome do Cliente *</Label>
-                <Input
-                  id="nomeCliente"
-                  value={nomeCliente}
-                  onChange={(e) => setNomeCliente(e.target.value)}
-                  placeholder="Digite o nome do cliente"
-                />
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="dataRelatorio">Data *</Label>
@@ -433,7 +458,7 @@ export const RelatoriosPage = () => {
                   Cancelar
                 </Button>
                 <Button onClick={handleCreateRelatorio}>
-                  Criar Relatório
+                  Criar Guia de Preços
                 </Button>
               </div>
             </div>
@@ -504,10 +529,6 @@ export const RelatoriosPage = () => {
                     <Button variant="outline" size="sm" onClick={() => handleOpenEstatisticas(rel)} title="Estatísticas">
                       <FileDown className="w-4 h-4 mr-1" />
                       Estatísticas
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setShowPersonalizadoModal(true)} title="Relatório Personalizado">
-                      <Settings2 className="w-4 h-4 mr-1" />
-                      Personalizado
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => setDeletingId(rel.id)} title="Excluir">
                       <Trash2 className="w-4 h-4" />
@@ -747,11 +768,6 @@ export const RelatoriosPage = () => {
           })()}
         </DialogContent>
       </Dialog>
-
-      <RelatorioPersonalizadoModal
-        open={showPersonalizadoModal}
-        onOpenChange={setShowPersonalizadoModal}
-      />
     </div>
   );
 };
