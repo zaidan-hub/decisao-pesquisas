@@ -73,7 +73,7 @@ export const RelatoriosPage = () => {
 
   // Loading geral
   const isLoading = loadingProdutos || loadingGrupos || loadingSubgrupos || loadingDepartamentos ||
-                    loadingSupermercados || loadingListas || loadingRelatorios || loadingColetas;
+                    loadingSupermercados || loadingListas || loadingClientes || loadingRelatorios || loadingColetas;
 
   // Handlers para relatório (otimizados com useCallback)
   const handleCreateRelatorio = useCallback(async () => {
