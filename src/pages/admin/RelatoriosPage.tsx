@@ -38,6 +38,8 @@ export const RelatoriosPage = () => {
   const { departamentos, loading: loadingDepartamentos } = useDepartamentos();
   const { supermercados, loading: loadingSupermercados } = useSupermercados();
   const { listas, loading: loadingListas } = useListas();
+  const { clientes, loading: loadingClientes } = useClientes();
+  const { ordemProdutos } = useListaColetaGeralOrdem();
   const { relatorios, loading: loadingRelatorios, createRelatorio, deleteRelatorio } = useRelatorios();
   const { coletas, loading: loadingColetas } = useColetas();
 
