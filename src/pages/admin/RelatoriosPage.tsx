@@ -17,13 +17,13 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useSupermercados } from '@/hooks/useSupermercados';
 import { useListas } from '@/hooks/useListas';
+import { useClientes } from '@/hooks/useClientes';
+import { useListaColetaGeralOrdem } from '@/hooks/useListaColetaGeralOrdem';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
 import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateComparativoPorDepartamentoPDF, generateEstatisticasPDF, generateComparadoresPDF } from '@/lib/reportGenerator';
 import { supabase } from '@/integrations/supabase/client';
-import { RelatorioPersonalizadoModal } from '@/components/admin/RelatorioPersonalizadoModal';
-import { Settings2 } from 'lucide-react';
 
 // Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
