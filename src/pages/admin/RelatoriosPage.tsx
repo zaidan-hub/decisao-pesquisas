@@ -65,7 +65,6 @@ export const RelatoriosPage = () => {
 
   // Estado para modal de detalhes do relatório
   const [relatorioDetalhe, setRelatorioDetalhe] = useState<Relatorio | null>(null);
-  const [showPersonalizadoModal, setShowPersonalizadoModal] = useState(false);
   // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
