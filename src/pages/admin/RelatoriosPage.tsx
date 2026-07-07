@@ -45,8 +45,7 @@ export const RelatoriosPage = () => {
 
   // Estados para relatório
   const [showRelatorioDialog, setShowRelatorioDialog] = useState(false);
-  const [listaSelecionada, setListaSelecionada] = useState('');
-  const [nomeCliente, setNomeCliente] = useState('');
+  const [clienteSelecionado, setClienteSelecionado] = useState('');
   const [dataRelatorio, setDataRelatorio] = useState(new Date().toISOString().split('T')[0]);
   const [coletasSelecionadas, setColetasSelecionadas] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
