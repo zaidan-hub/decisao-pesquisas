@@ -377,43 +377,40 @@ export const RelatoriosPage = () => {
           <DialogTrigger asChild>
             <Button onClick={() => resetRelatorioForm()}>
               <Plus className="w-4 h-4 mr-2" />
-              Novo Relatório
+              Novo Guia de Preços
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Novo Relatório</DialogTitle>
+              <DialogTitle>Novo Guia de Preços</DialogTitle>
               <DialogDescription>
-                Selecione uma lista e as coletas para gerar o relatório
+                Selecione o cliente e as coletas para gerar o guia de preços
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Lista *</Label>
-                <Select value={listaSelecionada} onValueChange={setListaSelecionada}>
+                <Label>Clientes *</Label>
+                <Select value={clienteSelecionado} onValueChange={setClienteSelecionado}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma lista" />
+                    <SelectValue placeholder="Selecione um cliente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {listas.map(lista => (
-                      <SelectItem key={lista.id} value={lista.id}>
-                        {lista.nome} ({lista.produtos.length} produtos)
+                    {clientes.map(cliente => (
+                      <SelectItem key={cliente.id} value={cliente.id}>
+                        {cliente.nome}
+                        {cliente.guiaPrecos && cliente.guiaPrecos.produtos.length > 0
+                          ? ` (guia personalizado: ${cliente.guiaPrecos.produtos.length} produtos)`
+                          : ' (lista padrão)'}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-muted-foreground">
+                  Escolha o cliente que receberá o guia
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nomeCliente">Nome do Cliente *</Label>
-                <Input
-                  id="nomeCliente"
-                  value={nomeCliente}
-                  onChange={(e) => setNomeCliente(e.target.value)}
-                  placeholder="Digite o nome do cliente"
-                />
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="dataRelatorio">Data *</Label>
