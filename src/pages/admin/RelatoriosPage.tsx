@@ -768,12 +768,6 @@ export const RelatoriosPage = () => {
             );
           })()}
         </DialogContent>
-      </Dialog>
-
-      <RelatorioPersonalizadoModal
-        open={showPersonalizadoModal}
-        onOpenChange={setShowPersonalizadoModal}
-      />
     </div>
   );
 };
