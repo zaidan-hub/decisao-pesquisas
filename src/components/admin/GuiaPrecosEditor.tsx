@@ -498,7 +498,7 @@ export const GuiaPrecosEditor = ({ open, onOpenChange, cliente, onSaved }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Guia de Preços Personalizado</DialogTitle>
           <DialogDescription>
