@@ -459,7 +459,7 @@ export const RelatoriosPage = () => {
                   Cancelar
                 </Button>
                 <Button onClick={handleCreateRelatorio}>
-                  Criar Relatório
+                  Criar Guia de Preços
                 </Button>
               </div>
             </div>
