@@ -768,6 +768,7 @@ export const RelatoriosPage = () => {
             );
           })()}
         </DialogContent>
+      </Dialog>
     </div>
   );
 };
