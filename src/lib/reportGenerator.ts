@@ -1144,19 +1144,36 @@ export const generateEstatisticasPDF = (
     });
   });
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  estatisticas.forEach((stat) => {
-    if (yPos > 270) {
-      doc.addPage();
-      yPos = 20;
+  // Tabela: cada supermercado é uma coluna
+  const statHeaders = ['', ...estatisticas.map((s) => {
+    const col = coletasPorSupermercado.get(
+      Array.from(coletasPorSupermercado.keys()).find(
+        (id) => coletasPorSupermercado.get(id)?.nome === s.nome
+      ) || ''
+    );
+    const supermercado = data.supermercados.find(sm => sm.id === col?.coleta.supermercadoId);
+    return supermercado?.abreviacao || s.nome;
+  })];
+
+  const statBody = [
+    ['Itens encontrados', ...estatisticas.map((s) => String(s.itensEncontrados))],
+    ['Menor preço (vezes)', ...estatisticas.map((s) => String(s.menorPreco))],
+    ['Maior preço (vezes)', ...estatisticas.map((s) => String(s.maiorPreco))],
+  ];
+
+  autoTable(doc, {
+    head: [statHeaders],
+    body: statBody,
+    startY: yPos,
+    styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+    headStyles: { fillColor: [66, 66, 66], halign: 'center' },
+    columnStyles: {
+      0: { halign: 'left', fontStyle: 'bold' }
     }
-    doc.text(`${stat.nome}:`, 14, yPos);
-    doc.text(`  Itens encontrados: ${stat.itensEncontrados}`, 14, yPos + 5);
-    doc.text(`  Menor preço: ${stat.menorPreco} vezes`, 14, yPos + 10);
-    doc.text(`  Maior preço: ${stat.maiorPreco} vezes`, 14, yPos + 15);
-    yPos += 22;
   });
+
+  yPos = (doc as any).lastAutoTable.finalY + 5;
+
 
   // Produtos com diferença superior ao percentual mínimo
   yPos += 5;
