@@ -1106,6 +1106,8 @@ export const generateEstatisticasPDF = (
   const estatisticas: any[] = [];
 
   coletasPorSupermercado.forEach(({ nome, coleta }) => {
+    const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+    const abreviacao = supermercado?.abreviacao || nome;
     let itensEncontrados = 0;
     let menorPreco = 0;
     let maiorPreco = 0;
