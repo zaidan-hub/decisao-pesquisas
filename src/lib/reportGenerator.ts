@@ -1140,6 +1140,7 @@ export const generateEstatisticasPDF = (
 
     estatisticas.push({
       nome,
+      abreviacao,
       itensEncontrados,
       menorPreco,
       maiorPreco
@@ -1147,15 +1148,7 @@ export const generateEstatisticasPDF = (
   });
 
   // Tabela: cada supermercado é uma coluna
-  const statHeaders = ['', ...estatisticas.map((s) => {
-    const col = coletasPorSupermercado.get(
-      Array.from(coletasPorSupermercado.keys()).find(
-        (id) => coletasPorSupermercado.get(id)?.nome === s.nome
-      ) || ''
-    );
-    const supermercado = data.supermercados.find(sm => sm.id === col?.coleta.supermercadoId);
-    return supermercado?.abreviacao || s.nome;
-  })];
+  const statHeaders = ['', ...estatisticas.map((s) => s.abreviacao)];
 
   const statBody = [
     ['Itens encontrados', ...estatisticas.map((s) => String(s.itensEncontrados))],
