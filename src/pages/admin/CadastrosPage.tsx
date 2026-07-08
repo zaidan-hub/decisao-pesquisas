@@ -27,7 +27,6 @@ export const CadastrosPage = () => {
     { id: 'supermercados', label: 'Supermercados', icon: Store, description: 'Gerenciar supermercados cadastrados' },
     { id: 'pesquisadores', label: 'Pesquisadores', icon: UserCheck, description: 'Gerenciar pesquisadores ativos' },
     { id: 'produtos', label: 'Produtos', icon: Package, description: 'Gerenciar produtos, grupos e subgrupos' },
-    { id: 'listas', label: 'Listas', icon: List, description: 'Gerenciar listas de produtos' },
   ];
 
   const renderContent = () => {
@@ -77,7 +76,6 @@ export const CadastrosPage = () => {
             )}
             {activeSection === 'pesquisadores' && <PesquisadoresPage />}
             {activeSection === 'produtos' && <ProdutosPage />}
-            {activeSection === 'listas' && <ListasPage />}
           </div>
         </div>
       );
