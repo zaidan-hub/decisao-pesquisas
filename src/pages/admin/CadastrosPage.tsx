@@ -6,19 +6,17 @@ import { SupermercadosPage } from './SupermercadosPage';
 import { SupermercadoDetailPage } from './SupermercadoDetailPage';
 import { PesquisadoresPage } from './PesquisadoresPage';
 import { ProdutosPage } from './ProdutosPage';
-import { ListasPage } from './ListasPage';
 import { Supermercado } from '@/types';
 import { 
   Users, 
   Store, 
   Package, 
-  List,
   UserCheck,
   ArrowLeft,
   ChevronRight
 } from 'lucide-react';
 
-type CadastroOption = 'overview' | 'clientes' | 'supermercados' | 'pesquisadores' | 'produtos' | 'listas';
+type CadastroOption = 'overview' | 'clientes' | 'supermercados' | 'pesquisadores' | 'produtos';
 
 export const CadastrosPage = () => {
   const [activeSection, setActiveSection] = useState<CadastroOption>('overview');
