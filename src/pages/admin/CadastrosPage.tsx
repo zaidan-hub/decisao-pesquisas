@@ -6,19 +6,17 @@ import { SupermercadosPage } from './SupermercadosPage';
 import { SupermercadoDetailPage } from './SupermercadoDetailPage';
 import { PesquisadoresPage } from './PesquisadoresPage';
 import { ProdutosPage } from './ProdutosPage';
-import { ListasPage } from './ListasPage';
 import { Supermercado } from '@/types';
 import { 
   Users, 
   Store, 
   Package, 
-  List,
   UserCheck,
   ArrowLeft,
   ChevronRight
 } from 'lucide-react';
 
-type CadastroOption = 'overview' | 'clientes' | 'supermercados' | 'pesquisadores' | 'produtos' | 'listas';
+type CadastroOption = 'overview' | 'clientes' | 'supermercados' | 'pesquisadores' | 'produtos';
 
 export const CadastrosPage = () => {
   const [activeSection, setActiveSection] = useState<CadastroOption>('overview');
@@ -29,7 +27,6 @@ export const CadastrosPage = () => {
     { id: 'supermercados', label: 'Supermercados', icon: Store, description: 'Gerenciar supermercados cadastrados' },
     { id: 'pesquisadores', label: 'Pesquisadores', icon: UserCheck, description: 'Gerenciar pesquisadores ativos' },
     { id: 'produtos', label: 'Produtos', icon: Package, description: 'Gerenciar produtos, grupos e subgrupos' },
-    { id: 'listas', label: 'Listas', icon: List, description: 'Gerenciar listas de produtos' },
   ];
 
   const renderContent = () => {
@@ -79,7 +76,6 @@ export const CadastrosPage = () => {
             )}
             {activeSection === 'pesquisadores' && <PesquisadoresPage />}
             {activeSection === 'produtos' && <ProdutosPage />}
-            {activeSection === 'listas' && <ListasPage />}
           </div>
         </div>
       );
