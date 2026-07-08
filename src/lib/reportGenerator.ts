@@ -563,9 +563,11 @@ export const generateComparativoConcorrenciaPDF = (
           const dados = dadosFisico.get(coleta.supermercadoId)!;
           dados.total++;
           
-          if (precoConcorrente < precoRef) {
+          // "Menor Pr." = referência teve MENOR preço que a coluna (referência mais barata)
+          if (precoConcorrente > precoRef) {
             dados.menorPreco++;
-          } else if (precoConcorrente > precoRef) {
+          } else if (precoConcorrente < precoRef) {
+            // "Maior Pr." = referência teve MAIOR preço que a coluna (referência mais cara)
             dados.maiorPreco++;
           } else {
             dados.precoIgual++;
