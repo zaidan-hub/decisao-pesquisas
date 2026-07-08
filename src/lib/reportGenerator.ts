@@ -1210,6 +1210,10 @@ export const generateEstatisticasPDF = (
     }
   });
 
+  // Ordenar por diferença decrescente
+  produtosComDiferenca.sort((a, b) => parseFloat(b.diferenca) - parseFloat(a.diferenca));
+
+
   if (produtosComDiferenca.length === 0) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
