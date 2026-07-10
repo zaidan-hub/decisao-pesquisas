@@ -109,38 +109,34 @@ export const ProdutosPage = () => {
     item: Departamento | Grupo | Subgrupo | Produto;
   } | null>(null);
 
-  // Filtered data (ordenado conforme a LISTA COLETA GERAL)
-  const filteredDepartamentos = sortByOrder(
+  // Filtered data (departamentos em ordem alfabética; demais pela ordem manual)
+  const filteredDepartamentos = sortByNome(
     departamentos.filter(d =>
       d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
-    ),
-    ordering.departamentoOrder
+    )
   );
 
-  const filteredGrupos = sortByOrder(
+  const filteredGrupos = sortByOrdem(
     grupos.filter(g =>
       g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
       (!selectedDepartamento || g.departamentoId === selectedDepartamento)
-    ),
-    ordering.grupoOrder
+    )
   );
 
-  const filteredSubgrupos = sortByOrder(
+  const filteredSubgrupos = sortByOrdem(
     subgrupos.filter(sg =>
       sg.nome.toLowerCase().includes(searchTerms.subgrupos.toLowerCase()) &&
       (!selectedGrupo || sg.grupoId === selectedGrupo)
-    ),
-    ordering.subgrupoOrder
+    )
   );
 
-  const filteredProdutos = sortByOrder(
+  const filteredProdutos = sortByOrdem(
     produtos.filter(p => {
       const term = searchTerms.produtos.toLowerCase();
       const matchesSearch = p.nome.toLowerCase().includes(term) ||
                             p.codigo.toLowerCase().includes(term);
       return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
-    }),
-    ordering.produtoIndex
+    })
   );
 
   // Handlers
