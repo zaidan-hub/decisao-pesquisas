@@ -139,7 +139,16 @@ export const ProdutosPage = () => {
     })
   );
 
+  // Handlers de reordenação (setas para cima/baixo)
+  const moverGrupo = (g: Grupo, dir: 'up' | 'down') =>
+    moverItem(filteredGrupos, g, dir, (a, b) => a.departamentoId === b.departamentoId, 'departamento', 'grupos', refetchGrupos);
+  const moverSubgrupo = (s: Subgrupo, dir: 'up' | 'down') =>
+    moverItem(filteredSubgrupos, s, dir, (a, b) => a.grupoId === b.grupoId, 'grupo', 'subgrupos', refetchSubgrupos);
+  const moverProduto = (p: Produto, dir: 'up' | 'down') =>
+    moverItem(filteredProdutos, p, dir, (a, b) => a.subgrupoId === b.subgrupoId, 'subgrupo', 'produtos', refetchProdutos);
+
   // Handlers
+
   const handleDepartamentoClick = (departamentoId: string) => {
     if (selectedDepartamento === departamentoId) {
       setSelectedDepartamento(null);
