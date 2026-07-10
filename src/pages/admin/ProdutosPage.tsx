@@ -737,9 +737,14 @@ export const ProdutosPage = () => {
                   onDoubleClick={() => setEditingProduto(produto)}
                   className="p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                 >
-                  <div className="font-medium">{produto.nome}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{produto.nome}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
+                      </div>
+                    </div>
+                    <OrderArrows onUp={() => moverProduto(produto, 'up')} onDown={() => moverProduto(produto, 'down')} />
                   </div>
                 </div>
               ))
