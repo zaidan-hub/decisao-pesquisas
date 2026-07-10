@@ -14,7 +14,7 @@ export const useProdutos = (subgrupoId?: string, produtoIds?: string[]) => {
     try {
       let query = supabase
         .from('produtos')
-        .select('id, codigo, nome, grupo_id, subgrupo_id, unidade_medida, quantidade, mais_barato')
+        .select('id, codigo, nome, grupo_id, subgrupo_id, unidade_medida, quantidade, mais_barato, ordem')
         .order('nome');
 
       if (subgrupoId) {
@@ -39,7 +39,8 @@ export const useProdutos = (subgrupoId?: string, produtoIds?: string[]) => {
         subgrupoId: item.subgrupo_id,
         unidadeMedida: item.unidade_medida,
         quantidade: item.quantidade,
-        maisBarato: Boolean(item.mais_barato)
+        maisBarato: Boolean(item.mais_barato),
+        ordem: (item as any).ordem ?? undefined
       }));
       
       setProdutos(mappedData);

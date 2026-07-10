@@ -193,6 +193,7 @@ export type Database = {
           departamento_id: string | null
           id: string
           nome: string
+          ordem: number | null
         }
         Insert: {
           codigo: string
@@ -200,6 +201,7 @@ export type Database = {
           departamento_id?: string | null
           id?: string
           nome: string
+          ordem?: number | null
         }
         Update: {
           codigo?: string
@@ -207,6 +209,7 @@ export type Database = {
           departamento_id?: string | null
           id?: string
           nome?: string
+          ordem?: number | null
         }
         Relationships: [
           {
@@ -286,6 +289,7 @@ export type Database = {
           id: string
           mais_barato: boolean
           nome: string
+          ordem: number | null
           quantidade: string | null
           subgrupo_id: string
           unidade_medida: string
@@ -297,6 +301,7 @@ export type Database = {
           id?: string
           mais_barato?: boolean
           nome: string
+          ordem?: number | null
           quantidade?: string | null
           subgrupo_id: string
           unidade_medida: string
@@ -308,6 +313,7 @@ export type Database = {
           id?: string
           mais_barato?: boolean
           nome?: string
+          ordem?: number | null
           quantidade?: string | null
           subgrupo_id?: string
           unidade_medida?: string
@@ -452,6 +458,7 @@ export type Database = {
           grupo_id: string
           id: string
           nome: string
+          ordem: number | null
         }
         Insert: {
           codigo: string
@@ -459,6 +466,7 @@ export type Database = {
           grupo_id: string
           id?: string
           nome: string
+          ordem?: number | null
         }
         Update: {
           codigo?: string
@@ -466,6 +474,7 @@ export type Database = {
           grupo_id?: string
           id?: string
           nome?: string
+          ordem?: number | null
         }
         Relationships: [
           {

@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Departamento, Grupo, Subgrupo, Produto } from '@/types';
-import { Search, Package, Layers, FolderOpen, Building2, Plus, Trash2 } from 'lucide-react';
+import { Search, Package, Layers, FolderOpen, Building2, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
@@ -15,7 +15,27 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useListaColetaGeralOrdem } from '@/hooks/useListaColetaGeralOrdem';
+
+const OrderArrows = ({ onUp, onDown }: { onUp: () => void; onDown: () => void }) => (
+  <div className="flex flex-col shrink-0 -my-1">
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onUp(); }}
+      className="p-0.5 rounded hover:bg-foreground/10"
+      title="Mover para cima"
+    >
+      <ArrowUp className="w-3.5 h-3.5" />
+    </button>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onDown(); }}
+      className="p-0.5 rounded hover:bg-foreground/10"
+      title="Mover para baixo"
+    >
+      <ArrowDown className="w-3.5 h-3.5" />
+    </button>
+  </div>
+);
 
 export const ProdutosPage = () => {
   // Buscar dados do banco
@@ -23,50 +43,53 @@ export const ProdutosPage = () => {
   const { grupos, loading: loadingGrupos, refetch: refetchGrupos } = useGrupos();
   const { subgrupos, loading: loadingSubgrupos, refetch: refetchSubgrupos } = useSubgrupos();
   const { produtos, loading: loadingProdutos, refetch: refetchProdutos } = useProdutos();
-  const { ordemProdutos } = useListaColetaGeralOrdem();
-
-  // Ordenação baseada na "LISTA COLETA GERAL"
-  const ordering = useMemo(() => {
-    const produtoIndex = new Map<string, number>();
-    ordemProdutos.forEach((id, i) => {
-      if (!produtoIndex.has(id)) produtoIndex.set(id, i);
-    });
-
-    const produtoById = new Map(produtos.map(p => [p.id, p]));
-    const subgrupoById = new Map(subgrupos.map(s => [s.id, s]));
-    const grupoById = new Map(grupos.map(g => [g.id, g]));
-
-    const subgrupoOrder = new Map<string, number>();
-    const grupoOrder = new Map<string, number>();
-    const departamentoOrder = new Map<string, number>();
-
-    ordemProdutos.forEach((pid, i) => {
-      const prod = produtoById.get(pid);
-      if (!prod) return;
-      const sgId = prod.subgrupoId;
-      if (sgId && !subgrupoOrder.has(sgId)) subgrupoOrder.set(sgId, i);
-      const sg = sgId ? subgrupoById.get(sgId) : undefined;
-      const gId = sg?.grupoId;
-      if (gId && !grupoOrder.has(gId)) grupoOrder.set(gId, i);
-      const grupo = gId ? grupoById.get(gId) : undefined;
-      const dId = grupo?.departamentoId;
-      if (dId && !departamentoOrder.has(dId)) departamentoOrder.set(dId, i);
-    });
-
-    return { produtoIndex, subgrupoOrder, grupoOrder, departamentoOrder };
-  }, [ordemProdutos, produtos, subgrupos, grupos]);
 
   const BIG = Number.MAX_SAFE_INTEGER;
-  const sortByOrder = <T extends { id: string; nome: string }>(
-    items: T[],
-    orderMap: Map<string, number>
-  ) =>
+  // Ordenação manual: usa o campo "ordem" (com desempate alfabético).
+  const sortByOrdem = <T extends { id: string; nome: string; ordem?: number }>(items: T[]) =>
     [...items].sort((a, b) => {
-      const oa = orderMap.get(a.id) ?? BIG;
-      const ob = orderMap.get(b.id) ?? BIG;
+      const oa = a.ordem ?? BIG;
+      const ob = b.ordem ?? BIG;
       if (oa !== ob) return oa - ob;
       return a.nome.localeCompare(b.nome, 'pt-BR');
     });
+
+  const sortByNome = <T extends { nome: string }>(items: T[]) =>
+    [...items].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  // Troca a posição (campo "ordem") de dois itens do mesmo nível.
+  const moverItem = async <T extends { id: string; nome: string; ordem?: number }>(
+    lista: T[],
+    item: T,
+    direcao: 'up' | 'down',
+    mesmoPai: (a: T, b: T) => boolean,
+    labelPai: string,
+    table: 'grupos' | 'subgrupos' | 'produtos',
+    refetch: () => void
+  ) => {
+    const idx = lista.findIndex((x) => x.id === item.id);
+    if (idx === -1) return;
+    const vizinhoIdx = direcao === 'up' ? idx - 1 : idx + 1;
+    if (vizinhoIdx < 0 || vizinhoIdx >= lista.length) return;
+    const vizinho = lista[vizinhoIdx];
+    if (!mesmoPai(item, vizinho)) {
+      toast.error(`Só é possível reordenar dentro do mesmo ${labelPai}.`);
+      return;
+    }
+    const ordemItem = item.ordem ?? idx + 1;
+    const ordemVizinho = vizinho.ordem ?? vizinhoIdx + 1;
+    try {
+      const { error: e1 } = await supabase.from(table).update({ ordem: ordemVizinho } as any).eq('id', item.id);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from(table).update({ ordem: ordemItem } as any).eq('id', vizinho.id);
+      if (e2) throw e2;
+      refetch();
+    } catch (error) {
+      console.error('Erro ao reordenar:', error);
+      toast.error('Erro ao reordenar item');
+    }
+  };
+
 
 
 
@@ -107,41 +130,46 @@ export const ProdutosPage = () => {
     item: Departamento | Grupo | Subgrupo | Produto;
   } | null>(null);
 
-  // Filtered data (ordenado conforme a LISTA COLETA GERAL)
-  const filteredDepartamentos = sortByOrder(
+  // Filtered data (departamentos em ordem alfabética; demais pela ordem manual)
+  const filteredDepartamentos = sortByNome(
     departamentos.filter(d =>
       d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
-    ),
-    ordering.departamentoOrder
+    )
   );
 
-  const filteredGrupos = sortByOrder(
+  const filteredGrupos = sortByOrdem(
     grupos.filter(g =>
       g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
       (!selectedDepartamento || g.departamentoId === selectedDepartamento)
-    ),
-    ordering.grupoOrder
+    )
   );
 
-  const filteredSubgrupos = sortByOrder(
+  const filteredSubgrupos = sortByOrdem(
     subgrupos.filter(sg =>
       sg.nome.toLowerCase().includes(searchTerms.subgrupos.toLowerCase()) &&
       (!selectedGrupo || sg.grupoId === selectedGrupo)
-    ),
-    ordering.subgrupoOrder
+    )
   );
 
-  const filteredProdutos = sortByOrder(
+  const filteredProdutos = sortByOrdem(
     produtos.filter(p => {
       const term = searchTerms.produtos.toLowerCase();
       const matchesSearch = p.nome.toLowerCase().includes(term) ||
                             p.codigo.toLowerCase().includes(term);
       return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
-    }),
-    ordering.produtoIndex
+    })
   );
 
+  // Handlers de reordenação (setas para cima/baixo)
+  const moverGrupo = (g: Grupo, dir: 'up' | 'down') =>
+    moverItem(filteredGrupos, g, dir, (a, b) => a.departamentoId === b.departamentoId, 'departamento', 'grupos', refetchGrupos);
+  const moverSubgrupo = (s: Subgrupo, dir: 'up' | 'down') =>
+    moverItem(filteredSubgrupos, s, dir, (a, b) => a.grupoId === b.grupoId, 'grupo', 'subgrupos', refetchSubgrupos);
+  const moverProduto = (p: Produto, dir: 'up' | 'down') =>
+    moverItem(filteredProdutos, p, dir, (a, b) => a.subgrupoId === b.subgrupoId, 'subgrupo', 'produtos', refetchProdutos);
+
   // Handlers
+
   const handleDepartamentoClick = (departamentoId: string) => {
     if (selectedDepartamento === departamentoId) {
       setSelectedDepartamento(null);
@@ -294,13 +322,18 @@ export const ProdutosPage = () => {
           return;
         }
         
+        const proximaOrdemGrupo = Math.max(
+          0,
+          ...grupos.filter(g => g.departamentoId === newItem.departamentoId).map(g => g.ordem ?? 0)
+        ) + 1;
         const { error } = await supabase
           .from('grupos')
           .insert({ 
             codigo: newItem.codigo, 
             nome: newItem.nome,
-            departamento_id: newItem.departamentoId
-          });
+            departamento_id: newItem.departamentoId,
+            ordem: proximaOrdemGrupo
+          } as any);
         
         if (error) throw error;
         refetchGrupos();
@@ -312,13 +345,18 @@ export const ProdutosPage = () => {
           return;
         }
         
+        const proximaOrdemSub = Math.max(
+          0,
+          ...subgrupos.filter(s => s.grupoId === newItem.grupoId).map(s => s.ordem ?? 0)
+        ) + 1;
         const { error } = await supabase
           .from('subgrupos')
           .insert({ 
             codigo: newItem.codigo, 
             nome: newItem.nome,
-            grupo_id: newItem.grupoId
-          });
+            grupo_id: newItem.grupoId,
+            ordem: proximaOrdemSub
+          } as any);
         
         if (error) throw error;
         refetchSubgrupos();
@@ -354,6 +392,10 @@ export const ProdutosPage = () => {
           return;
         }
         
+        const proximaOrdemProduto = Math.max(
+          0,
+          ...produtos.filter(p => p.subgrupoId === newItem.subgrupoId).map(p => p.ordem ?? 0)
+        ) + 1;
         const { error } = await supabase
           .from('produtos')
           .insert({ 
@@ -363,8 +405,9 @@ export const ProdutosPage = () => {
             subgrupo_id: newItem.subgrupoId,
             unidade_medida: newItem.unidadeMedida,
             quantidade: newItem.quantidade || null,
-            mais_barato: newItem.maisBarato
-          });
+            mais_barato: newItem.maisBarato,
+            ordem: proximaOrdemProduto
+          } as any);
         
         if (error) throw error;
         refetchProdutos();
@@ -584,8 +627,13 @@ export const ProdutosPage = () => {
                       : 'hover:bg-accent'
                   }`}
                 >
-                  <div className="font-medium">{grupo.nome}</div>
-                  <div className="text-xs opacity-70">{grupo.codigo}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{grupo.nome}</div>
+                      <div className="text-xs opacity-70">{grupo.codigo}</div>
+                    </div>
+                    <OrderArrows onUp={() => moverGrupo(grupo, 'up')} onDown={() => moverGrupo(grupo, 'down')} />
+                  </div>
                 </div>
               ))
             )}
@@ -644,8 +692,13 @@ export const ProdutosPage = () => {
                       : 'hover:bg-accent'
                   }`}
                 >
-                  <div className="font-medium">{subgrupo.nome}</div>
-                  <div className="text-xs opacity-70">{subgrupo.codigo}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{subgrupo.nome}</div>
+                      <div className="text-xs opacity-70">{subgrupo.codigo}</div>
+                    </div>
+                    <OrderArrows onUp={() => moverSubgrupo(subgrupo, 'up')} onDown={() => moverSubgrupo(subgrupo, 'down')} />
+                  </div>
                 </div>
               ))
             )}
@@ -699,9 +752,14 @@ export const ProdutosPage = () => {
                   onDoubleClick={() => setEditingProduto(produto)}
                   className="p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
                 >
-                  <div className="font-medium">{produto.nome}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{produto.nome}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {produto.codigo} • {produto.quantidade ? `${produto.quantidade} ` : ''}{produto.unidadeMedida}
+                      </div>
+                    </div>
+                    <OrderArrows onUp={() => moverProduto(produto, 'up')} onDown={() => moverProduto(produto, 'down')} />
                   </div>
                 </div>
               ))
