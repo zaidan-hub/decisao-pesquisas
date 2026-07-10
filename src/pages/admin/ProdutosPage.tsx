@@ -22,50 +22,53 @@ export const ProdutosPage = () => {
   const { grupos, loading: loadingGrupos, refetch: refetchGrupos } = useGrupos();
   const { subgrupos, loading: loadingSubgrupos, refetch: refetchSubgrupos } = useSubgrupos();
   const { produtos, loading: loadingProdutos, refetch: refetchProdutos } = useProdutos();
-  const { ordemProdutos } = useListaColetaGeralOrdem();
-
-  // Ordenação baseada na "LISTA COLETA GERAL"
-  const ordering = useMemo(() => {
-    const produtoIndex = new Map<string, number>();
-    ordemProdutos.forEach((id, i) => {
-      if (!produtoIndex.has(id)) produtoIndex.set(id, i);
-    });
-
-    const produtoById = new Map(produtos.map(p => [p.id, p]));
-    const subgrupoById = new Map(subgrupos.map(s => [s.id, s]));
-    const grupoById = new Map(grupos.map(g => [g.id, g]));
-
-    const subgrupoOrder = new Map<string, number>();
-    const grupoOrder = new Map<string, number>();
-    const departamentoOrder = new Map<string, number>();
-
-    ordemProdutos.forEach((pid, i) => {
-      const prod = produtoById.get(pid);
-      if (!prod) return;
-      const sgId = prod.subgrupoId;
-      if (sgId && !subgrupoOrder.has(sgId)) subgrupoOrder.set(sgId, i);
-      const sg = sgId ? subgrupoById.get(sgId) : undefined;
-      const gId = sg?.grupoId;
-      if (gId && !grupoOrder.has(gId)) grupoOrder.set(gId, i);
-      const grupo = gId ? grupoById.get(gId) : undefined;
-      const dId = grupo?.departamentoId;
-      if (dId && !departamentoOrder.has(dId)) departamentoOrder.set(dId, i);
-    });
-
-    return { produtoIndex, subgrupoOrder, grupoOrder, departamentoOrder };
-  }, [ordemProdutos, produtos, subgrupos, grupos]);
 
   const BIG = Number.MAX_SAFE_INTEGER;
-  const sortByOrder = <T extends { id: string; nome: string }>(
-    items: T[],
-    orderMap: Map<string, number>
-  ) =>
+  // Ordenação manual: usa o campo "ordem" (com desempate alfabético).
+  const sortByOrdem = <T extends { id: string; nome: string; ordem?: number }>(items: T[]) =>
     [...items].sort((a, b) => {
-      const oa = orderMap.get(a.id) ?? BIG;
-      const ob = orderMap.get(b.id) ?? BIG;
+      const oa = a.ordem ?? BIG;
+      const ob = b.ordem ?? BIG;
       if (oa !== ob) return oa - ob;
       return a.nome.localeCompare(b.nome, 'pt-BR');
     });
+
+  const sortByNome = <T extends { nome: string }>(items: T[]) =>
+    [...items].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  // Troca a posição (campo "ordem") de dois itens do mesmo nível.
+  const moverItem = async <T extends { id: string; nome: string; ordem?: number }>(
+    lista: T[],
+    item: T,
+    direcao: 'up' | 'down',
+    mesmoPai: (a: T, b: T) => boolean,
+    labelPai: string,
+    table: 'grupos' | 'subgrupos' | 'produtos',
+    refetch: () => void
+  ) => {
+    const idx = lista.findIndex((x) => x.id === item.id);
+    if (idx === -1) return;
+    const vizinhoIdx = direcao === 'up' ? idx - 1 : idx + 1;
+    if (vizinhoIdx < 0 || vizinhoIdx >= lista.length) return;
+    const vizinho = lista[vizinhoIdx];
+    if (!mesmoPai(item, vizinho)) {
+      toast.error(`Só é possível reordenar dentro do mesmo ${labelPai}.`);
+      return;
+    }
+    const ordemItem = item.ordem ?? idx + 1;
+    const ordemVizinho = vizinho.ordem ?? vizinhoIdx + 1;
+    try {
+      const { error: e1 } = await supabase.from(table).update({ ordem: ordemVizinho } as any).eq('id', item.id);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from(table).update({ ordem: ordemItem } as any).eq('id', vizinho.id);
+      if (e2) throw e2;
+      refetch();
+    } catch (error) {
+      console.error('Erro ao reordenar:', error);
+      toast.error('Erro ao reordenar item');
+    }
+  };
+
 
 
 
