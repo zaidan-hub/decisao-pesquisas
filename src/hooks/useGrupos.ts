@@ -23,7 +23,8 @@ export const useGrupos = () => {
         id: item.id,
         codigo: item.codigo,
         nome: item.nome,
-        departamentoId: item.departamento_id
+        departamentoId: item.departamento_id,
+        ordem: (item as any).ordem ?? undefined
       }));
       
       setGrupos(mappedData);
