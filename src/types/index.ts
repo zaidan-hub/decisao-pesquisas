@@ -51,6 +51,7 @@ export interface Grupo {
   codigo: string;
   nome: string;
   departamentoId?: string;
+  ordem?: number;
 }
 
 export interface Subgrupo {
@@ -58,6 +59,7 @@ export interface Subgrupo {
   codigo: string;
   nome: string;
   grupoId: string;
+  ordem?: number;
 }
 
 export interface Produto {
@@ -69,6 +71,7 @@ export interface Produto {
   unidadeMedida: string;
   quantidade?: string;
   maisBarato?: boolean;
+  ordem?: number;
 }
 
 export interface Pesquisador {
