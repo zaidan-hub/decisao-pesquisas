@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Departamento, Grupo, Subgrupo, Produto } from '@/types';
-import { Search, Package, Layers, FolderOpen, Building2, Plus, Trash2 } from 'lucide-react';
+import { Search, Package, Layers, FolderOpen, Building2, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
