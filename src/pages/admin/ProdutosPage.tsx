@@ -310,9 +310,10 @@ export const ProdutosPage = () => {
       }
 
       if (addCategory === 'departamento') {
+        const proximaOrdemDepto = Math.max(0, ...departamentos.map(d => d.ordem ?? 0)) + 1;
         const { error } = await supabase
           .from('departamentos')
-          .insert({ codigo: newItem.codigo, nome: newItem.nome });
+          .insert({ codigo: newItem.codigo, nome: newItem.nome, ordem: proximaOrdemDepto } as any);
         
         if (error) throw error;
         refetchDepartamentos();
