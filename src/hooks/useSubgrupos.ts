@@ -30,7 +30,8 @@ export const useSubgrupos = (grupoId?: string) => {
         id: item.id,
         codigo: item.codigo,
         nome: item.nome,
-        grupoId: item.grupo_id
+        grupoId: item.grupo_id,
+        ordem: (item as any).ordem ?? undefined
       }));
       
       setSubgrupos(mappedData);
