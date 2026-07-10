@@ -16,6 +16,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const OrderArrows = ({ onUp, onDown }: { onUp: () => void; onDown: () => void }) => (
+  <div className="flex flex-col shrink-0 -my-1">
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onUp(); }}
+      className="p-0.5 rounded hover:bg-foreground/10"
+      title="Mover para cima"
+    >
+      <ArrowUp className="w-3.5 h-3.5" />
+    </button>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onDown(); }}
+      className="p-0.5 rounded hover:bg-foreground/10"
+      title="Mover para baixo"
+    >
+      <ArrowDown className="w-3.5 h-3.5" />
+    </button>
+  </div>
+);
+
 export const ProdutosPage = () => {
   // Buscar dados do banco
   const { departamentos, loading: loadingDepartamentos, refetch: refetchDepartamentos } = useDepartamentos();
