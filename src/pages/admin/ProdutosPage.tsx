@@ -64,7 +64,7 @@ export const ProdutosPage = () => {
     direcao: 'up' | 'down',
     mesmoPai: (a: T, b: T) => boolean,
     labelPai: string,
-    table: 'grupos' | 'subgrupos' | 'produtos',
+    table: 'departamentos' | 'grupos' | 'subgrupos' | 'produtos',
     refetch: () => void
   ) => {
     const idx = lista.findIndex((x) => x.id === item.id);
@@ -130,8 +130,8 @@ export const ProdutosPage = () => {
     item: Departamento | Grupo | Subgrupo | Produto;
   } | null>(null);
 
-  // Filtered data (departamentos em ordem alfabética; demais pela ordem manual)
-  const filteredDepartamentos = sortByNome(
+  // Filtered data (todos pela ordem manual)
+  const filteredDepartamentos = sortByOrdem(
     departamentos.filter(d =>
       d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
     )
@@ -161,6 +161,8 @@ export const ProdutosPage = () => {
   );
 
   // Handlers de reordenação (setas para cima/baixo)
+  const moverDepartamento = (d: Departamento, dir: 'up' | 'down') =>
+    moverItem(filteredDepartamentos, d, dir, () => true, 'nível', 'departamentos', refetchDepartamentos);
   const moverGrupo = (g: Grupo, dir: 'up' | 'down') =>
     moverItem(filteredGrupos, g, dir, (a, b) => a.departamentoId === b.departamentoId, 'departamento', 'grupos', refetchGrupos);
   const moverSubgrupo = (s: Subgrupo, dir: 'up' | 'down') =>
@@ -308,9 +310,10 @@ export const ProdutosPage = () => {
       }
 
       if (addCategory === 'departamento') {
+        const proximaOrdemDepto = Math.max(0, ...departamentos.map(d => d.ordem ?? 0)) + 1;
         const { error } = await supabase
           .from('departamentos')
-          .insert({ codigo: newItem.codigo, nome: newItem.nome });
+          .insert({ codigo: newItem.codigo, nome: newItem.nome, ordem: proximaOrdemDepto } as any);
         
         if (error) throw error;
         refetchDepartamentos();
@@ -572,8 +575,13 @@ export const ProdutosPage = () => {
                       : 'hover:bg-accent'
                   }`}
                 >
-                  <div className="font-medium">{depto.nome}</div>
-                  <div className="text-xs opacity-70">{depto.codigo}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{depto.nome}</div>
+                      <div className="text-xs opacity-70">{depto.codigo}</div>
+                    </div>
+                    <OrderArrows onUp={() => moverDepartamento(depto, 'up')} onDown={() => moverDepartamento(depto, 'down')} />
+                  </div>
                 </div>
               ))
             )}

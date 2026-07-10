@@ -22,7 +22,8 @@ export const useDepartamentos = () => {
       const mappedData = (data || []).map(item => ({
         id: item.id,
         codigo: item.codigo,
-        nome: item.nome
+        nome: item.nome,
+        ordem: (item as any).ordem ?? undefined
       }));
       
       setDepartamentos(mappedData);

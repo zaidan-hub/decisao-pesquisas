@@ -44,6 +44,7 @@ export interface Departamento {
   id: string;
   codigo: string;
   nome: string;
+  ordem?: number;
 }
 
 export interface Grupo {
