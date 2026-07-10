@@ -345,13 +345,18 @@ export const ProdutosPage = () => {
           return;
         }
         
+        const proximaOrdemSub = Math.max(
+          0,
+          ...subgrupos.filter(s => s.grupoId === newItem.grupoId).map(s => s.ordem ?? 0)
+        ) + 1;
         const { error } = await supabase
           .from('subgrupos')
           .insert({ 
             codigo: newItem.codigo, 
             nome: newItem.nome,
-            grupo_id: newItem.grupoId
-          });
+            grupo_id: newItem.grupoId,
+            ordem: proximaOrdemSub
+          } as any);
         
         if (error) throw error;
         refetchSubgrupos();
