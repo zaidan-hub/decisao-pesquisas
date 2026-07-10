@@ -392,6 +392,10 @@ export const ProdutosPage = () => {
           return;
         }
         
+        const proximaOrdemProduto = Math.max(
+          0,
+          ...produtos.filter(p => p.subgrupoId === newItem.subgrupoId).map(p => p.ordem ?? 0)
+        ) + 1;
         const { error } = await supabase
           .from('produtos')
           .insert({ 
@@ -401,8 +405,9 @@ export const ProdutosPage = () => {
             subgrupo_id: newItem.subgrupoId,
             unidade_medida: newItem.unidadeMedida,
             quantidade: newItem.quantidade || null,
-            mais_barato: newItem.maisBarato
-          });
+            mais_barato: newItem.maisBarato,
+            ordem: proximaOrdemProduto
+          } as any);
         
         if (error) throw error;
         refetchProdutos();
