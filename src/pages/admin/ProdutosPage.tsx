@@ -64,7 +64,7 @@ export const ProdutosPage = () => {
     direcao: 'up' | 'down',
     mesmoPai: (a: T, b: T) => boolean,
     labelPai: string,
-    table: 'grupos' | 'subgrupos' | 'produtos',
+    table: 'departamentos' | 'grupos' | 'subgrupos' | 'produtos',
     refetch: () => void
   ) => {
     const idx = lista.findIndex((x) => x.id === item.id);
@@ -130,8 +130,8 @@ export const ProdutosPage = () => {
     item: Departamento | Grupo | Subgrupo | Produto;
   } | null>(null);
 
-  // Filtered data (departamentos em ordem alfabética; demais pela ordem manual)
-  const filteredDepartamentos = sortByNome(
+  // Filtered data (todos pela ordem manual)
+  const filteredDepartamentos = sortByOrdem(
     departamentos.filter(d =>
       d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
     )
@@ -161,6 +161,8 @@ export const ProdutosPage = () => {
   );
 
   // Handlers de reordenação (setas para cima/baixo)
+  const moverDepartamento = (d: Departamento, dir: 'up' | 'down') =>
+    moverItem(filteredDepartamentos, d, dir, () => true, 'nível', 'departamentos', refetchDepartamentos);
   const moverGrupo = (g: Grupo, dir: 'up' | 'down') =>
     moverItem(filteredGrupos, g, dir, (a, b) => a.departamentoId === b.departamentoId, 'departamento', 'grupos', refetchGrupos);
   const moverSubgrupo = (s: Subgrupo, dir: 'up' | 'down') =>
