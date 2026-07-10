@@ -14,7 +14,7 @@ export const useProdutos = (subgrupoId?: string, produtoIds?: string[]) => {
     try {
       let query = supabase
         .from('produtos')
-        .select('id, codigo, nome, grupo_id, subgrupo_id, unidade_medida, quantidade, mais_barato')
+        .select('id, codigo, nome, grupo_id, subgrupo_id, unidade_medida, quantidade, mais_barato, ordem')
         .order('nome');
 
       if (subgrupoId) {
