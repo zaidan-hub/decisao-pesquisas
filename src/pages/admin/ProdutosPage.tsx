@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useListaColetaGeralOrdem } from '@/hooks/useListaColetaGeralOrdem';
 
 export const ProdutosPage = () => {
   // Buscar dados do banco
