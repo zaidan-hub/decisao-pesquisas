@@ -552,6 +552,41 @@ export const ProdutosPage = () => {
     }
   };
 
+  // Exporta todos os produtos para Excel na ordem hierárquica
+  const handleExportExcel = () => {
+    try {
+      const produtosOrdenados = sortByKey(produtos, produtoSortKey);
+      if (produtosOrdenados.length === 0) {
+        toast.error('Nenhum produto para exportar');
+        return;
+      }
+
+      const rows = produtosOrdenados.map(p => {
+        const sg = subgrupoById.get(p.subgrupoId);
+        const g = sg ? grupoById.get(sg.grupoId) : undefined;
+        const d = g ? departamentos.find(dep => dep.id === g.departamentoId) : undefined;
+        return {
+          Departamento: d?.nome ?? '',
+          Grupo: g?.nome ?? '',
+          Subgrupo: sg?.nome ?? '',
+          Produto: p.nome,
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows, {
+        header: ['Departamento', 'Grupo', 'Subgrupo', 'Produto'],
+      });
+      worksheet['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 40 }];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Produtos');
+      XLSX.writeFile(workbook, 'produtos.xlsx');
+      toast.success('Exportação concluída');
+    } catch (error) {
+      console.error('Erro ao exportar produtos:', error);
+      toast.error('Erro ao exportar produtos');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
