@@ -202,6 +202,47 @@ export const GuiaPrecosEditor = ({ open, onOpenChange, cliente, onSaved }: Props
   const subLower = useMemo(() => { const m = new Map<string, string>(); subgrupos.forEach(s => m.set(s.id, (s.nome || '').toLowerCase())); return m; }, [subgrupos]);
   const grupoLower = useMemo(() => { const m = new Map<string, string>(); grupos.forEach(g => m.set(g.id, (g.nome || '').toLowerCase())); return m; }, [grupos]);
 
+  // Constrói a hierarquia padrão (todos os produtos) na mesma ordem estabelecida na seção Produtos.
+  const buildDefaultItems = useCallback((): VisualizacaoItem[] => {
+    const BIG = Number.MAX_SAFE_INTEGER;
+    const sortOrdem = <T extends { ordem?: number; nome: string }>(arr: T[]) =>
+      [...arr].sort((a, b) => {
+        const oa = a.ordem ?? BIG;
+        const ob = b.ordem ?? BIG;
+        if (oa !== ob) return oa - ob;
+        return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+      });
+    const result: VisualizacaoItem[] = [];
+    for (const dep of sortOrdem(departamentos)) {
+      const depItems: VisualizacaoItem[] = [];
+      for (const g of sortOrdem(gruposByDep.get(dep.id) || [])) {
+        const grupoItems: VisualizacaoItem[] = [];
+        for (const s of sortOrdem(subsByGrupo.get(g.id) || [])) {
+          const prods = sortOrdem(prodsBySub.get(s.id) || []);
+          if (prods.length === 0) continue;
+          grupoItems.push({ tipo: 'subgrupo', id: s.id, parentId: g.id });
+          prods.forEach(p => grupoItems.push({ tipo: 'produto', id: p.id, parentId: s.id }));
+        }
+        if (grupoItems.length === 0) continue;
+        depItems.push({ tipo: 'grupo', id: g.id, parentId: dep.id });
+        depItems.push(...grupoItems);
+      }
+      if (depItems.length === 0) continue;
+      result.push({ tipo: 'departamento', id: dep.id });
+      result.push(...depItems);
+    }
+    return result;
+  }, [departamentos, gruposByDep, subsByGrupo, prodsBySub]);
+
+  // Ao abrir sem guia salvo, popula com a ordem padrão da seção Produtos (o usuário ainda pode alterar).
+  useEffect(() => {
+    if (!open) return;
+    const temOrdemSalva = (cliente?.guiaPrecos?.hierarquiaCustomizada?.ordem?.length ?? 0) > 0;
+    if (temOrdemSalva) return;
+    if (produtos.length === 0) return;
+    setItems(prev => (prev.length > 0 ? prev : buildDefaultItems()));
+  }, [open, cliente, produtos.length, buildDefaultItems]);
+
   const getNome = (tipo: string, id: string) => {
     if (tipo === 'departamento') return nomes?.departamentos?.[id] || departamentosMap.get(id)?.nome || '?';
     if (tipo === 'grupo') return nomes?.grupos?.[id] || gruposMap.get(id)?.nome || '?';
