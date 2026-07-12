@@ -130,34 +130,68 @@ export const ProdutosPage = () => {
     item: Departamento | Grupo | Subgrupo | Produto;
   } | null>(null);
 
-  // Filtered data (todos pela ordem manual)
+  // Mapas de ordem por id para compor a ordenação hierárquica
+  const deptOrdemById = new Map(departamentos.map(d => [d.id, d.ordem ?? BIG]));
+  const grupoById = new Map(grupos.map(g => [g.id, g]));
+  const subgrupoById = new Map(subgrupos.map(s => [s.id, s]));
+
+  const cmpNome = (a: { nome: string }, b: { nome: string }) =>
+    a.nome.localeCompare(b.nome, 'pt-BR');
+
+  const grupoSortKey = (g: Grupo): number[] => [
+    deptOrdemById.get(g.departamentoId ?? '') ?? BIG,
+    g.ordem ?? BIG,
+  ];
+  const subgrupoSortKey = (s: Subgrupo): number[] => {
+    const g = grupoById.get(s.grupoId);
+    return [...(g ? grupoSortKey(g) : [BIG, BIG]), s.ordem ?? BIG];
+  };
+  const produtoSortKey = (p: Produto): number[] => {
+    const s = subgrupoById.get(p.subgrupoId);
+    return [...(s ? subgrupoSortKey(s) : [BIG, BIG, BIG]), p.ordem ?? BIG];
+  };
+
+  const sortByKey = <T extends { nome: string }>(items: T[], keyFn: (i: T) => number[]) =>
+    [...items].sort((a, b) => {
+      const ka = keyFn(a);
+      const kb = keyFn(b);
+      for (let i = 0; i < ka.length; i++) {
+        if (ka[i] !== kb[i]) return ka[i] - kb[i];
+      }
+      return cmpNome(a, b);
+    });
+
+  // Filtered data (ordenação hierárquica em cascata)
   const filteredDepartamentos = sortByOrdem(
     departamentos.filter(d =>
       d.nome.toLowerCase().includes(searchTerms.departamentos.toLowerCase())
     )
   );
 
-  const filteredGrupos = sortByOrdem(
+  const filteredGrupos = sortByKey(
     grupos.filter(g =>
       g.nome.toLowerCase().includes(searchTerms.grupos.toLowerCase()) &&
       (!selectedDepartamento || g.departamentoId === selectedDepartamento)
-    )
+    ),
+    grupoSortKey
   );
 
-  const filteredSubgrupos = sortByOrdem(
+  const filteredSubgrupos = sortByKey(
     subgrupos.filter(sg =>
       sg.nome.toLowerCase().includes(searchTerms.subgrupos.toLowerCase()) &&
       (!selectedGrupo || sg.grupoId === selectedGrupo)
-    )
+    ),
+    subgrupoSortKey
   );
 
-  const filteredProdutos = sortByOrdem(
+  const filteredProdutos = sortByKey(
     produtos.filter(p => {
       const term = searchTerms.produtos.toLowerCase();
       const matchesSearch = p.nome.toLowerCase().includes(term) ||
                             p.codigo.toLowerCase().includes(term);
       return matchesSearch && (!selectedSubgrupo || p.subgrupoId === selectedSubgrupo);
-    })
+    }),
+    produtoSortKey
   );
 
   // Handlers de reordenação (setas para cima/baixo)
