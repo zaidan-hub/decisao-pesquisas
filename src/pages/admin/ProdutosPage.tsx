@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Departamento, Grupo, Subgrupo, Produto } from '@/types';
-import { Search, Package, Layers, FolderOpen, Building2, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Package, Layers, FolderOpen, Building2, Plus, Trash2, ArrowUp, ArrowDown, FileDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useDepartamentos } from '@/hooks/useDepartamentos';
 import { useGrupos } from '@/hooks/useGrupos';
 import { useSubgrupos } from '@/hooks/useSubgrupos';
@@ -551,6 +552,41 @@ export const ProdutosPage = () => {
     }
   };
 
+  // Exporta todos os produtos para Excel na ordem hierárquica
+  const handleExportExcel = () => {
+    try {
+      const produtosOrdenados = sortByKey(produtos, produtoSortKey);
+      if (produtosOrdenados.length === 0) {
+        toast.error('Nenhum produto para exportar');
+        return;
+      }
+
+      const rows = produtosOrdenados.map(p => {
+        const sg = subgrupoById.get(p.subgrupoId);
+        const g = sg ? grupoById.get(sg.grupoId) : undefined;
+        const d = g ? departamentos.find(dep => dep.id === g.departamentoId) : undefined;
+        return {
+          Departamento: d?.nome ?? '',
+          Grupo: g?.nome ?? '',
+          Subgrupo: sg?.nome ?? '',
+          Produto: p.nome,
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows, {
+        header: ['Departamento', 'Grupo', 'Subgrupo', 'Produto'],
+      });
+      worksheet['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 40 }];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Produtos');
+      XLSX.writeFile(workbook, 'produtos.xlsx');
+      toast.success('Exportação concluída');
+    } catch (error) {
+      console.error('Erro ao exportar produtos:', error);
+      toast.error('Erro ao exportar produtos');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -564,10 +600,16 @@ export const ProdutosPage = () => {
             Total de produtos cadastrados: {produtos.length}
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Adicionar
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportExcel}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Exportar Excel
+          </Button>
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Adicionar
+          </Button>
+        </div>
       </div>
 
       {/* Four Column Layout */}
