@@ -233,7 +233,7 @@ export const GuiaPrecosEditor = ({ open, onOpenChange, cliente, onSaved }: Props
 
   const departamentoHierarchy = useMemo(() => {
     const term = buscaDeferred.trim().toLowerCase();
-    return departamentos.map(dep => {
+    return sortByOrdem(departamentos).map(dep => {
       const gruposDoDep = (gruposByDep.get(dep.id) || []).map(g => {
         const subsDoGrupo = (subsByGrupo.get(g.id) || []).map(s => {
           const allProds = (prodsBySub.get(s.id) || []).filter(p => !produtosNaHierarquia.has(p.id));
