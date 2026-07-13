@@ -179,19 +179,32 @@ export const GuiaPrecosEditor = ({ open, onOpenChange, cliente, onSaved }: Props
   const subgruposMap = useMemo(() => new Map(subgrupos.map(s => [s.id, s])), [subgrupos]);
   const produtosMap = useMemo(() => new Map(produtos.map(p => [p.id, p])), [produtos]);
 
+  const sortByOrdem = <T extends { ordem?: number; nome?: string }>(arr: T[]): T[] => {
+    const BIG = Number.MAX_SAFE_INTEGER;
+    return [...arr].sort((a, b) => {
+      const oa = a.ordem ?? BIG;
+      const ob = b.ordem ?? BIG;
+      if (oa !== ob) return oa - ob;
+      return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+    });
+  };
+
   const gruposByDep = useMemo(() => {
     const m = new Map<string, any[]>();
     grupos.forEach(g => { const arr = m.get(g.departamentoId) || []; arr.push(g); m.set(g.departamentoId, arr); });
+    m.forEach((arr, k) => m.set(k, sortByOrdem(arr)));
     return m;
   }, [grupos]);
   const subsByGrupo = useMemo(() => {
     const m = new Map<string, any[]>();
     subgrupos.forEach(s => { const arr = m.get(s.grupoId) || []; arr.push(s); m.set(s.grupoId, arr); });
+    m.forEach((arr, k) => m.set(k, sortByOrdem(arr)));
     return m;
   }, [subgrupos]);
   const prodsBySub = useMemo(() => {
     const m = new Map<string, any[]>();
     produtos.forEach(p => { const arr = m.get(p.subgrupoId) || []; arr.push(p); m.set(p.subgrupoId, arr); });
+    m.forEach((arr, k) => m.set(k, sortByOrdem(arr)));
     return m;
   }, [produtos]);
   const produtoLower = useMemo(() => {
