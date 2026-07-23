@@ -132,35 +132,35 @@ export type Database = {
       }
       compradores: {
         Row: {
+          cliente_id: string
           created_at: string
           hierarquia_customizada: Json | null
           id: string
           nome: string
           produtos: string[]
-          supermercado_id: string
         }
         Insert: {
+          cliente_id: string
           created_at?: string
           hierarquia_customizada?: Json | null
           id?: string
           nome: string
           produtos?: string[]
-          supermercado_id: string
         }
         Update: {
+          cliente_id?: string
           created_at?: string
           hierarquia_customizada?: Json | null
           id?: string
           nome?: string
           produtos?: string[]
-          supermercado_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "compradores_supermercado_id_fkey"
-            columns: ["supermercado_id"]
+            foreignKeyName: "compradores_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "supermercados"
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
         ]
