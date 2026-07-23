@@ -704,19 +704,37 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
               />
             </div>
           ) : (
-            <div className="space-y-2 py-2">
-              <Label>Supermercado de referência</Label>
-              <Select value={supermercadoRef} onValueChange={setSupermercadoRef}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um supermercado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {supermercadosDisponiveis.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Supermercado de referência</Label>
+                <Select value={supermercadoRef} onValueChange={setSupermercadoRef}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um supermercado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supermercadosDisponiveis.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {tipoRelatorio === 'comparativo' && comparativoModo === 'comprador' && (
+                <div className="space-y-2">
+                  <Label>Cliente (para carregar os compradores)</Label>
+                  <Select value={clienteRef} onValueChange={setClienteRef}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientes.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
+
           )}
 
           <div className="flex justify-end gap-2">
