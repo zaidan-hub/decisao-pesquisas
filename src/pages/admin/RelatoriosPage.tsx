@@ -328,14 +328,25 @@ export const RelatoriosPage = () => {
     setGerandoComparativo(true);
     try {
       if (comparativoModo === 'comprador') {
+        // Buscar o cliente pelo nome do relatório
+        const { data: clienteData, error: clienteErr } = await supabase
+          .from('clientes' as any)
+          .select('id')
+          .eq('nome', relatorioComparativo.nome_cliente)
+          .maybeSingle() as any;
+        if (clienteErr) throw clienteErr;
+        if (!clienteData?.id) {
+          toast({ title: "Erro", description: "Cliente não encontrado para carregar compradores.", variant: "destructive" });
+          return;
+        }
         const { data: compradoresData, error } = await supabase
           .from('compradores' as any)
           .select('*')
-          .eq('supermercado_id', supermercadoRefSelecionado)
+          .eq('cliente_id', clienteData.id)
           .order('nome') as any;
         if (error) throw error;
         if (!compradoresData || compradoresData.length === 0) {
-          toast({ title: "Erro", description: "Nenhum comprador cadastrado para este supermercado", variant: "destructive" });
+          toast({ title: "Erro", description: "Nenhum comprador cadastrado para este cliente", variant: "destructive" });
           return;
         }
         generateComparadoresPDF(
@@ -343,6 +354,7 @@ export const RelatoriosPage = () => {
           supermercadoRefSelecionado,
           compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }))
         );
+
       } else if (comparativoModo === 'departamento') {
         generateComparativoPorDepartamentoPDF(base, supermercadoRefSelecionado);
       } else {
