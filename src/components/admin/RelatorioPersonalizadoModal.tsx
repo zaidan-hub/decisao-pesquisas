@@ -384,20 +384,25 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
     try {
       if (tipoRelatorio === 'comparativo') {
         if (comparativoModo === 'comprador') {
+          if (!clienteRef) {
+            toast({ title: 'Erro', description: 'Selecione o cliente dos compradores.', variant: 'destructive' });
+            return;
+          }
           const { data: compradoresData, error } = await supabase
             .from('compradores' as any)
             .select('*')
-            .eq('supermercado_id', supermercadoRef)
+            .eq('cliente_id', clienteRef)
             .order('nome') as any;
           if (error) throw error;
           if (!compradoresData || compradoresData.length === 0) {
-            toast({ title: 'Erro', description: 'Nenhum comprador cadastrado para este supermercado.', variant: 'destructive' });
+            toast({ title: 'Erro', description: 'Nenhum comprador cadastrado para este cliente.', variant: 'destructive' });
             return;
           }
           const compradores = compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }));
           relsSelecionados.forEach(rel => {
             generateComparadoresPDF(buildBase(rel), supermercadoRef, compradores);
           });
+
         } else if (comparativoModo === 'departamento') {
           relsSelecionados.forEach(rel => {
             generateComparativoPorDepartamentoPDF(buildBase(rel), supermercadoRef);
