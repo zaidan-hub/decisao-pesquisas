@@ -25,16 +25,31 @@ type VisualizacaoItem = {
 interface CompradorFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  supermercadoId: string;
+  clienteId: string;
   editingComprador: Comprador | null;
   onSaved: () => void;
 }
 
-export const CompradorFormModal = ({ open, onOpenChange, supermercadoId, editingComprador, onSaved }: CompradorFormModalProps) => {
-  const { departamentos } = useDepartamentos();
-  const { grupos } = useGrupos();
-  const { subgrupos } = useSubgrupos();
-  const { produtos } = useProdutos();
+export const CompradorFormModal = ({ open, onOpenChange, clienteId, editingComprador, onSaved }: CompradorFormModalProps) => {
+  const { departamentos: departamentosRaw } = useDepartamentos();
+  const { grupos: gruposRaw } = useGrupos();
+  const { subgrupos: subgruposRaw } = useSubgrupos();
+  const { produtos: produtosRaw } = useProdutos();
+
+  // Ordenar tudo pelo campo `ordem` (mesma lógica do Guia de Preços)
+  const sortByOrdem = <T extends { ordem?: number; nome?: string }>(arr: T[]) => {
+    const BIG = Number.MAX_SAFE_INTEGER;
+    return [...arr].sort((a, b) => {
+      const oa = a.ordem ?? BIG;
+      const ob = b.ordem ?? BIG;
+      if (oa !== ob) return oa - ob;
+      return (a.nome || '').localeCompare(b.nome || '');
+    });
+  };
+  const departamentos = sortByOrdem(departamentosRaw);
+  const grupos = sortByOrdem(gruposRaw);
+  const subgrupos = sortByOrdem(subgruposRaw);
+  const produtos = sortByOrdem(produtosRaw);
 
   const [nomeComprador, setNomeComprador] = useState(editingComprador?.nome || '');
   const [productSearchTerm, setProductSearchTerm] = useState('');
