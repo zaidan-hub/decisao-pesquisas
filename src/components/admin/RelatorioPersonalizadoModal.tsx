@@ -15,6 +15,7 @@ import { useSubgrupos } from '@/hooks/useSubgrupos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useColetas } from '@/hooks/useColetas';
 import { useSupermercados } from '@/hooks/useSupermercados';
+import { useClientes } from '@/hooks/useClientes';
 import {
   useRelatoriosPersonalizados,
   RelatorioPersonalizado,
@@ -177,6 +178,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
   const { produtos } = useProdutos();
   const { coletas } = useColetas();
   const { supermercados } = useSupermercados();
+  const { clientes } = useClientes();
 
   const [view, setView] = useState<ViewMode>('list');
   const [editing, setEditing] = useState<RelatorioPersonalizado | null>(null);
@@ -189,6 +191,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
   const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [supermercadoRef, setSupermercadoRef] = useState('');
   const [percentualMinimo, setPercentualMinimo] = useState('');
+  const [clienteRef, setClienteRef] = useState('');
   const [showComparativoModoDialog, setShowComparativoModoDialog] = useState(false);
   const [comparativoModo, setComparativoModo] = useState<ComparativoModo>('geral');
   const [gerando, setGerando] = useState(false);
@@ -220,6 +223,7 @@ export const RelatorioPersonalizadoModal = ({ open, onOpenChange }: Props) => {
       setTipoRelatorio('personalizado');
       setSupermercadoRef('');
       setPercentualMinimo('');
+      setClienteRef('');
     }
   }, [open]);
 
