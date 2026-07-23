@@ -275,7 +275,7 @@ export const CompradorFormModal = ({ open, onOpenChange, clienteId, editingCompr
     try {
       const produtosFinais = visualizacaoItems.filter(item => item.tipo === 'produto').map(item => item.id);
       const hierarquiaCustomizada = { ordem: visualizacaoItems.map(item => ({ produtoId: item.id, parentId: item.parentId, tipo: item.tipo })) };
-      const data: any = { nome: nomeComprador.trim(), supermercado_id: supermercadoId, produtos: produtosFinais, hierarquia_customizada: hierarquiaCustomizada };
+      const data: any = { nome: nomeComprador.trim(), cliente_id: clienteId, produtos: produtosFinais, hierarquia_customizada: hierarquiaCustomizada };
 
       if (editingComprador) {
         const { error } = await supabase.from('compradores' as any).update(data).eq('id', editingComprador.id) as any;
