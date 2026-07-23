@@ -1,20 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Supermercado } from '@/types';
-import { ArrowLeft, Trash2, Plus, ShoppingCart, User, FileDown } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useCompradores, Comprador } from '@/hooks/useCompradores';
-import { useProdutos } from '@/hooks/useProdutos';
-import { useGrupos } from '@/hooks/useGrupos';
-import { useSubgrupos } from '@/hooks/useSubgrupos';
-import { useDepartamentos } from '@/hooks/useDepartamentos';
-import { CompradorFormModal } from '@/components/admin/CompradorFormModal';
-import { generateCompradorListaPDF } from '@/lib/reportGenerator';
 
 interface SupermercadoDetailPageProps {
   supermercado: Supermercado;
@@ -31,40 +24,14 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDeleteConfirm2, setShowDeleteConfirm2] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [showCompradorModal, setShowCompradorModal] = useState(false);
-  const [editingComprador, setEditingComprador] = useState<Comprador | null>(null);
-  const [deleteComprador, setDeleteComprador] = useState<Comprador | null>(null);
-
-  const { compradores, loading: loadingCompradores, refetch: refetchCompradores } = useCompradores(supermercado.id);
-  const { produtos } = useProdutos();
-  const { grupos } = useGrupos();
-  const { subgrupos } = useSubgrupos();
-  const { departamentos } = useDepartamentos();
-
-  const handleExportCompradorPDF = useCallback((comprador: Comprador) => {
-    const produtosComprador = produtos.filter(p => comprador.produtos.includes(p.id));
-    generateCompradorListaPDF(
-      comprador.nome,
-      supermercado.nome,
-      produtosComprador,
-      grupos,
-      subgrupos,
-      departamentos,
-      comprador.hierarquia_customizada
-    );
-    toast({ title: "Sucesso", description: `PDF da lista de ${comprador.nome} gerado!` });
-  }, [produtos, grupos, subgrupos, departamentos, supermercado.nome]);
 
   const hasChanges = formData.nome !== originalData.nome ||
     formData.endereco !== originalData.endereco ||
     formData.abreviacao !== originalData.abreviacao;
 
   const handleBack = useCallback(() => {
-    if (hasChanges) {
-      setShowUnsavedDialog(true);
-    } else {
-      onBack();
-    }
+    if (hasChanges) setShowUnsavedDialog(true);
+    else onBack();
   }, [hasChanges, onBack]);
 
   const handleUpdate = async () => {
@@ -104,25 +71,8 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
     }
   };
 
-  const handleDeleteComprador = async () => {
-    if (!deleteComprador) return;
-    try {
-      const { error } = await supabase
-        .from('compradores' as any)
-        .delete()
-        .eq('id', deleteComprador.id) as any;
-      if (error) throw error;
-      await refetchCompradores();
-      setDeleteComprador(null);
-      toast({ title: "Comprador excluído", description: "O comprador foi removido." });
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message || "Erro ao excluir comprador", variant: "destructive" });
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={handleBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -131,7 +81,6 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
         <h2 className="text-2xl font-bold">{supermercado.nome}</h2>
       </div>
 
-      {/* Dados do Supermercado */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Informações do Supermercado</CardTitle>
@@ -139,144 +88,39 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="detail-nome">Nome do Supermercado *</Label>
-            <Input
-              id="detail-nome"
-              value={formData.nome}
-              onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-              placeholder="Nome do supermercado"
-            />
+            <Input id="detail-nome" value={formData.nome} onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))} placeholder="Nome do supermercado" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="detail-abreviacao">Abreviação</Label>
-            <Input
-              id="detail-abreviacao"
-              value={formData.abreviacao}
-              onChange={(e) => setFormData(prev => ({ ...prev, abreviacao: e.target.value }))}
-              placeholder="Abreviação para usar nas colunas"
-              maxLength={20}
-            />
+            <Input id="detail-abreviacao" value={formData.abreviacao} onChange={(e) => setFormData(prev => ({ ...prev, abreviacao: e.target.value }))} placeholder="Abreviação para usar nas colunas" maxLength={20} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="detail-endereco">Endereço *</Label>
-            <Input
-              id="detail-endereco"
-              value={formData.endereco}
-              onChange={(e) => setFormData(prev => ({ ...prev, endereco: e.target.value }))}
-              placeholder="Endereço completo"
-            />
+            <Input id="detail-endereco" value={formData.endereco} onChange={(e) => setFormData(prev => ({ ...prev, endereco: e.target.value }))} placeholder="Endereço completo" />
           </div>
           <div className="flex justify-between pt-4">
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
+            <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
               <Trash2 className="w-4 h-4 mr-2" />
               Excluir Supermercado
             </Button>
-            <Button
-              onClick={handleUpdate}
-              disabled={!hasChanges}
-            >
-              Atualizar
-            </Button>
+            <Button onClick={handleUpdate} disabled={!hasChanges}>Atualizar</Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Compradores */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-lg">Compradores</CardTitle>
-          <Button size="sm" onClick={() => { setEditingComprador(null); setShowCompradorModal(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Comprador
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {loadingCompradores ? (
-            <p className="text-muted-foreground text-center py-4">Carregando...</p>
-          ) : compradores.length === 0 ? (
-            <div className="text-center py-8">
-              <ShoppingCart className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Nenhum comprador cadastrado</p>
-              <p className="text-sm text-muted-foreground">Clique em "Novo Comprador" para adicionar</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {compradores.map((comprador) => (
-                <Card key={comprador.id} className="hover:shadow-sm transition-shadow">
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{comprador.nome}</p>
-                          <p className="text-sm text-muted-foreground">{comprador.produtos.length} produto(s)</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleExportCompradorPDF(comprador)}
-                          title="Exportar lista em PDF"
-                        >
-                          <FileDown className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => { setEditingComprador(comprador); setShowCompradorModal(true); }}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeleteComprador(comprador)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Comprador Modal */}
-      {showCompradorModal && (
-        <CompradorFormModal
-          open={showCompradorModal}
-          onOpenChange={setShowCompradorModal}
-          supermercadoId={supermercado.id}
-          editingComprador={editingComprador}
-          onSaved={refetchCompradores}
-        />
-      )}
-
-      {/* Delete Confirmation 1 */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o supermercado "{supermercado.nome}"?
-            </AlertDialogDescription>
+            <AlertDialogDescription>Tem certeza que deseja excluir o supermercado "{supermercado.nome}"?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleFirstDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sim, excluir
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleFirstDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Sim, excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Confirmation 2 (extra) */}
       <AlertDialog open={showDeleteConfirm2} onOpenChange={setShowDeleteConfirm2}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -287,47 +131,20 @@ export const SupermercadoDetailPage = ({ supermercado, onBack }: SupermercadoDet
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleFinalDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir permanentemente
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleFinalDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir permanentemente</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Unsaved changes dialog */}
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você tem alterações não salvas. Se sair agora, as informações não serão atualizadas. Deseja atualizar antes de sair?
-            </AlertDialogDescription>
+            <AlertDialogDescription>Você tem alterações não salvas. Se sair agora, as informações não serão atualizadas. Deseja atualizar antes de sair?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setShowUnsavedDialog(false); onBack(); }}>
-              Sair sem salvar
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { await handleUpdate(); setShowUnsavedDialog(false); onBack(); }}>
-              Atualizar e sair
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete comprador */}
-      <AlertDialog open={!!deleteComprador} onOpenChange={() => setDeleteComprador(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir comprador</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o comprador "{deleteComprador?.nome}"? Essa ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteComprador} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => { setShowUnsavedDialog(false); onBack(); }}>Sair sem salvar</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { await handleUpdate(); setShowUnsavedDialog(false); onBack(); }}>Atualizar e sair</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

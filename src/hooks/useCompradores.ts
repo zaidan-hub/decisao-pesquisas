@@ -3,22 +3,26 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface Comprador {
   id: string;
-  supermercado_id: string;
+  cliente_id: string;
   nome: string;
   produtos: string[];
   hierarquia_customizada: any;
   created_at: string;
 }
 
-export const useCompradores = (supermercadoId: string) => {
+export const useCompradores = (clienteId: string | null | undefined) => {
   const [compradores, setCompradores] = useState<Comprador[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (supermercadoId) {
+    if (clienteId) {
       fetchCompradores();
+    } else {
+      setCompradores([]);
+      setLoading(false);
     }
-  }, [supermercadoId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteId]);
 
   const fetchCompradores = async () => {
     try {
@@ -26,7 +30,7 @@ export const useCompradores = (supermercadoId: string) => {
       const { data, error } = await supabase
         .from('compradores' as any)
         .select('*')
-        .eq('supermercado_id', supermercadoId)
+        .eq('cliente_id', clienteId as string)
         .order('nome') as any;
 
       if (error) throw error;

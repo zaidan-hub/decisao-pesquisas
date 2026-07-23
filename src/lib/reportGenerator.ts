@@ -1449,7 +1449,7 @@ export const generateComparadoresPDF = (
 // Gera PDF da lista de um comprador
 export const generateCompradorListaPDF = (
   compradorNome: string,
-  supermercadoNome: string,
+  clienteNome: string,
   produtosLista: Produto[],
   grupos: Grupo[],
   subgrupos: Subgrupo[],
@@ -1462,7 +1462,7 @@ export const generateCompradorListaPDF = (
   doc.setFontSize(14);
   doc.text(`Lista do Comprador: ${compradorNome}`, pageWidth / 2, 15, { align: 'center' });
   doc.setFontSize(10);
-  doc.text(`Supermercado: ${supermercadoNome}`, pageWidth / 2, 22, { align: 'center' });
+  doc.text(`Cliente: ${clienteNome}`, pageWidth / 2, 22, { align: 'center' });
   doc.text(`Total de produtos: ${produtosLista.length}`, pageWidth / 2, 28, { align: 'center' });
 
   let yPos = 35;
