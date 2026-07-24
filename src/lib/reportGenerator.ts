@@ -1790,3 +1790,454 @@ export const generateRelatorioPersonalizadoPDF = (data: RelatorioPersonalizadoDa
   const safeName = data.nome.replace(/[^a-z0-9_-]+/gi, '_');
   doc.save(`${safeName}_${data.data}.pdf`);
 };
+
+// ============================================================================
+// TXT helpers e novos geradores
+// ============================================================================
+
+const downloadTXT = (filename: string, content: string) => {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+// Formata linhas em tabela monoespaçada com colunas alinhadas
+const formatTable = (rows: (string | number)[][], aligns?: ('L' | 'R')[]) => {
+  if (rows.length === 0) return '';
+  const cols = Math.max(...rows.map(r => r.length));
+  const widths: number[] = new Array(cols).fill(0);
+  const norm = rows.map(r => {
+    const out: string[] = [];
+    for (let i = 0; i < cols; i++) out.push(r[i] == null ? '' : String(r[i]));
+    return out;
+  });
+  norm.forEach(r => r.forEach((c, i) => { if (c.length > widths[i]) widths[i] = c.length; }));
+  return norm.map(r => r.map((c, i) => {
+    const w = widths[i];
+    const a = aligns?.[i] ?? 'L';
+    return a === 'R' ? c.padStart(w) : c.padEnd(w);
+  }).join('  ')).join('\n');
+};
+
+const dataBR = (iso: string) => {
+  const [y, m, d] = iso.split('T')[0].split('-');
+  return `${d}/${m}/${y}`;
+};
+
+// Gera seções hierárquicas comuns (Guia de Preços)
+const buildGuiaHierarquia = (data: RelatorioData, produtosFiltrados?: Produto[]) => {
+  const produtos = produtosFiltrados ?? data.produtos;
+  const hierarchy = new Map<string, Map<string, Map<string, Produto[]>>>();
+  produtos.forEach(produto => {
+    const subgrupo = data.subgrupos.find(s => s.id === produto.subgrupoId);
+    const grupo = data.grupos.find(g => g.id === produto.grupoId);
+    const departamento = grupo?.departamentoId ? data.departamentos.find(d => d.id === grupo.departamentoId) : null;
+    const depNome = departamento ? (data.hierarquiaCustomizada?.departamentos?.[departamento.id] || departamento.nome) : 'SEM DEPARTAMENTO';
+    const grupoNome = grupo ? (data.hierarquiaCustomizada?.grupos?.[grupo.id] || grupo.nome) : 'SEM GRUPO';
+    const subNome = subgrupo ? (data.hierarquiaCustomizada?.subgrupos?.[subgrupo.id] || subgrupo.nome) : 'SEM SUBGRUPO';
+    if (!hierarchy.has(depNome)) hierarchy.set(depNome, new Map());
+    const gm = hierarchy.get(depNome)!;
+    if (!gm.has(grupoNome)) gm.set(grupoNome, new Map());
+    const sm = gm.get(grupoNome)!;
+    if (!sm.has(subNome)) sm.set(subNome, []);
+    sm.get(subNome)!.push(produto);
+  });
+  return hierarchy;
+};
+
+// Guia de Preços por Comprador (PDF) — um único documento com seções por comprador
+export const generateGuiaPrecosPorCompradorPDF = (
+  data: RelatorioData,
+  compradores: { nome: string; produtos: string[] }[]
+) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const compradoresOrd = [...compradores].sort((a, b) => a.nome.localeCompare(b.nome));
+
+  const coletasPorSupermercado = new Map<string, { nome: string }>();
+  data.coletas.forEach(coleta => {
+    const s = data.supermercados.find(x => x.id === coleta.supermercadoId);
+    if (s) coletasPorSupermercado.set(s.id, { nome: s.nome });
+  });
+  const supermercadoNomes = Array.from(coletasPorSupermercado.keys()).map(id => {
+    const s = data.supermercados.find(x => x.id === id);
+    return s?.abreviacao || s?.nome || '-';
+  });
+
+  compradoresOrd.forEach((comp, idx) => {
+    if (idx > 0) doc.addPage();
+    doc.setFontSize(16);
+    doc.text('GUIA DE PREÇOS POR COMPRADOR', pageWidth / 2, 15, { align: 'center' });
+    doc.setFontSize(11);
+    doc.text(`${data.nomeCliente} - ${comp.nome}`, pageWidth / 2, 22, { align: 'center' });
+    doc.setFontSize(9);
+    let yPos = 30;
+
+    const produtosDoComprador = data.produtos.filter(p => comp.produtos.includes(p.id));
+    const hierarchy = buildGuiaHierarquia(data, produtosDoComprador);
+
+    const colCount = 3 + coletasPorSupermercado.size;
+    const tableData: any[] = [];
+    Array.from(hierarchy.keys()).forEach(depNome => {
+      tableData.push([{ content: depNome.toUpperCase(), colSpan: colCount, styles: { fontStyle: 'bold', fontSize: 10, fillColor: [240, 240, 240] } }]);
+      const gm = hierarchy.get(depNome)!;
+      Array.from(gm.keys()).forEach(grupoNome => {
+        tableData.push([{ content: '  ' + grupoNome.toUpperCase(), colSpan: colCount, styles: { fontStyle: 'bold', fontSize: 9, fillColor: [250, 250, 250] } }]);
+        const sm = gm.get(grupoNome)!;
+        Array.from(sm.keys()).forEach(subNome => {
+          tableData.push([{ content: '    ' + subNome.toUpperCase(), colSpan: colCount, styles: { fontStyle: 'bold', fontSize: 8 } }]);
+          sm.get(subNome)!.forEach(produto => {
+            const qntd = produto.quantidade && produto.unidadeMedida ? `${produto.quantidade} ${produto.unidadeMedida}` : (produto.quantidade || produto.unidadeMedida || '-');
+            const row: any[] = [produto.codigo, produto.nome, qntd];
+            Array.from(coletasPorSupermercado.keys()).forEach(supId => {
+              const coletasSup = data.coletas.filter(c => c.supermercadoId === supId);
+              let preco = 0;
+              for (const c of coletasSup) {
+                const p = c.precosEditadosAdmin?.[produto.id] ?? c.precos?.[produto.id] ?? 0;
+                if (p > 0 && (preco === 0 || p < preco)) preco = p;
+              }
+              row.push(preco > 0 ? `R$ ${preco.toFixed(2)}` : '-');
+            });
+            tableData.push(row);
+          });
+        });
+      });
+    });
+
+    const headRow: any[] = ['Código', 'Produto', 'Qntd', ...supermercadoNomes.map(n => ({ content: n, styles: { halign: 'right' } }))];
+    const columnStyles: any = { 0: { cellWidth: 20 }, 1: { cellWidth: 50 }, 2: { cellWidth: 25 } };
+    for (let i = 3; i < 3 + supermercadoNomes.length; i++) columnStyles[i] = { halign: 'right' };
+
+    autoTable(doc, {
+      head: [headRow],
+      body: tableData,
+      startY: yPos,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [66, 66, 66] },
+      columnStyles,
+    });
+  });
+
+  doc.save(`${data.nomeCliente}_guia_por_comprador.pdf`);
+};
+
+// ---------- Geradores TXT ----------
+
+const guiaTXTBody = (data: RelatorioData, produtosFiltrados?: Produto[]) => {
+  const produtos = produtosFiltrados ?? data.produtos;
+  const lines: string[] = [];
+  produtos.forEach(produto => {
+    data.coletas.forEach(coleta => {
+      const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+      const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      const textoMaisBarato = coleta.textosMaisBarato?.[produto.id] || '';
+      if (preco > 0) {
+        const dataFormatada = new Date(coleta.data).toLocaleDateString('pt-BR').split('/').reverse().join('').replace(/\//g, '');
+        lines.push([
+          dataFormatada,
+          produto.codigo,
+          supermercado?.nome || 'N/A',
+          preco.toFixed(2),
+          produto.quantidade || '-',
+          produto.unidadeMedida || '-',
+          produto.nome + (produto.maisBarato && textoMaisBarato ? ` (${textoMaisBarato})` : '')
+        ].join('\t'));
+      }
+    });
+  });
+  return lines.join('\n');
+};
+
+export const generateGuiaPrecosPorCompradorTXT = (
+  data: RelatorioData,
+  compradores: { nome: string; produtos: string[] }[]
+) => {
+  const compradoresOrd = [...compradores].sort((a, b) => a.nome.localeCompare(b.nome));
+  const sections = compradoresOrd.map(comp => {
+    const prods = data.produtos.filter(p => comp.produtos.includes(p.id));
+    return `===== ${comp.nome} =====\n${guiaTXTBody(data, prods)}`;
+  });
+  downloadTXT(`${data.nomeCliente}_guia_por_comprador.txt`, sections.join('\n\n'));
+};
+
+export const generateProdutosNaoEncontradosTXT = (data: RelatorioData) => {
+  const naoEncontrados = data.produtos.filter(produto => {
+    return !data.coletas.some(coleta => {
+      const p = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      return p > 0;
+    });
+  });
+  const lines: string[] = [];
+  lines.push(`${data.nomeCliente} - ${dataBR(data.data)}`);
+  lines.push(`Produtos não encontrados: ${naoEncontrados.length}`);
+  lines.push('');
+  const hierarchy = buildGuiaHierarquia(data, naoEncontrados);
+  Array.from(hierarchy.keys()).forEach(depNome => {
+    lines.push(depNome.toUpperCase());
+    const gm = hierarchy.get(depNome)!;
+    Array.from(gm.keys()).forEach(grupoNome => {
+      lines.push('  ' + grupoNome.toUpperCase());
+      const sm = gm.get(grupoNome)!;
+      Array.from(sm.keys()).forEach(subNome => {
+        lines.push('    ' + subNome.toUpperCase());
+        sm.get(subNome)!.forEach(p => {
+          const qntd = p.quantidade && p.unidadeMedida ? `${p.quantidade} ${p.unidadeMedida}` : (p.quantidade || p.unidadeMedida || '-');
+          lines.push(`      ${p.codigo}\t${p.nome}\t${qntd}`);
+        });
+      });
+    });
+  });
+  downloadTXT(`${data.nomeCliente}_${data.data}_nao_encontrados.txt`, lines.join('\n'));
+};
+
+export const generateEstatisticasTXT = (data: RelatorioData, percentualMinimo: number) => {
+  const out: string[] = [];
+  out.push('ESTATÍSTICAS');
+  out.push(data.nomeCliente);
+  out.push(`Total de itens pesquisados: ${data.produtos.length}`);
+  out.push('');
+
+  const coletasPorSupermercado = new Map<string, { nome: string; coleta: Coleta }>();
+  data.coletas.forEach(coleta => {
+    const s = data.supermercados.find(x => x.id === coleta.supermercadoId);
+    if (s) coletasPorSupermercado.set(s.id, { nome: s.nome, coleta });
+  });
+
+  const stats: { abrev: string; itens: number; menor: number; maior: number }[] = [];
+  coletasPorSupermercado.forEach(({ nome, coleta }) => {
+    const supermercado = data.supermercados.find(s => s.id === coleta.supermercadoId);
+    const abrev = supermercado?.abreviacao || nome;
+    let itens = 0, menor = 0, maior = 0;
+    data.produtos.forEach(produto => {
+      const preco = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      if (preco > 0) {
+        itens++;
+        const outros: number[] = [];
+        data.coletas.forEach(o => {
+          if (o.id !== coleta.id) {
+            const po = o.precosEditadosAdmin?.[produto.id] ?? o.precos?.[produto.id] ?? 0;
+            if (po > 0) outros.push(po);
+          }
+        });
+        if (outros.length > 0) {
+          if (preco < Math.min(...outros)) menor++;
+          if (preco > Math.max(...outros)) maior++;
+        }
+      }
+    });
+    stats.push({ abrev, itens, menor, maior });
+  });
+
+  const header = ['', ...stats.map(s => s.abrev)];
+  const body = [
+    ['Itens encontrados', ...stats.map(s => String(s.itens))],
+    ['Menor preço (vezes)', ...stats.map(s => String(s.menor))],
+    ['Maior preço (vezes)', ...stats.map(s => String(s.maior))],
+  ];
+  out.push(formatTable([header, ...body], ['L', ...stats.map(() => 'R' as const)]));
+  out.push('');
+
+  // Produtos com diferença
+  const colunasColetas = Array.from(coletasPorSupermercado.values());
+  const rows: { nome: string; precos: (number | null)[]; diff: number }[] = [];
+  data.produtos.forEach(produto => {
+    const precos = colunasColetas.map(({ coleta }) => {
+      const p = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      return p > 0 ? p : null;
+    });
+    const validos = precos.filter((p): p is number => p !== null);
+    if (validos.length >= 2) {
+      const mn = Math.min(...validos), mx = Math.max(...validos);
+      const diff = ((mx - mn) / mn) * 100;
+      if (diff >= percentualMinimo) rows.push({ nome: produto.nome, precos, diff });
+    }
+  });
+  rows.sort((a, b) => b.diff - a.diff);
+
+  out.push(`Produtos com diferença superior a ${percentualMinimo}%:`);
+  if (rows.length === 0) {
+    out.push('Nenhum produto encontrado com essa diferença.');
+  } else {
+    const h = ['Produto', ...colunasColetas.map(({ coleta, nome }) => {
+      const s = data.supermercados.find(x => x.id === coleta.supermercadoId);
+      return s?.abreviacao || nome;
+    }), 'Diferença'];
+    const b = rows.map(r => [r.nome, ...r.precos.map(p => p !== null ? `R$ ${p.toFixed(2)}` : '-'), `${r.diff.toFixed(2)}%`]);
+    out.push(formatTable([h, ...b], ['L', ...colunasColetas.map(() => 'R' as const), 'R']));
+  }
+
+  downloadTXT(`${data.nomeCliente}_estatisticas.txt`, out.join('\n'));
+};
+
+// Helper: monta tabelas FÍSICO/FINANCEIRO textuais para um subconjunto de produtos
+const comparativoBlocosTXT = (
+  data: RelatorioData,
+  supermercadoReferenciaId: string,
+  produtosSecao: Produto[]
+): string => {
+  const coletasPorSupermercado = new Map<string, { nome: string; coleta: Coleta }>();
+  data.coletas.forEach(coleta => {
+    const s = data.supermercados.find(x => x.id === coleta.supermercadoId);
+    if (s) coletasPorSupermercado.set(s.id, { nome: s.nome, coleta });
+  });
+  const supermercadoRef = data.supermercados.find(s => s.id === supermercadoReferenciaId);
+  const coletaRef = coletasPorSupermercado.get(supermercadoReferenciaId)?.coleta;
+  if (!supermercadoRef || !coletaRef) return 'Erro: Supermercado de referência não encontrado';
+  const outras = Array.from(coletasPorSupermercado.values()).filter(c => c.coleta.supermercadoId !== supermercadoReferenciaId);
+
+  // Físico
+  const dadosF = new Map<string, { menor: number; maior: number; igual: number; total: number }>();
+  outras.forEach(({ coleta }) => dadosF.set(coleta.supermercadoId, { menor: 0, maior: 0, igual: 0, total: 0 }));
+  produtosSecao.forEach(produto => {
+    const pRef = coletaRef.precosEditadosAdmin?.[produto.id] ?? coletaRef.precos?.[produto.id] ?? 0;
+    if (pRef > 0) {
+      outras.forEach(({ coleta }) => {
+        const pC = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+        if (pC > 0) {
+          const d = dadosF.get(coleta.supermercadoId)!;
+          d.total++;
+          if (pC > pRef) d.menor++;
+          else if (pC < pRef) d.maior++;
+          else d.igual++;
+        }
+      });
+    }
+  });
+  const resumoF = { menor: 0, maior: 0, igual: 0, total: 0 };
+  dadosF.forEach(d => { resumoF.menor += d.menor; resumoF.maior += d.maior; resumoF.igual += d.igual; resumoF.total += d.total; });
+
+  const headF: string[] = [''];
+  outras.forEach(({ nome, coleta }) => {
+    const s = data.supermercados.find(x => x.id === coleta.supermercadoId);
+    headF.push(s?.abreviacao || nome, '%');
+  });
+  headF.push('Resumo', '%');
+  const mkRowF = (label: string, key: 'menor' | 'maior' | 'igual' | 'total') => {
+    const row: string[] = [label];
+    outras.forEach(({ coleta }) => {
+      const d = dadosF.get(coleta.supermercadoId)!;
+      const v = d[key];
+      const perc = d.total > 0 ? ((v / d.total) * 100).toFixed(1) : '0.0';
+      row.push(String(v), key === 'total' ? '100.0%' : perc + '%');
+    });
+    const rv = resumoF[key];
+    const rp = resumoF.total > 0 ? ((rv / resumoF.total) * 100).toFixed(1) : '0.0';
+    row.push(String(rv), key === 'total' ? '100.0%' : rp + '%');
+    return row;
+  };
+  const bodyF = [mkRowF('Menor Pr.', 'menor'), mkRowF('Maior Pr.', 'maior'), mkRowF('Pr. Igual', 'igual'), mkRowF('Total', 'total')];
+  const alignsF: ('L' | 'R')[] = ['L', ...new Array(headF.length - 1).fill('R' as const)];
+
+  // Financeiro
+  const valoresFin = new Map<string, { conc: number; ref: number; dif: number }>();
+  outras.forEach(({ coleta }) => {
+    let tc = 0, tr = 0;
+    produtosSecao.forEach(produto => {
+      const pR = coletaRef.precosEditadosAdmin?.[produto.id] ?? coletaRef.precos?.[produto.id] ?? 0;
+      const pC = coleta.precosEditadosAdmin?.[produto.id] ?? coleta.precos?.[produto.id] ?? 0;
+      if (pR > 0 && pC > 0) { tr += pR; tc += pC; }
+    });
+    valoresFin.set(coleta.supermercadoId, { conc: tc, ref: tr, dif: tc - tr });
+  });
+  const resumoFin = { conc: 0, ref: 0, dif: 0 };
+  valoresFin.forEach(v => { resumoFin.conc += v.conc; resumoFin.ref += v.ref; });
+  resumoFin.dif = resumoFin.conc - resumoFin.ref;
+
+  const headFin = [''];
+  outras.forEach(({ nome, coleta }) => {
+    const s = data.supermercados.find(x => x.id === coleta.supermercadoId);
+    headFin.push(s?.abreviacao || nome, '%');
+  });
+  headFin.push('Resumo', '%');
+  const bodyFin: string[][] = [
+    ['Concorrência', ...outras.flatMap(({ coleta }) => {
+      const v = valoresFin.get(coleta.supermercadoId)!;
+      return [`R$ ${v.conc.toFixed(2)}`, '100.0%'];
+    }), `R$ ${resumoFin.conc.toFixed(2)}`, '100.0%'],
+    [supermercadoRef.nome, ...outras.flatMap(({ coleta }) => {
+      const v = valoresFin.get(coleta.supermercadoId)!;
+      const perc = v.conc > 0 ? ((v.ref / v.conc) * 100).toFixed(1) : '0.0';
+      return [`R$ ${v.ref.toFixed(2)}`, perc + '%'];
+    }), `R$ ${resumoFin.ref.toFixed(2)}`, (resumoFin.conc > 0 ? ((resumoFin.ref / resumoFin.conc) * 100).toFixed(1) : '0.0') + '%'],
+    ['Diferença', ...outras.flatMap(({ coleta }) => {
+      const v = valoresFin.get(coleta.supermercadoId)!;
+      const raw = v.conc > 0 ? (v.dif / v.conc) * 100 : 0;
+      const sinal = raw < 0 ? '+' : raw > 0 ? '-' : '';
+      return [`R$ ${v.dif.toFixed(2)}`, sinal + Math.abs(raw).toFixed(1) + '%'];
+    }), `R$ ${resumoFin.dif.toFixed(2)}`, (() => {
+      const raw = resumoFin.conc > 0 ? (resumoFin.dif / resumoFin.conc) * 100 : 0;
+      const sinal = raw < 0 ? '+' : raw > 0 ? '-' : '';
+      return sinal + Math.abs(raw).toFixed(1) + '%';
+    })()],
+  ];
+  const alignsFin: ('L' | 'R')[] = ['L', ...new Array(headFin.length - 1).fill('R' as const)];
+
+  return `FÍSICO\n${formatTable([headF, ...bodyF], alignsF)}\n\nFINANCEIRO\n${formatTable([headFin, ...bodyFin], alignsFin)}`;
+};
+
+export const generateComparativoConcorrenciaTXT = (
+  data: RelatorioData,
+  supermercadoReferenciaId: string
+) => {
+  const out: string[] = [];
+  out.push('COMPARATIVO DA CONCORRÊNCIA');
+  out.push(data.nomeCliente);
+  out.push('');
+  out.push(comparativoBlocosTXT(data, supermercadoReferenciaId, data.produtos));
+  downloadTXT(`${data.nomeCliente}_comparativo_concorrencia.txt`, out.join('\n'));
+};
+
+export const generateComparativoPorDepartamentoTXT = (
+  data: RelatorioData,
+  supermercadoReferenciaId: string
+) => {
+  const departamentosOrdenados: { nome: string; produtos: Produto[] }[] = [];
+  const depIndex = new Map<string, number>();
+  data.produtos.forEach(produto => {
+    const grupo = data.grupos.find(g => g.id === produto.grupoId);
+    const departamento = grupo?.departamentoId ? data.departamentos.find(d => d.id === grupo.departamentoId) : null;
+    const depNome = departamento ? (data.hierarquiaCustomizada?.departamentos?.[departamento.id] || departamento.nome) : 'SEM DEPARTAMENTO';
+    if (!depIndex.has(depNome)) {
+      depIndex.set(depNome, departamentosOrdenados.length);
+      departamentosOrdenados.push({ nome: depNome, produtos: [] });
+    }
+    departamentosOrdenados[depIndex.get(depNome)!].produtos.push(produto);
+  });
+
+  const out: string[] = [];
+  out.push('COMPARATIVO DA CONCORRÊNCIA POR DEPARTAMENTO');
+  out.push(data.nomeCliente);
+  out.push('');
+  departamentosOrdenados.forEach(dep => {
+    out.push(`===== ${dep.nome.toUpperCase()} =====`);
+    out.push(comparativoBlocosTXT(data, supermercadoReferenciaId, dep.produtos));
+    out.push('');
+  });
+  downloadTXT(`${data.nomeCliente}_comparativo_departamento.txt`, out.join('\n'));
+};
+
+export const generateComparadoresTXT = (
+  data: RelatorioData,
+  supermercadoReferenciaId: string,
+  compradores: { nome: string; produtos: string[] }[]
+) => {
+  const compradoresOrd = [...compradores].sort((a, b) => a.nome.localeCompare(b.nome));
+  const out: string[] = [];
+  out.push('COMPARATIVO POR COMPRADOR');
+  out.push(data.nomeCliente);
+  out.push('');
+  compradoresOrd.forEach(comp => {
+    const prods = data.produtos.filter(p => comp.produtos.includes(p.id));
+    out.push(`===== ${comp.nome} (${prods.length} produtos) =====`);
+    out.push(comparativoBlocosTXT(data, supermercadoReferenciaId, prods));
+    out.push('');
+  });
+  downloadTXT(`${data.nomeCliente}_compradores.txt`, out.join('\n'));
+};
+
