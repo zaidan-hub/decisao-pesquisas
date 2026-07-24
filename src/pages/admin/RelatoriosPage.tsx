@@ -22,14 +22,41 @@ import { useListaColetaGeralOrdem } from '@/hooks/useListaColetaGeralOrdem';
 import { useRelatorios } from '@/hooks/useRelatorios';
 import type { Relatorio } from '@/hooks/useRelatorios';
 import { useColetas } from '@/hooks/useColetas';
-import { generatePDF, generateTXT, generateProdutosNaoEncontradosPDF, generateComparativoConcorrenciaPDF, generateComparativoPorDepartamentoPDF, generateEstatisticasPDF, generateComparadoresPDF } from '@/lib/reportGenerator';
+import {
+  generatePDF,
+  generateTXT,
+  generateProdutosNaoEncontradosPDF,
+  generateProdutosNaoEncontradosTXT,
+  generateComparativoConcorrenciaPDF,
+  generateComparativoConcorrenciaTXT,
+  generateComparativoPorDepartamentoPDF,
+  generateComparativoPorDepartamentoTXT,
+  generateEstatisticasPDF,
+  generateEstatisticasTXT,
+  generateComparadoresPDF,
+  generateComparadoresTXT,
+  generateGuiaPrecosPorCompradorPDF,
+  generateGuiaPrecosPorCompradorTXT,
+} from '@/lib/reportGenerator';
 import { supabase } from '@/integrations/supabase/client';
 
-// Função helper para formatar datas sem problemas de timezone
 const formatDate = (dateString: string) => {
   const [year, month, day] = dateString.split('T')[0].split('-');
   return `${day}/${month}/${year}`;
 };
+
+type ReportType =
+  | 'guia'
+  | 'guia_comprador'
+  | 'estatisticas'
+  | 'nao_encontrados'
+  | 'comp_geral'
+  | 'comp_comprador'
+  | 'comp_departamento'
+  | 'todos';
+type ReportFormat = 'pdf' | 'txt';
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export const RelatoriosPage = () => {
   const { produtos, loading: loadingProdutos } = useProdutos();
@@ -43,124 +70,29 @@ export const RelatoriosPage = () => {
   const { relatorios, loading: loadingRelatorios, createRelatorio, deleteRelatorio } = useRelatorios();
   const { coletas, loading: loadingColetas } = useColetas();
 
-  // Estados para relatório
   const [showRelatorioDialog, setShowRelatorioDialog] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState('');
   const [dataRelatorio, setDataRelatorio] = useState(new Date().toISOString().split('T')[0]);
   const [coletasSelecionadas, setColetasSelecionadas] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  
-  // Estados para comparativo de concorrência
-  const [showComparativoModoDialog, setShowComparativoModoDialog] = useState(false);
-  const [comparativoModo, setComparativoModo] = useState<'geral' | 'comprador' | 'departamento'>('geral');
-  const [showComparativoDialog, setShowComparativoDialog] = useState(false);
-  const [relatorioComparativo, setRelatorioComparativo] = useState<Relatorio | null>(null);
-  const [supermercadoRefSelecionado, setSupermercadoRefSelecionado] = useState('');
-  const [gerandoComparativo, setGerandoComparativo] = useState(false);
-  
-  // Estados para estatísticas
-  const [showEstatisticasDialog, setShowEstatisticasDialog] = useState(false);
-  const [relatorioEstatisticas, setRelatorioEstatisticas] = useState<Relatorio | null>(null);
-  const [percentualMinimo, setPercentualMinimo] = useState('');
 
-  // Estado para modal de detalhes do relatório
+  // Exportação unificada
+  const [exportRelatorio, setExportRelatorio] = useState<Relatorio | null>(null);
+  const [exportType, setExportType] = useState<ReportType>('guia');
+  const [exportFormat, setExportFormat] = useState<ReportFormat>('pdf');
+  const [exportSupermercadoRef, setExportSupermercadoRef] = useState('');
+  const [exportPercentual, setExportPercentual] = useState('');
+  const [exportando, setExportando] = useState(false);
+
   const [relatorioDetalhe, setRelatorioDetalhe] = useState<Relatorio | null>(null);
-  // Filtrar apenas coletas finalizadas para os relatórios (otimizado com useMemo)
+
   const coletasFinalizadas = useMemo(
     () => coletas.filter(c => c.status === 'finalizada'),
     [coletas]
   );
 
-  // Loading geral
   const isLoading = loadingProdutos || loadingGrupos || loadingSubgrupos || loadingDepartamentos ||
                     loadingSupermercados || loadingListas || loadingClientes || loadingRelatorios || loadingColetas;
-
-  // Handlers para relatório (otimizados com useCallback)
-  const handleCreateRelatorio = useCallback(async () => {
-    if (!clienteSelecionado) {
-      toast({
-        title: "Campo obrigatório",
-        description: "Selecione um cliente.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (coletasSelecionadas.length === 0) {
-      toast({
-        title: "Nenhuma coleta selecionada",
-        description: "Selecione pelo menos uma coleta.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const cliente = clientes.find(c => c.id === clienteSelecionado);
-    if (!cliente) {
-      toast({
-        title: "Erro",
-        description: "Cliente não encontrado.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    let produtosLista: string[] = [];
-    let hierarquiaNomes: {
-      departamentos?: { [id: string]: string };
-      grupos?: { [id: string]: string };
-      subgrupos?: { [id: string]: string };
-    } = {};
-
-    const guia = cliente.guiaPrecos;
-    if (guia && guia.produtos && guia.produtos.length > 0) {
-      // Cliente possui Guia de Preços Personalizado -> usa produtos, nomes e ordem do guia
-      const ordem = guia.hierarquiaCustomizada?.ordem || [];
-      const seen = new Set<string>();
-      ordem.forEach(item => {
-        if (item.tipo === 'produto' && guia.produtos.includes(item.id) && !seen.has(item.id)) {
-          produtosLista.push(item.id);
-          seen.add(item.id);
-        }
-      });
-      guia.produtos.forEach(id => {
-        if (!seen.has(id)) {
-          produtosLista.push(id);
-          seen.add(id);
-        }
-      });
-      hierarquiaNomes = guia.hierarquiaCustomizada?.nomes || {};
-    } else {
-      // Sem guia -> usa a lista padrão de produtos (LISTA COLETA GERAL)
-      produtosLista = ordemProdutos.length > 0 ? ordemProdutos : produtos.map(p => p.id);
-    }
-
-    const nomeRelatorioFinal = `${cliente.nome} - ${formatDate(dataRelatorio)}`;
-
-    const { error } = await createRelatorio(
-      nomeRelatorioFinal,
-      cliente.nome,
-      dataRelatorio,
-      produtosLista,
-      coletasSelecionadas,
-      undefined,
-      hierarquiaNomes
-    );
-
-    if (error) {
-      toast({
-        title: "Erro",
-        description: error,
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Sucesso",
-        description: "Guia de preços criado com sucesso!"
-      });
-      resetRelatorioForm();
-    }
-  }, [clienteSelecionado, clientes, coletasSelecionadas, dataRelatorio, createRelatorio, ordemProdutos, produtos]);
 
   const resetRelatorioForm = useCallback(() => {
     setClienteSelecionado('');
@@ -169,220 +101,165 @@ export const RelatoriosPage = () => {
     setShowRelatorioDialog(false);
   }, []);
 
-  const handleExportPDF = useCallback((relatorio: Relatorio) => {
-    const produtosRelatorio = relatorio.produtos
+  const handleCreateRelatorio = useCallback(async () => {
+    if (!clienteSelecionado) {
+      toast({ title: "Campo obrigatório", description: "Selecione um cliente.", variant: "destructive" });
+      return;
+    }
+    if (coletasSelecionadas.length === 0) {
+      toast({ title: "Nenhuma coleta selecionada", description: "Selecione pelo menos uma coleta.", variant: "destructive" });
+      return;
+    }
+    const cliente = clientes.find(c => c.id === clienteSelecionado);
+    if (!cliente) return;
+
+    let produtosLista: string[] = [];
+    let hierarquiaNomes: any = {};
+    const guia = cliente.guiaPrecos;
+    if (guia && guia.produtos && guia.produtos.length > 0) {
+      const ordem = guia.hierarquiaCustomizada?.ordem || [];
+      const seen = new Set<string>();
+      ordem.forEach(item => {
+        if (item.tipo === 'produto' && guia.produtos.includes(item.id) && !seen.has(item.id)) {
+          produtosLista.push(item.id); seen.add(item.id);
+        }
+      });
+      guia.produtos.forEach(id => { if (!seen.has(id)) { produtosLista.push(id); seen.add(id); } });
+      hierarquiaNomes = guia.hierarquiaCustomizada?.nomes || {};
+    } else {
+      produtosLista = ordemProdutos.length > 0 ? ordemProdutos : produtos.map(p => p.id);
+    }
+
+    const nomeRelatorioFinal = `${cliente.nome} - ${formatDate(dataRelatorio)}`;
+    const { error } = await createRelatorio(
+      nomeRelatorioFinal, cliente.nome, dataRelatorio, produtosLista, coletasSelecionadas, undefined, hierarquiaNomes
+    );
+    if (error) toast({ title: "Erro", description: error, variant: "destructive" });
+    else { toast({ title: "Sucesso", description: "Guia de preços criado com sucesso!" }); resetRelatorioForm(); }
+  }, [clienteSelecionado, clientes, coletasSelecionadas, dataRelatorio, createRelatorio, ordemProdutos, produtos, resetRelatorioForm]);
+
+  const openExportDialog = useCallback((rel: Relatorio) => {
+    setExportRelatorio(rel);
+    setExportType('guia');
+    setExportFormat('pdf');
+    setExportSupermercadoRef('');
+    setExportPercentual('');
+  }, []);
+
+  const buildBase = useCallback((rel: Relatorio) => {
+    const produtosRelatorio = rel.produtos
       .map(id => produtos.find(p => p.id === id))
       .filter((p): p is typeof produtos[0] => !!p);
-    const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
-
-    console.log('🟢 EXPORTANDO PDF - Relatório:', relatorio);
-    console.log('🟢 Produtos do relatório:', produtosRelatorio);
-    console.log('🟢 Coletas do relatório:', coletasRelatorio);
-    console.log('🟢 IDs coletas esperadas:', relatorio.coletas);
-    console.log('🟢 Coletas completas disponíveis:', coletas);
-
-    generatePDF({
-      nome: relatorio.nome,
-      nomeCliente: relatorio.nome_cliente,
-      data: relatorio.data,
+    const coletasRelatorio = coletas.filter(c => rel.coletas.includes(c.id));
+    return {
+      nome: rel.nome,
+      nomeCliente: rel.nome_cliente,
+      data: rel.data,
       produtos: produtosRelatorio,
       coletas: coletasRelatorio,
       supermercados,
       grupos,
       subgrupos,
       departamentos,
-      hierarquiaCustomizada: relatorio.hierarquiaCustomizada
-    });
-  }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
-
-  const handleExportTXT = useCallback((relatorio: Relatorio) => {
-    const produtosRelatorio = relatorio.produtos
-      .map(id => produtos.find(p => p.id === id))
-      .filter((p): p is typeof produtos[0] => !!p);
-    const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
-
-    generateTXT({
-      nome: relatorio.nome,
-      nomeCliente: relatorio.nome_cliente,
-      data: relatorio.data,
-      produtos: produtosRelatorio,
-      coletas: coletasRelatorio,
-      supermercados,
-      grupos,
-      subgrupos,
-      departamentos
-    });
-  }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
-
-  const handleExportProdutosNaoEncontrados = useCallback((relatorio: Relatorio) => {
-    const produtosRelatorio = relatorio.produtos
-      .map(id => produtos.find(p => p.id === id))
-      .filter((p): p is typeof produtos[0] => !!p);
-    const coletasRelatorio = coletas.filter(c => relatorio.coletas.includes(c.id));
-
-    generateProdutosNaoEncontradosPDF({
-      nome: relatorio.nome,
-      nomeCliente: relatorio.nome_cliente,
-      data: relatorio.data,
-      produtos: produtosRelatorio,
-      coletas: coletasRelatorio,
-      supermercados,
-      grupos,
-      subgrupos,
-      departamentos
-    });
-  }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
-
-  const handleOpenComparativo = useCallback((relatorio: Relatorio) => {
-    setRelatorioComparativo(relatorio);
-    setComparativoModo('geral');
-    setShowComparativoModoDialog(true);
-  }, []);
-
-  const handleConfirmComparativoModo = useCallback(() => {
-    setShowComparativoModoDialog(false);
-    setSupermercadoRefSelecionado('');
-    setShowComparativoDialog(true);
-  }, []);
-
-  const handleOpenEstatisticas = useCallback((relatorio: Relatorio) => {
-    setRelatorioEstatisticas(relatorio);
-    setPercentualMinimo('');
-    setShowEstatisticasDialog(true);
-  }, []);
-
-  const handleExportEstatisticas = useCallback(() => {
-    if (!relatorioEstatisticas || !percentualMinimo) {
-      toast({
-        title: "Erro",
-        description: "Informe o valor percentual mínimo",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const percentual = parseFloat(percentualMinimo);
-    if (isNaN(percentual) || percentual < 0) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira um valor percentual válido",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const produtosRelatorio = relatorioEstatisticas.produtos
-      .map(id => produtos.find(p => p.id === id))
-      .filter((p): p is typeof produtos[0] => !!p);
-    const coletasRelatorio = coletas.filter(c => relatorioEstatisticas.coletas.includes(c.id));
-
-    generateEstatisticasPDF(
-      {
-        nome: relatorioEstatisticas.nome,
-        nomeCliente: relatorioEstatisticas.nome_cliente,
-        data: relatorioEstatisticas.data,
-        produtos: produtosRelatorio,
-        coletas: coletasRelatorio,
-        supermercados,
-        grupos,
-        subgrupos,
-        departamentos
-      },
-      percentual
-    );
-
-    setShowEstatisticasDialog(false);
-    toast({
-      title: "Sucesso",
-      description: "Relatório de estatísticas gerado com sucesso!"
-    });
-  }, [relatorioEstatisticas, percentualMinimo, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
-
-  const handleExportComparativo = useCallback(async () => {
-    if (!relatorioComparativo || !supermercadoRefSelecionado) {
-      toast({
-        title: "Erro",
-        description: "Selecione um supermercado de referência",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const produtosRelatorio = relatorioComparativo.produtos
-      .map(id => produtos.find(p => p.id === id))
-      .filter((p): p is typeof produtos[0] => !!p);
-    const coletasRelatorio = coletas.filter(c => relatorioComparativo.coletas.includes(c.id));
-
-    const base = {
-      nome: relatorioComparativo.nome,
-      nomeCliente: relatorioComparativo.nome_cliente,
-      data: relatorioComparativo.data,
-      produtos: produtosRelatorio,
-      coletas: coletasRelatorio,
-      supermercados,
-      grupos,
-      subgrupos,
-      departamentos
+      hierarquiaCustomizada: rel.hierarquiaCustomizada,
     };
+  }, [produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
 
-    setGerandoComparativo(true);
-    try {
-      if (comparativoModo === 'comprador') {
-        // Buscar o cliente pelo nome do relatório
-        const { data: clienteData, error: clienteErr } = await supabase
-          .from('clientes' as any)
-          .select('id')
-          .eq('nome', relatorioComparativo.nome_cliente)
-          .maybeSingle() as any;
-        if (clienteErr) throw clienteErr;
-        if (!clienteData?.id) {
-          toast({ title: "Erro", description: "Cliente não encontrado para carregar compradores.", variant: "destructive" });
-          return;
-        }
-        const { data: compradoresData, error } = await supabase
-          .from('compradores' as any)
-          .select('*')
-          .eq('cliente_id', clienteData.id)
-          .order('nome') as any;
-        if (error) throw error;
-        if (!compradoresData || compradoresData.length === 0) {
-          toast({ title: "Erro", description: "Nenhum comprador cadastrado para este cliente", variant: "destructive" });
-          return;
-        }
-        generateComparadoresPDF(
-          base,
-          supermercadoRefSelecionado,
-          compradoresData.map((c: any) => ({ nome: c.nome, produtos: c.produtos }))
-        );
+  const fetchCompradores = useCallback(async (nomeCliente: string) => {
+    const { data: clienteData } = await supabase
+      .from('clientes' as any).select('id').eq('nome', nomeCliente).maybeSingle() as any;
+    if (!clienteData?.id) return [];
+    const { data: comps } = await supabase
+      .from('compradores' as any).select('*').eq('cliente_id', clienteData.id).order('nome') as any;
+    return (comps || []).map((c: any) => ({ nome: c.nome, produtos: c.produtos as string[] }));
+  }, []);
 
-      } else if (comparativoModo === 'departamento') {
-        generateComparativoPorDepartamentoPDF(base, supermercadoRefSelecionado);
-      } else {
-        generateComparativoConcorrenciaPDF(base, supermercadoRefSelecionado);
+  // Executa a exportação para um tipo específico. Retorna true se gerou algo.
+  const runExport = useCallback(async (rel: Relatorio, type: ReportType, fmt: ReportFormat, supermercadoRefId: string, perc: string): Promise<boolean> => {
+    const base = buildBase(rel);
+    switch (type) {
+      case 'guia':
+        if (fmt === 'pdf') generatePDF(base); else generateTXT(base);
+        return true;
+      case 'nao_encontrados':
+        if (fmt === 'pdf') generateProdutosNaoEncontradosPDF(base); else generateProdutosNaoEncontradosTXT(base);
+        return true;
+      case 'estatisticas': {
+        const p = parseFloat(perc);
+        if (isNaN(p) || p < 0) { toast({ title: 'Estatísticas ignoradas', description: 'Informe um percentual válido para Estatísticas.' }); return false; }
+        if (fmt === 'pdf') generateEstatisticasPDF(base, p); else generateEstatisticasTXT(base, p);
+        return true;
       }
-
-      setShowComparativoDialog(false);
-      toast({
-        title: "Sucesso",
-        description: "Relatório comparativo gerado com sucesso!"
-      });
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message || "Erro ao gerar relatório", variant: "destructive" });
-    } finally {
-      setGerandoComparativo(false);
+      case 'comp_geral':
+        if (!supermercadoRefId) { toast({ title: 'Comparativo Geral ignorado', description: 'Selecione o supermercado de referência.' }); return false; }
+        if (fmt === 'pdf') generateComparativoConcorrenciaPDF(base, supermercadoRefId); else generateComparativoConcorrenciaTXT(base, supermercadoRefId);
+        return true;
+      case 'comp_departamento':
+        if (!supermercadoRefId) { toast({ title: 'Comparativo por Departamento ignorado', description: 'Selecione o supermercado de referência.' }); return false; }
+        if (fmt === 'pdf') generateComparativoPorDepartamentoPDF(base, supermercadoRefId); else generateComparativoPorDepartamentoTXT(base, supermercadoRefId);
+        return true;
+      case 'comp_comprador': {
+        if (!supermercadoRefId) { toast({ title: 'Comparativo por Comprador ignorado', description: 'Selecione o supermercado de referência.' }); return false; }
+        const comps = await fetchCompradores(rel.nome_cliente);
+        if (comps.length === 0) { toast({ title: 'Comparativo por Comprador ignorado', description: 'Cliente sem compradores cadastrados.' }); return false; }
+        if (fmt === 'pdf') generateComparadoresPDF(base, supermercadoRefId, comps); else generateComparadoresTXT(base, supermercadoRefId, comps);
+        return true;
+      }
+      case 'guia_comprador': {
+        const comps = await fetchCompradores(rel.nome_cliente);
+        if (comps.length === 0) { toast({ title: 'Guia por Comprador ignorado', description: 'Cliente sem compradores cadastrados.' }); return false; }
+        if (fmt === 'pdf') generateGuiaPrecosPorCompradorPDF(base, comps); else generateGuiaPrecosPorCompradorTXT(base, comps);
+        return true;
+      }
+      default:
+        return false;
     }
-  }, [relatorioComparativo, supermercadoRefSelecionado, comparativoModo, produtos, coletas, supermercados, grupos, subgrupos, departamentos]);
+  }, [buildBase, fetchCompradores]);
 
+  const handleExport = useCallback(async () => {
+    if (!exportRelatorio) return;
+    setExportando(true);
+    try {
+      if (exportType === 'todos') {
+        const tipos: ReportType[] = ['guia', 'guia_comprador', 'estatisticas', 'nao_encontrados', 'comp_geral', 'comp_comprador', 'comp_departamento'];
+        let gerados = 0;
+        for (const t of tipos) {
+          const ok = await runExport(exportRelatorio, t, exportFormat, exportSupermercadoRef, exportPercentual);
+          if (ok) gerados++;
+          await sleep(600); // dá tempo do browser processar cada download
+        }
+        toast({ title: 'Exportação concluída', description: `${gerados} relatório(s) gerado(s).` });
+      } else {
+        const ok = await runExport(exportRelatorio, exportType, exportFormat, exportSupermercadoRef, exportPercentual);
+        if (ok) toast({ title: 'Sucesso', description: 'Relatório gerado.' });
+      }
+      setExportRelatorio(null);
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message || 'Falha ao exportar', variant: 'destructive' });
+    } finally {
+      setExportando(false);
+    }
+  }, [exportRelatorio, exportType, exportFormat, exportSupermercadoRef, exportPercentual, runExport]);
+
+  const precisaSupermercadoRef = exportType === 'comp_geral' || exportType === 'comp_comprador' || exportType === 'comp_departamento' || exportType === 'todos';
+  const precisaPercentual = exportType === 'estatisticas' || exportType === 'todos';
+
+  const supermercadosDoRelatorio = useMemo(() => {
+    if (!exportRelatorio) return [];
+    return coletas
+      .filter(c => exportRelatorio.coletas.includes(c.id))
+      .map(c => supermercados.find(s => s.id === c.supermercadoId))
+      .filter((s): s is typeof supermercados[0] => !!s);
+  }, [exportRelatorio, coletas, supermercados]);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Relatórios</h2>
           <p className="text-muted-foreground">Crie relatórios com base em listas e coletas finalizadas</p>
         </div>
-        
+
         <div className="flex gap-2">
         <Dialog open={showRelatorioDialog} onOpenChange={setShowRelatorioDialog}>
           <DialogTrigger asChild>
@@ -394,18 +271,14 @@ export const RelatoriosPage = () => {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Novo Guia de Preços</DialogTitle>
-              <DialogDescription>
-                Selecione o cliente e as coletas para gerar o guia de preços
-              </DialogDescription>
+              <DialogDescription>Selecione o cliente e as coletas para gerar o guia de preços</DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Clientes *</Label>
                 <Select value={clienteSelecionado} onValueChange={setClienteSelecionado}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
                   <SelectContent>
                     {clientes.map(cliente => (
                       <SelectItem key={cliente.id} value={cliente.id}>
@@ -417,29 +290,19 @@ export const RelatoriosPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-muted-foreground">
-                  Escolha o cliente que receberá o guia
-                </p>
+                <p className="text-sm text-muted-foreground">Escolha o cliente que receberá o guia</p>
               </div>
-
 
               <div className="space-y-2">
                 <Label htmlFor="dataRelatorio">Data *</Label>
-                <Input
-                  id="dataRelatorio"
-                  type="date"
-                  value={dataRelatorio}
-                  onChange={(e) => setDataRelatorio(e.target.value)}
-                />
+                <Input id="dataRelatorio" type="date" value={dataRelatorio} onChange={(e) => setDataRelatorio(e.target.value)} />
               </div>
 
               <div className="space-y-2">
                 <Label>Coletas Consideradas *</Label>
                 <div className="border rounded-md p-4 space-y-2 max-h-[200px] overflow-y-auto">
                   {coletasFinalizadas.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Nenhuma coleta finalizada disponível
-                    </p>
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhuma coleta finalizada disponível</p>
                   ) : (
                     coletasFinalizadas.map(coleta => {
                       const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
@@ -448,16 +311,12 @@ export const RelatoriosPage = () => {
                           <Checkbox
                             checked={coletasSelecionadas.includes(coleta.id)}
                             onCheckedChange={() => {
-                              if (coletasSelecionadas.includes(coleta.id)) {
+                              if (coletasSelecionadas.includes(coleta.id))
                                 setColetasSelecionadas(coletasSelecionadas.filter(id => id !== coleta.id));
-                              } else {
-                                setColetasSelecionadas([...coletasSelecionadas, coleta.id]);
-                              }
+                              else setColetasSelecionadas([...coletasSelecionadas, coleta.id]);
                             }}
                           />
-                          <span className="text-sm">
-                            {formatDate(coleta.data)} - {supermercado?.nome || 'N/A'}
-                          </span>
+                          <span className="text-sm">{formatDate(coleta.data)} - {supermercado?.nome || 'N/A'}</span>
                         </div>
                       );
                     })
@@ -466,12 +325,8 @@ export const RelatoriosPage = () => {
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={resetRelatorioForm}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreateRelatorio}>
-                  Criar Guia de Preços
-                </Button>
+                <Button variant="outline" onClick={resetRelatorioForm}>Cancelar</Button>
+                <Button onClick={handleCreateRelatorio}>Criar Guia de Preços</Button>
               </div>
             </div>
           </DialogContent>
@@ -479,7 +334,6 @@ export const RelatoriosPage = () => {
         </div>
       </div>
 
-      {/* Relatórios Gerados */}
       <Card>
         <CardHeader>
           <CardTitle>Relatórios Gerados</CardTitle>
@@ -496,9 +350,7 @@ export const RelatoriosPage = () => {
             <div className="text-center py-8">
               <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Nenhum relatório gerado</h3>
-              <p className="text-muted-foreground">
-                Crie um relatório para começar
-              </p>
+              <p className="text-muted-foreground">Crie um relatório para começar</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -514,33 +366,12 @@ export const RelatoriosPage = () => {
                       <Info className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="truncate">{rel.nome_cliente}</span>
                     </h4>
-                    <span className="text-sm text-muted-foreground shrink-0">
-                      {formatDate(rel.data)}
-                    </span>
+                    <span className="text-sm text-muted-foreground shrink-0">{formatDate(rel.data)}</span>
                   </div>
-                  <div
-                    className="flex flex-wrap gap-2 mt-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button variant="outline" size="sm" onClick={() => handleExportPDF(rel)}>
+                  <div className="flex flex-wrap gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" onClick={() => openExportDialog(rel)}>
                       <FileDown className="w-4 h-4 mr-1" />
-                      PDF
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleExportTXT(rel)}>
-                      <FileDown className="w-4 h-4 mr-1" />
-                      TXT
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleExportProdutosNaoEncontrados(rel)} title="Produtos Não Encontrados">
-                      <FileDown className="w-4 h-4 mr-1" />
-                      Não Encontrados
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleOpenComparativo(rel)} title="Comparativo da Concorrência">
-                      <FileDown className="w-4 h-4 mr-1" />
-                      Comparativo
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleOpenEstatisticas(rel)} title="Estatísticas">
-                      <FileDown className="w-4 h-4 mr-1" />
-                      Estatísticas
+                      Exportar
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => setDeletingId(rel.id)} title="Excluir">
                       <Trash2 className="w-4 h-4" />
@@ -553,160 +384,109 @@ export const RelatoriosPage = () => {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este relatório? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Tem certeza que deseja excluir este relatório? Esta ação não pode ser desfeita.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              if (deletingId) {
-                deleteRelatorio(deletingId);
-                setDeletingId(null);
-                toast({
-                  title: "Sucesso",
-                  description: "Relatório excluído!"
-                });
-              }
-            }}>
-              Excluir
-            </AlertDialogAction>
+              if (deletingId) { deleteRelatorio(deletingId); setDeletingId(null); toast({ title: "Sucesso", description: "Relatório excluído!" }); }
+            }}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Comparativo - escolha do tipo (geral / comprador / departamento) */}
-      <Dialog open={showComparativoModoDialog} onOpenChange={setShowComparativoModoDialog}>
-        <DialogContent>
+      {/* Dialog unificado de exportação */}
+      <Dialog open={!!exportRelatorio} onOpenChange={(o) => !o && setExportRelatorio(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Comparativo da Concorrência</DialogTitle>
-            <DialogDescription>
-              Escolha como o comparativo deve ser gerado.
-            </DialogDescription>
-          </DialogHeader>
-          <RadioGroup
-            value={comparativoModo}
-            onValueChange={(v) => setComparativoModo(v as 'geral' | 'comprador' | 'departamento')}
-            className="gap-3 py-2"
-          >
-            <label htmlFor="rmodo-geral" className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50">
-              <RadioGroupItem value="geral" id="rmodo-geral" className="mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Geral</p>
-                <p className="text-xs text-muted-foreground">Comparativo consolidado da concorrência.</p>
-              </div>
-            </label>
-            <label htmlFor="rmodo-comprador" className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50">
-              <RadioGroupItem value="comprador" id="rmodo-comprador" className="mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Por Comprador</p>
-                <p className="text-xs text-muted-foreground">Usa as listas dos compradores cadastrados.</p>
-              </div>
-            </label>
-            <label htmlFor="rmodo-departamento" className="flex items-start gap-3 p-3 border rounded-md cursor-pointer hover:bg-muted/50">
-              <RadioGroupItem value="departamento" id="rmodo-departamento" className="mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Por Departamento</p>
-                <p className="text-xs text-muted-foreground">Mesmos cálculos, segmentados por departamento.</p>
-              </div>
-            </label>
-          </RadioGroup>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowComparativoModoDialog(false)}>Cancelar</Button>
-            <Button onClick={handleConfirmComparativoModo}>Continuar</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Comparativo Concorrência Dialog */}
-      <Dialog open={showComparativoDialog} onOpenChange={setShowComparativoDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Comparativo da Concorrência</DialogTitle>
-            <DialogDescription>
-              Selecione o supermercado de referência para gerar o relatório comparativo
-            </DialogDescription>
+            <DialogTitle>Exportar Relatório</DialogTitle>
+            <DialogDescription>Escolha o tipo de relatório e o formato de saída.</DialogDescription>
           </DialogHeader>
 
-          
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Supermercado de Referência *</Label>
-              <Select value={supermercadoRefSelecionado} onValueChange={setSupermercadoRefSelecionado}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um supermercado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {relatorioComparativo && coletas
-                    .filter(c => relatorioComparativo.coletas.includes(c.id))
-                    .map(coleta => {
-                      const supermercado = supermercados.find(s => s.id === coleta.supermercadoId);
-                      return supermercado ? (
-                        <SelectItem key={supermercado.id} value={supermercado.id}>
-                          {supermercado.nome}
-                        </SelectItem>
-                      ) : null;
-                    })
-                  }
-                </SelectContent>
-              </Select>
+              <Label>Tipo de relatório</Label>
+              <RadioGroup value={exportType} onValueChange={(v) => setExportType(v as ReportType)} className="gap-2">
+                {[
+                  { v: 'guia', l: 'Guia de Preços' },
+                  { v: 'guia_comprador', l: 'Guia de Preços por Comprador' },
+                  { v: 'estatisticas', l: 'Estatísticas' },
+                  { v: 'nao_encontrados', l: 'Não Encontrados' },
+                  { v: 'comp_geral', l: 'Comparativo — Geral' },
+                  { v: 'comp_comprador', l: 'Comparativo — Por Comprador' },
+                  { v: 'comp_departamento', l: 'Comparativo — Por Departamento' },
+                  { v: 'todos', l: 'Todos (baixa cada relatório em sequência)' },
+                ].map(o => (
+                  <label key={o.v} htmlFor={`rt-${o.v}`} className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-muted/50">
+                    <RadioGroupItem value={o.v} id={`rt-${o.v}`} />
+                    <span className="text-sm">{o.l}</span>
+                  </label>
+                ))}
+              </RadioGroup>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setShowComparativoDialog(false); setShowComparativoModoDialog(true); }} disabled={gerandoComparativo}>
-                Voltar
-              </Button>
-              <Button onClick={handleExportComparativo} disabled={!supermercadoRefSelecionado || gerandoComparativo}>
-                <FileDown className="w-4 h-4 mr-2" />
-                {gerandoComparativo ? 'Gerando...' : 'Gerar PDF'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Estatísticas Dialog */}
-      <Dialog open={showEstatisticasDialog} onOpenChange={setShowEstatisticasDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Exportar Estatísticas</DialogTitle>
-            <DialogDescription>
-              Informe o valor percentual mínimo para comparação de diferença de preços.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="percentual-minimo">Qual o valor percentual mínimo que você quer comparar? *</Label>
-              <Input
-                id="percentual-minimo"
-                type="number"
-                placeholder="Ex: 10"
-                value={percentualMinimo}
-                onChange={(e) => setPercentualMinimo(e.target.value)}
-                min="0"
-                step="0.1"
-              />
+              <Label>Formato</Label>
+              <RadioGroup value={exportFormat} onValueChange={(v) => setExportFormat(v as ReportFormat)} className="flex gap-4">
+                <label htmlFor="fmt-pdf" className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="pdf" id="fmt-pdf" /> PDF
+                </label>
+                <label htmlFor="fmt-txt" className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="txt" id="fmt-txt" /> TXT
+                </label>
+              </RadioGroup>
             </div>
 
+            {precisaSupermercadoRef && (
+              <div className="space-y-2">
+                <Label>Supermercado de Referência{exportType === 'todos' ? ' (para Comparativos)' : ' *'}</Label>
+                <Select value={exportSupermercadoRef} onValueChange={setExportSupermercadoRef}>
+                  <SelectTrigger><SelectValue placeholder="Selecione um supermercado" /></SelectTrigger>
+                  <SelectContent>
+                    {supermercadosDoRelatorio.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {precisaPercentual && (
+              <div className="space-y-2">
+                <Label htmlFor="perc-min">Percentual mínimo{exportType === 'todos' ? ' (para Estatísticas)' : ' *'}</Label>
+                <Input
+                  id="perc-min"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="Ex: 10"
+                  value={exportPercentual}
+                  onChange={(e) => setExportPercentual(e.target.value)}
+                />
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowEstatisticasDialog(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleExportEstatisticas} disabled={!percentualMinimo}>
+              <Button variant="outline" onClick={() => setExportRelatorio(null)} disabled={exportando}>Cancelar</Button>
+              <Button
+                onClick={handleExport}
+                disabled={
+                  exportando ||
+                  (exportType !== 'todos' && precisaSupermercadoRef && !exportSupermercadoRef) ||
+                  (exportType !== 'todos' && precisaPercentual && !exportPercentual)
+                }
+              >
                 <FileDown className="w-4 h-4 mr-2" />
-                Gerar PDF
+                {exportando ? 'Gerando...' : `Exportar ${exportFormat.toUpperCase()}`}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
 
       {/* Modal de Detalhes do Relatório */}
       <Dialog open={!!relatorioDetalhe} onOpenChange={() => setRelatorioDetalhe(null)}>
@@ -716,42 +496,25 @@ export const RelatoriosPage = () => {
             <DialogDescription>Informações completas do relatório</DialogDescription>
           </DialogHeader>
           {relatorioDetalhe && (() => {
-            // Encontrar lista correspondente comparando produtos
             const listaCorrespondente = listas.find(l => {
               if (!l.produtos || !relatorioDetalhe.produtos) return false;
               if (l.produtos.length !== relatorioDetalhe.produtos.length) return false;
               return l.produtos.every((p: string) => relatorioDetalhe.produtos.includes(p));
             });
             const coletasDoRelatorio = coletas.filter(c => relatorioDetalhe.coletas.includes(c.id));
-            
+
             return (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Nome</Label>
-                    <p className="font-medium">{relatorioDetalhe.nome}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Cliente</Label>
-                    <p className="font-medium">{relatorioDetalhe.nome_cliente}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Data</Label>
-                    <p className="font-medium">{formatDate(relatorioDetalhe.data)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Produtos</Label>
-                    <p className="font-medium">{relatorioDetalhe.produtos.length} produtos</p>
-                  </div>
+                  <div><Label className="text-muted-foreground text-xs">Nome</Label><p className="font-medium">{relatorioDetalhe.nome}</p></div>
+                  <div><Label className="text-muted-foreground text-xs">Cliente</Label><p className="font-medium">{relatorioDetalhe.nome_cliente}</p></div>
+                  <div><Label className="text-muted-foreground text-xs">Data</Label><p className="font-medium">{formatDate(relatorioDetalhe.data)}</p></div>
+                  <div><Label className="text-muted-foreground text-xs">Produtos</Label><p className="font-medium">{relatorioDetalhe.produtos.length} produtos</p></div>
                 </div>
-
                 <div>
                   <Label className="text-muted-foreground text-xs">Lista Utilizada</Label>
-                  <p className="font-medium">
-                    {listaCorrespondente ? listaCorrespondente.nome : 'Lista não identificada (pode ter sido alterada ou excluída)'}
-                  </p>
+                  <p className="font-medium">{listaCorrespondente ? listaCorrespondente.nome : 'Lista não identificada (pode ter sido alterada ou excluída)'}</p>
                 </div>
-
                 <div>
                   <Label className="text-muted-foreground text-xs">Coletas Consideradas ({coletasDoRelatorio.length})</Label>
                   <div className="border rounded-md p-3 mt-1 space-y-1 max-h-[200px] overflow-y-auto">
@@ -770,7 +533,6 @@ export const RelatoriosPage = () => {
                     )}
                   </div>
                 </div>
-
                 <div>
                   <Label className="text-muted-foreground text-xs">Criado em</Label>
                   <p className="font-medium">{formatDate(relatorioDetalhe.created_at)}</p>
