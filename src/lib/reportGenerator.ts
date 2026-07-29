@@ -1875,7 +1875,9 @@ export const generateGuiaPrecosPorCompradorPDF = (
     doc.setFontSize(16);
     doc.text('GUIA DE PREÇOS POR COMPRADOR', pageWidth / 2, 15, { align: 'center' });
     doc.setFontSize(11);
-    doc.text(`${data.nomeCliente} - ${comp.nome}`, pageWidth / 2, 22, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(comp.nome, 14, 24, { align: 'left' });
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     let yPos = 30;
 
