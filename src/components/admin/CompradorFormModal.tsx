@@ -90,6 +90,7 @@ export const CompradorFormModal = ({ open, onOpenChange, clienteId, editingCompr
   // Recarrega a lista salva quando os produtos terminam de carregar
   useEffect(() => {
     if (!open) return;
+    setNomeComprador(editingComprador?.nome || '');
     if (!editingComprador) { setVisualizacaoItems([]); return; }
     if (produtosRaw.length === 0) return;
     const byId = new Map(produtosRaw.map(p => [p.id, p]));
