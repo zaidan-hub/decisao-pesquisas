@@ -383,6 +383,25 @@ export const ClientesPage = () => {
       {/* Guia de Preços */}
       <GuiaPrecosEditor open={showGuia} onOpenChange={setShowGuia} cliente={editingCliente} onSaved={handleSaveGuia} />
 
+      <AlertDialog open={confirmDeleteGuia} onOpenChange={setConfirmDeleteGuia}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir guia de preços</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o guia de preços personalizado de "{editingCliente?.nome}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteGuia} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
       {/* Comprador Modal */}
       {showCompradorModal && editingCliente && (
         <CompradorFormModal
