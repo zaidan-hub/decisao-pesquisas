@@ -350,10 +350,9 @@ export const CompradorFormModal = ({ open, onOpenChange, clienteId, editingCompr
                 <div className="flex items-center justify-between">
                   <Label>Selecionar Produtos</Label>
                   {produtosSelecionadosCount > 0 && (
-
                     <Button type="button" size="sm" onClick={handleAdicionarItem}>
                       <Plus className="w-4 h-4 mr-2" />
-                      Adicionar ({selectedItems.size})
+                      Adicionar ({produtosSelecionadosCount})
                     </Button>
                   )}
                 </div>
