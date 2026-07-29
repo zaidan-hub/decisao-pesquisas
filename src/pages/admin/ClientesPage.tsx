@@ -29,6 +29,7 @@ export const ClientesPage = () => {
   const [deleteCliente, setDeleteCliente] = useState<Cliente | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showGuia, setShowGuia] = useState(false);
+  const [confirmDeleteGuia, setConfirmDeleteGuia] = useState(false);
   const [showCompradorModal, setShowCompradorModal] = useState(false);
   const [editingComprador, setEditingComprador] = useState<Comprador | null>(null);
   const [deleteComprador, setDeleteComprador] = useState<Comprador | null>(null);
@@ -118,6 +119,20 @@ export const ClientesPage = () => {
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Erro ao salvar guia de preços', variant: 'destructive' });
       throw error;
+    }
+  };
+
+  const handleDeleteGuia = async () => {
+    if (!editingCliente) return;
+    try {
+      const { error } = await supabase.from('clientes' as any).update({ guia_precos: null }).eq('id', editingCliente.id) as any;
+      if (error) throw error;
+      await refetch();
+      setEditingCliente(prev => prev ? { ...prev, guiaPrecos: undefined } : prev);
+      setConfirmDeleteGuia(false);
+      toast({ title: 'Guia excluído', description: 'O guia de preços personalizado foi removido.' });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message || 'Erro ao excluir guia', variant: 'destructive' });
     }
   };
 
@@ -240,10 +255,17 @@ export const ClientesPage = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Guia de Preços Personalizado</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setShowGuia(true)}>
-                      <Tags className="w-4 h-4 mr-2" />
-                      {editingCliente.guiaPrecos && editingCliente.guiaPrecos.produtos.length > 0 ? 'Editar Guia' : 'Criar Guia'}
-                    </Button>
+                    <div className="flex gap-2">
+                      {editingCliente.guiaPrecos && editingCliente.guiaPrecos.produtos.length > 0 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDeleteGuia(true)} title="Excluir guia">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowGuia(true)}>
+                        <Tags className="w-4 h-4 mr-2" />
+                        {editingCliente.guiaPrecos && editingCliente.guiaPrecos.produtos.length > 0 ? 'Editar Guia' : 'Criar Guia'}
+                      </Button>
+                    </div>
                   </div>
                   <Card>
                     <CardContent className="pt-4">
@@ -360,6 +382,25 @@ export const ClientesPage = () => {
 
       {/* Guia de Preços */}
       <GuiaPrecosEditor open={showGuia} onOpenChange={setShowGuia} cliente={editingCliente} onSaved={handleSaveGuia} />
+
+      <AlertDialog open={confirmDeleteGuia} onOpenChange={setConfirmDeleteGuia}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir guia de preços</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o guia de preços personalizado de "{editingCliente?.nome}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteGuia} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       {/* Comprador Modal */}
       {showCompradorModal && editingCliente && (
