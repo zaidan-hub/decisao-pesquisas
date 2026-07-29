@@ -240,10 +240,17 @@ export const ClientesPage = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Guia de Preços Personalizado</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setShowGuia(true)}>
-                      <Tags className="w-4 h-4 mr-2" />
-                      {editingCliente.guiaPrecos && editingCliente.guiaPrecos.produtos.length > 0 ? 'Editar Guia' : 'Criar Guia'}
-                    </Button>
+                    <div className="flex gap-2">
+                      {editingCliente.guiaPrecos && editingCliente.guiaPrecos.produtos.length > 0 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDeleteGuia(true)} title="Excluir guia">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowGuia(true)}>
+                        <Tags className="w-4 h-4 mr-2" />
+                        {editingCliente.guiaPrecos && editingCliente.guiaPrecos.produtos.length > 0 ? 'Editar Guia' : 'Criar Guia'}
+                      </Button>
+                    </div>
                   </div>
                   <Card>
                     <CardContent className="pt-4">
