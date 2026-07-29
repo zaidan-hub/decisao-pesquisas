@@ -29,6 +29,7 @@ export const ClientesPage = () => {
   const [deleteCliente, setDeleteCliente] = useState<Cliente | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showGuia, setShowGuia] = useState(false);
+  const [confirmDeleteGuia, setConfirmDeleteGuia] = useState(false);
   const [showCompradorModal, setShowCompradorModal] = useState(false);
   const [editingComprador, setEditingComprador] = useState<Comprador | null>(null);
   const [deleteComprador, setDeleteComprador] = useState<Comprador | null>(null);
@@ -118,6 +119,20 @@ export const ClientesPage = () => {
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Erro ao salvar guia de preços', variant: 'destructive' });
       throw error;
+    }
+  };
+
+  const handleDeleteGuia = async () => {
+    if (!editingCliente) return;
+    try {
+      const { error } = await supabase.from('clientes' as any).update({ guia_precos: null }).eq('id', editingCliente.id) as any;
+      if (error) throw error;
+      await refetch();
+      setEditingCliente(prev => prev ? { ...prev, guiaPrecos: undefined } : prev);
+      setConfirmDeleteGuia(false);
+      toast({ title: 'Guia excluído', description: 'O guia de preços personalizado foi removido.' });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message || 'Erro ao excluir guia', variant: 'destructive' });
     }
   };
 
