@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,6 +81,30 @@ export const CompradorFormModal = ({ open, onOpenChange, clienteId, editingCompr
     }
     return [];
   });
+
+  const produtosSelecionadosCount = useMemo(
+    () => Array.from(selectedItems).filter(k => k.startsWith('produto:')).length,
+    [selectedItems]
+  );
+
+  // Recarrega a lista salva quando os produtos terminam de carregar
+  useEffect(() => {
+    if (!open) return;
+    if (!editingComprador) { setVisualizacaoItems([]); return; }
+    if (produtosRaw.length === 0) return;
+    const byId = new Map(produtosRaw.map(p => [p.id, p]));
+    const hierarquia = editingComprador.hierarquia_customizada as any;
+    const ids: string[] = hierarquia?.ordem && Array.isArray(hierarquia.ordem)
+      ? hierarquia.ordem.filter((i: any) => i.tipo === 'produto').map((i: any) => i.produtoId ?? i.id)
+      : editingComprador.produtos;
+    const items = ids
+      .map(id => {
+        const p = byId.get(id);
+        return p ? { tipo: 'produto' as const, id: p.id, nome: p.nome, parentId: p.subgrupoId } : null;
+      })
+      .filter(Boolean) as VisualizacaoItem[];
+    setVisualizacaoItems(items);
+  }, [open, editingComprador, produtosRaw]);
 
   const handleSelectItem = (tipo: string, id: string) => {
     const itemKey = `${tipo}:${id}`;
