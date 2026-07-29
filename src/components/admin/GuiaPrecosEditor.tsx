@@ -608,7 +608,7 @@ export const GuiaPrecosEditor = ({ open, onOpenChange, cliente, onSaved }: Props
           {/* Direita: Hierarquia */}
           <div className="border rounded-md flex flex-col min-h-0">
             <div className="p-2 border-b space-y-2">
-              <span className="text-sm font-medium">Hierarquia ({items.length} itens)</span>
+              <span className="text-sm font-medium">Hierarquia ({items.filter(i => i.tipo === 'produto').length} produtos)</span>
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input value={buscaHierarquia} onChange={e => setBuscaHierarquia(e.target.value)} placeholder="Buscar na hierarquia..." className="pl-8 h-8" />
